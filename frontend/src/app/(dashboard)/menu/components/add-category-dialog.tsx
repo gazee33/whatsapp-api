@@ -1,0 +1,131 @@
+"use client";
+
+import { useState } from "react";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import { Input, Label } from "@/components/ui/input";
+import { useMenuStore } from "@/stores/menu-store";
+import type { MenuCategory } from "@/lib/types";
+
+interface AddCategoryDialogProps {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  category?: MenuCategory | null;
+  onSuccess?: () => void;
+}
+
+export function AddCategoryDialog({
+  open,
+  onOpenChange,
+  category,
+  onSuccess,
+}: AddCategoryDialogProps) {
+  const isEditing = !!category;
+  const { createCategory, updateCategory } = useMenuStore();
+
+  const [name, setName] = useState(category?.name ?? "");
+  const [nameAr, setNameAr] = useState(category?.nameAr ?? "");
+  const [sortOrder, setSortOrder] = useState(String(category?.sortOrder ?? 0));
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!name.trim()) {
+      setError("Name is required");
+      return;
+    }
+    setError("");
+    setLoading(true);
+    try {
+      if (isEditing && category) {
+        await updateCategory(category.id, {
+          name: name.trim(),
+          nameAr: nameAr.trim() || undefined,
+          sortOrder: Number(sortOrder) || 0,
+        });
+      } else {
+        await createCategory({
+          name: name.trim(),
+          nameAr: nameAr.trim() || undefined,
+          sortOrder: Number(sortOrder) || 0,
+        });
+      }
+      onOpenChange(false);
+      onSuccess?.();
+    } catch {
+      setError("Failed to save category");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle>{isEditing ? "Edit Category" : "Add Category"}</DialogTitle>
+          <DialogDescription>
+            {isEditing
+              ? "Update the category details below."
+              : "Create a new menu category."}
+          </DialogDescription>
+        </DialogHeader>
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div className="space-y-2">
+            <Label htmlFor="name">Name</Label>
+            <Input
+              id="name"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder="e.g. Main Dishes"
+              disabled={loading}
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="nameAr">Arabic Name (optional)</Label>
+            <Input
+              id="nameAr"
+              value={nameAr}
+              onChange={(e) => setNameAr(e.target.value)}
+              placeholder="الأطباق الرئيسية"
+              disabled={loading}
+              dir="rtl"
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="sortOrder">Sort Order</Label>
+            <Input
+              id="sortOrder"
+              type="number"
+              value={sortOrder}
+              onChange={(e) => setSortOrder(e.target.value)}
+              disabled={loading}
+            />
+          </div>
+          {error && <p className="text-sm text-destructive">{error}</p>}
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => onOpenChange(false)}
+              disabled={loading}
+            >
+              Cancel
+            </Button>
+            <Button type="submit" loading={loading}>
+              {isEditing ? "Save Changes" : "Create Category"}
+            </Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
+  );
+}

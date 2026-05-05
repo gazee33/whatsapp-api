@@ -1,0 +1,327 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// ─── TENANT (existing Business model) ───────────────────────────────────────
+
+model Business {
+  id                  String   @id @default(cuid())
+  name                String
+  whatsappPhoneNumberId String?  @unique
+  whatsappPhoneNumber   String?
+  whatsappAccessToken   String?
+  whatsappAppSecret     String?
+  whatsappVerifyToken   String?  @unique
+  apiKey              String   @unique
+  createdAt           DateTime @default(now())
+  
+  customers    Customer[]
+  categories   MenuCategory[]
+  orders       Order[]
+  complaints  Complaint[]
+  settings    RestaurantSettings?
+  users       User[]
+  roles       Role[]
+  auditLogs   AuditLog[]
+
+  @@map("Business")
+}
+
+// ─── IAM: USERS ─────────────────────────────────────────────────────────────
+
+model User {
+  id           String    @id @default(cuid())
+  businessId   String?   // null = platform-level user
+  business     Business? @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  
+  email        String
+  passwordHash String
+  name         String?
+  avatarUrl    String?
+  isActive     Boolean   @default(true)
+  attributes   String?   // JSON: custom attributes for ABAC
+  
+  failedLoginAttempts Int  @default(0)
+  lockedUntil         DateTime?
+  
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  lastLoginAt  DateTime?
+  
+  sessions     Session[]
+  roles        UserRole[]
+  auditLogs    AuditLog[]
+
+  @@unique([businessId, email])
+  @@index([businessId])
+  @@index([email])
+  @@map("User")
+}
+
+// ─── PLATFORM SETTINGS ───────────────────────────────────────────────────────
+
+model PlatformSetting {
+  id          String   @id @default(cuid())
+  key         String   @unique
+  value       String   // JSON-encoded value
+  description String?
+  updatedAt   DateTime @updatedAt
+
+  @@map("PlatformSetting")
+}
+
+// ─── IAM: ROLES ─────────────────────────────────────────────────────────────
+
+model Role {
+  id          String    @id @default(cuid())
+  businessId  String?   // NULL = global/system role; non-NULL = tenant-specific
+  business    Business? @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  
+  name        String
+  description String?
+  isSystem    Boolean   @default(false)
+  conditions  String?   // JSON: ABAC conditions for future use
+  
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  
+  users       UserRole[]
+  permissions RolePermission[]
+
+  @@unique([businessId, name])
+  @@index([businessId])
+  @@map("Role")
+}
+
+// ─── IAM: PERMISSIONS (global catalog) ──────────────────────────────────────
+
+model Permission {
+  id          String   @id @default(cuid())
+  code        String   @unique
+  name        String
+  description String?
+  category    String
+  createdAt   DateTime @default(now())
+  
+  roles       RolePermission[]
+
+  @@map("Permission")
+}
+
+// ─── IAM: USER-ROLE JUNCTION ────────────────────────────────────────────────
+
+model UserRole {
+  id        String   @id @default(cuid())
+  userId    String
+  roleId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role      Role     @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@unique([userId, roleId])
+  @@index([userId])
+  @@index([roleId])
+  @@map("UserRole")
+}
+
+// ─── IAM: ROLE-PERMISSION JUNCTION ──────────────────────────────────────────
+
+model RolePermission {
+  id           String     @id @default(cuid())
+  roleId       String
+  permissionId String
+  role         Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  permission   Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+  createdAt    DateTime   @default(now())
+
+  @@unique([roleId, permissionId])
+  @@index([roleId])
+  @@index([permissionId])
+  @@map("RolePermission")
+}
+
+// ─── IAM: SESSIONS ──────────────────────────────────────────────────────────
+
+model Session {
+  id           String    @id @default(cuid())
+  userId       String
+  user         User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  refreshToken String    @unique
+  deviceInfo   String?
+  ipAddress    String?
+  expiresAt    DateTime
+  
+  createdAt    DateTime  @default(now())
+  revokedAt    DateTime?
+
+  @@index([userId])
+  @@index([refreshToken])
+  @@map("Session")
+}
+
+// ─── IAM: AUDIT LOG ─────────────────────────────────────────────────────────
+
+model AuditLog {
+  id          String   @id @default(cuid())
+  businessId  String
+  business    Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  userId      String?
+  user        User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  
+  action      String
+  resource    String?
+  resourceId  String?
+  details     String?
+  
+  ipAddress   String?
+  userAgent   String?
+  
+  createdAt   DateTime @default(now())
+
+  @@index([businessId])
+  @@index([userId])
+  @@index([action])
+  @@index([createdAt])
+  @@map("AuditLog")
+}
+
+// ─── EXISTING MODELS (unchanged) ────────────────────────────────────────────
+
+model Customer {
+  id         String   @id @default(cuid())
+  businessId String
+  business   Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  phone      String
+  name       String?
+  cartState  String?
+  createdAt  DateTime @default(now())
+  messages   Message[]
+  orders    Order[]
+  complaints Complaint[]
+
+  @@unique([businessId, phone])
+  @@index([businessId])
+  @@map("Customer")
+}
+
+model Message {
+  id         String   @id @default(cuid())
+  customerId String
+  customer   Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  role       String
+  content    String
+  sessionId  String
+  createdAt  DateTime @default(now())
+
+  @@index([customerId])
+  @@map("Message")
+}
+
+model MenuCategory {
+  id         String     @id @default(cuid())
+  businessId String
+  business   Business   @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  name       String
+  nameAr     String?
+  sortOrder  Int        @default(0)
+  items      MenuItem[]
+
+  @@map("MenuCategory")
+}
+
+model MenuItem {
+  id          String       @id @default(cuid())
+  name        String
+  nameAr      String?
+  description String?
+  price       Float
+  available   Boolean      @default(true)
+  categoryId  String
+  category    MenuCategory @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  orderItems  OrderItem[]
+
+  @@map("MenuItem")
+}
+
+model Order {
+  id          String      @id @default(cuid())
+  referenceId String      @unique
+  businessId  String
+  business    Business    @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  customerId  String
+  customer    Customer    @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  status      String      @default("pending")
+  totalPrice  Float
+  notes       String?
+  items       OrderItem[]
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+
+  @@index([businessId])
+  @@index([customerId])
+  @@index([status])
+  @@index([createdAt])
+  @@map("Order")
+}
+
+model OrderItem {
+  id         String   @id @default(cuid())
+  orderId    String
+  order      Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  menuItemId String
+  menuItem  MenuItem @relation(fields: [menuItemId], references: [id], onDelete: Cascade)
+  quantity  Int
+  notes     String?
+
+  @@map("OrderItem")
+}
+
+model Complaint {
+  id         String   @id @default(cuid())
+  businessId String
+  business   Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  customerId String
+  customer   Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  content    String
+  status    String   @default("open")
+  createdAt DateTime @default(now())
+
+  @@map("Complaint")
+}
+
+model RestaurantSettings {
+  id           String  @id @default(cuid())
+  businessId   String  @unique
+  business     Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  name         String  @default("My Restaurant")
+  openingTime  String  @default("09:00")
+  closingTime  String  @default("23:00")
+  welcomeMsg  String  @default("Welcome! How can I help you today?")
+  aiRules     String  @default("")
+  currency    String  @default("SAR")
+
+  @@map("RestaurantSettings")
+}
+
+model ErrorLog {
+  id         String   @id @default(cuid())
+  businessId String
+  customerId String?
+  sessionId  String?
+  errorType String
+  errorMessage String
+  errorStack  String?
+  context    String?
+  createdAt  DateTime @default(now())
+
+  @@index([businessId])
+  @@index([customerId])
+  @@index([createdAt])
+  @@map("ErrorLog")
+}

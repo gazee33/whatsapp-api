@@ -1,0 +1,1984 @@
+openapi: 3.1.0
+info:
+  title: WhatsApp AI Agent — Multi-Tenant SaaS API
+  version: 1.0.0
+  description: |
+    ## Overview
+    Multi-tenant restaurant ordering platform powered by an AI agent over WhatsApp.
+    Each **Business** (tenant) connects a WhatsApp phone number, and the AI agent
+    handles customer orders, menu inquiries, complaints, and status checks automatically.
+
+    **Two API surfaces:**
+    | Surface | Auth | Scope |
+    |---------|------|-------|
+    | **Tenant API** | `x-api-key` or Bearer JWT | Scoped to one business |
+    | **Platform API** | Bearer JWT only (`businessId: null`) | Cross-tenant super-admin |
+
+    ## Webhook Flow
+    1. Meta sends a WhatsApp message to `POST /api/webhook`
+    2. Server identifies the Business via `phone_number_id`
+    3. AI agent processes the message (menu query, order submission, etc.)
+    4. Reply is sent back as the response body
+
+    ## Real-time Events (Socket.io)
+    - **URL:** `http://localhost:3001`
+    - **Rooms:** `business:{businessId}`
+    - **Events:**
+      | Event | Payload | Description |
+      |-------|---------|-------------|
+      | `new-message` | `{ customerId, customerPhone, message, reply }` | AI replied to a customer |
+      | `new-order` | `{ orderId, referenceId, customerId, items, totalPrice }` | New order placed via WhatsApp |
+      | `order-updated` | `{ orderId, status, updatedAt }` | Order status changed |
+      | `new-complaint` | `{ complaintId, customerPhone, content }` | Customer filed a complaint |
+
+    ## Demo Credentials
+    | Role | API Key / Endpoint | Email | Password |
+    |------|-------------------|-------|----------|
+    | Tenant (Business) | `demo-api-key-123` | `admin@al-baraka.com` | `Admin123!` |
+    | Tenant (Manager) | `demo-api-key-123` | `manager@al-baraka.com` | `Manager123!` |
+    | Tenant (Staff) | `demo-api-key-123` | `staff@al-baraka.com` | `Staff123!` |
+    | Platform Admin | `POST /api/auth/platform-login` | `admin@platform.com` | `PlatformAdmin123!` |
+
+servers:
+  - url: http://localhost:3001/api
+    description: Local development
+
+tags:
+  - name: Health
+    description: Server health check
+  - name: Webhook
+    description: Meta WhatsApp webhook — incoming messages and endpoint verification
+  - name: Auth
+    description: Tenant + Platform authentication (JWT + refresh token)
+  - name: Business
+    description: Current business profile
+  - name: Menu
+    description: Menu categories and items CRUD
+  - name: Orders
+    description: Order management and status updates
+  - name: Settings
+    description: Restaurant settings (hours, welcome message, AI rules)
+  - name: Conversations
+    description: Customer conversation history
+  - name: Debug
+    description: Error logs for debugging webhook/AI issues
+  - name: Users (IAM)
+    description: Tenant-level user management with roles and permissions
+  - name: Roles (IAM)
+    description: Tenant-level role definitions and permission assignments
+  - name: Permissions
+    description: Global permission catalog (read-only list)
+  - name: Platform - Businesses
+    description: Cross-tenant business management
+  - name: Platform - Analytics
+    description: Aggregated platform-wide metrics
+  - name: Platform - Settings
+    description: Platform-level configuration
+  - name: Platform - Users
+    description: Platform admin user management
+  - name: Platform - Audit
+    description: Cross-tenant audit log viewer
+  - name: Platform - Health
+    description: System health checks
+
+components:
+  securitySchemes:
+    ApiKeyAuth:
+      type: apiKey
+      in: header
+      name: x-api-key
+      description: Business API key (e.g. `demo-api-key-123`)
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: User access token from `/api/auth/login`
+    PlatformBearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: |
+        Platform user JWT from `/api/auth/platform-login`.
+        Token contains `businessId: null`.
+
+  schemas:
+    # ─── Error ───
+    Error:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: string
+          description: Human-readable error message
+        details:
+          type: array
+          items:
+            type: string
+          description: Field-level validation errors
+
+    # ─── Auth ───
+    AuthResponse:
+      type: object
+      properties:
+        accessToken:
+          type: string
+          description: JWT access token
+        expiresIn:
+          type: integer
+          description: Token expiry in seconds
+        user:
+          type: object
+          properties:
+            id:
+              type: string
+            email:
+              type: string
+            name:
+              type: string
+              nullable: true
+            businessId:
+              type: string
+              nullable: true
+    AuthUser:
+      type: object
+      properties:
+        id:
+          type: string
+        businessId:
+          type: string
+          nullable: true
+        email:
+          type: string
+        name:
+          type: string
+          nullable: true
+        roles:
+          type: array
+          items:
+            type: string
+        permissions:
+          type: array
+          items:
+            type: string
+
+    # ─── Business ───
+    Business:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        whatsappPhoneNumber:
+          type: string
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+
+    # ─── Menu ───
+    MenuCategory:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        nameAr:
+          type: string
+          nullable: true
+        sortOrder:
+          type: integer
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/MenuItem'
+    MenuItem:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        nameAr:
+          type: string
+          nullable: true
+        description:
+          type: string
+          nullable: true
+        price:
+          type: number
+        available:
+          type: boolean
+        categoryId:
+          type: string
+    MenuCategoryInput:
+      type: object
+      properties:
+        name:
+          type: string
+        nameAr:
+          type: string
+        sortOrder:
+          type: integer
+    MenuItemInput:
+      type: object
+      required: [name, price, categoryId]
+      properties:
+        name:
+          type: string
+        nameAr:
+          type: string
+        description:
+          type: string
+        price:
+          type: number
+        categoryId:
+          type: string
+        available:
+          type: boolean
+
+    # ─── Orders ───
+    Order:
+      type: object
+      properties:
+        id:
+          type: string
+        referenceId:
+          type: string
+          example: ORD-000001
+        businessId:
+          type: string
+        customer:
+          $ref: '#/components/schemas/Customer'
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/OrderItem'
+        totalPrice:
+          type: number
+        status:
+          type: string
+          enum: [pending, confirmed, preparing, ready, delivered, cancelled]
+        notes:
+          type: string
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+    OrderItem:
+      type: object
+      properties:
+        id:
+          type: string
+        menuItem:
+          $ref: '#/components/schemas/MenuItem'
+        quantity:
+          type: integer
+        notes:
+          type: string
+          nullable: true
+    StatusUpdateInput:
+      type: object
+      required: [status]
+      properties:
+        status:
+          type: string
+          enum: [pending, confirmed, preparing, ready, delivered, cancelled]
+
+    # ─── Customers & Conversations ───
+    Customer:
+      type: object
+      properties:
+        id:
+          type: string
+        phone:
+          type: string
+        name:
+          type: string
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+    Conversation:
+      type: object
+      properties:
+        id:
+          type: string
+        phone:
+          type: string
+        name:
+          type: string
+          nullable: true
+        messages:
+          type: array
+          items:
+            $ref: '#/components/schemas/Message'
+    Message:
+      type: object
+      properties:
+        id:
+          type: string
+        role:
+          type: string
+          enum: [user, assistant, system]
+        content:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+
+    # ─── Settings ───
+    RestaurantSettings:
+      type: object
+      properties:
+        name:
+          type: string
+        openingTime:
+          type: string
+          example: "09:00"
+        closingTime:
+          type: string
+          example: "23:00"
+        welcomeMsg:
+          type: string
+        aiRules:
+          type: string
+        currency:
+          type: string
+          example: SAR
+    RestaurantSettingsInput:
+      type: object
+      properties:
+        name:
+          type: string
+        openingTime:
+          type: string
+        closingTime:
+          type: string
+        welcomeMsg:
+          type: string
+        aiRules:
+          type: string
+        currency:
+          type: string
+
+    # ─── Webhook ───
+    MetaWebhookPayload:
+      type: object
+      required: [object, entry]
+      properties:
+        object:
+          type: string
+          example: whatsapp_business_account
+        entry:
+          type: array
+          items:
+            $ref: '#/components/schemas/WebhookEntry'
+    WebhookEntry:
+      type: object
+      properties:
+        id:
+          type: string
+        changes:
+          type: array
+          items:
+            $ref: '#/components/schemas/WebhookChange'
+    WebhookChange:
+      type: object
+      properties:
+        value:
+          $ref: '#/components/schemas/WebhookValue'
+        field:
+          type: string
+          example: messages
+    WebhookValue:
+      type: object
+      properties:
+        messaging_product:
+          type: string
+          example: whatsapp
+        metadata:
+          type: object
+          properties:
+            display_phone_number:
+              type: string
+            phone_number_id:
+              type: string
+        contacts:
+          type: array
+          items:
+            type: object
+            properties:
+              profile:
+                type: object
+                properties:
+                  name:
+                    type: string
+              wa_id:
+                type: string
+        messages:
+          type: array
+          items:
+            $ref: '#/components/schemas/WebhookMessage'
+    WebhookMessage:
+      type: object
+      properties:
+        from:
+          type: string
+        id:
+          type: string
+        timestamp:
+          type: string
+        type:
+          type: string
+          example: text
+        text:
+          type: object
+          properties:
+            body:
+              type: string
+
+    # ─── IAM ───
+    User:
+      type: object
+      properties:
+        id:
+          type: string
+        email:
+          type: string
+        name:
+          type: string
+          nullable: true
+        isActive:
+          type: boolean
+        roles:
+          type: array
+          items:
+            type: object
+            properties:
+              id:
+                type: string
+              name:
+                type: string
+              isSystem:
+                type: boolean
+        permissions:
+          type: array
+          items:
+            type: string
+        createdAt:
+          type: string
+          format: date-time
+        lastLoginAt:
+          type: string
+          format: date-time
+          nullable: true
+    UserInput:
+      type: object
+      required: [email, password]
+      properties:
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+          minLength: 8
+        name:
+          type: string
+    UserUpdateInput:
+      type: object
+      properties:
+        name:
+          type: string
+        isActive:
+          type: boolean
+    Role:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        description:
+          type: string
+          nullable: true
+        isSystem:
+          type: boolean
+        businessId:
+          type: string
+          nullable: true
+        permissionCount:
+          type: integer
+        userCount:
+          type: integer
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+    RoleInput:
+      type: object
+      required: [name]
+      properties:
+        name:
+          type: string
+        description:
+          type: string
+    Permission:
+      type: object
+      properties:
+        id:
+          type: string
+        code:
+          type: string
+          example: orders:read
+        name:
+          type: string
+        description:
+          type: string
+        category:
+          type: string
+          example: orders
+
+    # ─── Audit ───
+    AuditLog:
+      type: object
+      properties:
+        id:
+          type: string
+        business:
+          type: object
+          properties:
+            id:
+              type: string
+            name:
+              type: string
+        user:
+          type: object
+          nullable: true
+          properties:
+            id:
+              type: string
+            email:
+              type: string
+            name:
+              type: string
+              nullable: true
+        action:
+          type: string
+        resource:
+          type: string
+          nullable: true
+        resourceId:
+          type: string
+          nullable: true
+        details:
+          type: object
+          nullable: true
+        ipAddress:
+          type: string
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+
+    # ─── Pagination ───
+    PaginationMeta:
+      type: object
+      properties:
+        total:
+          type: integer
+        page:
+          type: integer
+        limit:
+          type: integer
+        totalPages:
+          type: integer
+
+    # ─── Platform ───
+    PlatformBusiness:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        whatsappPhoneNumber:
+          type: string
+          nullable: true
+        whatsappPhoneNumberId:
+          type: string
+          nullable: true
+        apiKey:
+          type: string
+        orderCount:
+          type: integer
+        customerCount:
+          type: integer
+        userCount:
+          type: integer
+        createdAt:
+          type: string
+          format: date-time
+    PlatformBusinessCreateInput:
+      type: object
+      required: [name]
+      properties:
+        name:
+          type: string
+        whatsappPhoneNumber:
+          type: string
+        whatsappPhoneNumberId:
+          type: string
+    PlatformBusinessUpdateInput:
+      type: object
+      properties:
+        name:
+          type: string
+        whatsappPhoneNumber:
+          type: string
+        whatsappPhoneNumberId:
+          type: string
+    PlatformAnalytics:
+      type: object
+      properties:
+        summary:
+          type: object
+          properties:
+            totalBusinesses:
+              type: integer
+            totalOrders:
+              type: integer
+            totalRevenue:
+              type: number
+            ordersLast30Days:
+              type: integer
+            totalComplaints:
+              type: integer
+            complaintsLast30Days:
+              type: integer
+        ordersByDay:
+          type: array
+          items:
+            type: object
+            properties:
+              date:
+                type: string
+              orderCount:
+                type: integer
+        orderStatusBreakdown:
+          type: object
+          additionalProperties:
+            type: integer
+        topBusinesses:
+          type: array
+          items:
+            type: object
+            properties:
+              businessId:
+                type: string
+              businessName:
+                type: string
+              orderCount:
+                type: integer
+              revenue:
+                type: number
+
+paths:
+  # ─── HEALTH ─────────────────────────────────────────────────────────────────
+  /health:
+    get:
+      tags: [Health]
+      summary: Health check
+      description: Returns server status. No auth required.
+      security: []
+      responses:
+        '200':
+          description: Server is healthy
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: ok
+
+  # ─── WEBHOOK ────────────────────────────────────────────────────────────────
+  /webhook:
+    get:
+      tags: [Webhook]
+      summary: Meta webhook verification
+      description: |-
+        Meta sends a GET request to verify the webhook endpoint.
+        Responds with the `hub.challenge` value if `hub.verify_token` matches.
+      security: []
+      parameters:
+        - name: hub.mode
+          in: query
+          required: true
+          schema:
+            type: string
+            example: subscribe
+        - name: hub.verify_token
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: hub.challenge
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Verification successful
+          content:
+            text/plain:
+              schema:
+                type: string
+        '403':
+          description: Invalid verify token
+    post:
+      tags: [Webhook]
+      summary: Receive WhatsApp message
+      description: |-
+        Receives incoming WhatsApp messages from Meta's Cloud API.
+        The AI agent processes the message and returns a reply.
+        Business is identified by `phone_number_id` in the payload.
+      security: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MetaWebhookPayload'
+      responses:
+        '200':
+          description: AI agent reply
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  reply:
+                    type: string
+                    description: The AI agent's text response
+        '404':
+          description: Business not found for the given phone_number_id
+
+  # ─── AUTH ────────────────────────────────────────────────────────────────────
+  /auth/register:
+    post:
+      tags: [Auth]
+      summary: Register a new tenant user
+      security:
+        - ApiKeyAuth: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserInput'
+      responses:
+        '201':
+          description: User registered successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+        '400':
+          description: Missing fields, invalid password, or user exists
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Invalid API key
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /auth/login:
+    post:
+      tags: [Auth]
+      summary: Login as a tenant user
+      description: |-
+        Requires `x-api-key` header to identify the business.
+        Account lockout after 5 failed attempts (30 min cooldown).
+      security:
+        - ApiKeyAuth: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, password]
+              properties:
+                email:
+                  type: string
+                  format: email
+                password:
+                  type: string
+      responses:
+        '200':
+          description: Login successful
+          headers:
+            Set-Cookie:
+              schema:
+                type: string
+                description: httpOnly refreshToken cookie
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+        '400':
+          description: Missing fields
+        '401':
+          description: Invalid credentials or locked account
+        '429':
+          description: Too many auth attempts
+
+  /auth/platform-login:
+    post:
+      tags: [Auth]
+      summary: Login as a platform admin
+      description: |-
+        No `x-api-key` required. Looks up users with `businessId: null`.
+        Returns a JWT containing `businessId: null` for use with platform routes.
+      security: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, password]
+              properties:
+                email:
+                  type: string
+                  format: email
+                  example: admin@platform.com
+                password:
+                  type: string
+                  example: PlatformAdmin123!
+      responses:
+        '200':
+          description: Platform login successful
+          headers:
+            Set-Cookie:
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+        '401':
+          description: Invalid credentials
+
+  /auth/refresh:
+    post:
+      tags: [Auth]
+      summary: Refresh access token
+      description: Uses httpOnly `refreshToken` cookie to issue a new token pair.
+      responses:
+        '200':
+          description: Tokens refreshed
+        '401':
+          description: Invalid or expired refresh token
+
+  /auth/logout:
+    post:
+      tags: [Auth]
+      summary: Logout and revoke refresh token
+      responses:
+        '200':
+          description: Logged out successfully
+
+  /auth/me:
+    get:
+      tags: [Auth]
+      summary: Get current user profile
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Current user with roles and permissions
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthUser'
+        '401':
+          description: Not authenticated
+
+  # ─── BUSINESS ────────────────────────────────────────────────────────────────
+  /business:
+    get:
+      tags: [Business]
+      summary: Get current business profile
+      security:
+        - ApiKeyAuth: []
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Business info
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Business'
+        '401':
+          description: Authentication failed
+
+  # ─── MENU ────────────────────────────────────────────────────────────────────
+  /menu:
+    get:
+      tags: [Menu]
+      summary: Get full menu with categories and items
+      security:
+        - ApiKeyAuth: []
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Menu categories with nested items
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/MenuCategory'
+
+  /menu/search:
+    get:
+      tags: [Menu]
+      summary: Search menu items
+      security:
+        - ApiKeyAuth: []
+        - BearerAuth: []
+      parameters:
+        - name: q
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Matching menu items (max 20)
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/MenuItem'
+        '400':
+          description: Missing search query
+
+  /menu/categories:
+    post:
+      tags: [Menu]
+      summary: Create a menu category
+      security:
+        - ApiKeyAuth: []
+        - BearerAuth: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MenuCategoryInput'
+      responses:
+        '201':
+          description: Category created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MenuCategory'
+
+  /menu/categories/{id}:
+    put:
+      tags: [Menu]
+      summary: Update a menu category
+      security:
+        - ApiKeyAuth: []
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MenuCategoryInput'
+      responses:
+        '200':
+          description: Category updated
+        '404':
+          description: Category not found
+
+  /menu/items:
+    post:
+      tags: [Menu]
+      summary: Create a menu item
+      security:
+        - ApiKeyAuth: []
+        - BearerAuth: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MenuItemInput'
+      responses:
+        '201':
+          description: Item created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MenuItem'
+        '400':
+          description: Invalid price or category
+
+  /menu/items/{id}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+    get:
+      tags: [Menu]
+      summary: Get menu item by ID
+      security:
+        - ApiKeyAuth: []
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Menu item
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MenuItem'
+        '404':
+          description: Not found
+    put:
+      tags: [Menu]
+      summary: Update a menu item
+      security:
+        - ApiKeyAuth: []
+        - BearerAuth: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MenuItemInput'
+      responses:
+        '200':
+          description: Item updated
+        '404':
+          description: Not found
+    delete:
+      tags: [Menu]
+      summary: Delete a menu item
+      security:
+        - ApiKeyAuth: []
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Item deleted
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+        '404':
+          description: Not found
+
+  /menu/items/{id}/toggle:
+    patch:
+      tags: [Menu]
+      summary: Toggle menu item availability
+      security:
+        - ApiKeyAuth: []
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Item availability toggled
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MenuItem'
+        '404':
+          description: Not found
+
+  # ─── ORDERS ──────────────────────────────────────────────────────────────────
+  /orders:
+    get:
+      tags: [Orders]
+      summary: List orders with optional status filter
+      security:
+        - ApiKeyAuth: []
+        - BearerAuth: []
+      parameters:
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [pending, confirmed, preparing, ready, delivered, cancelled]
+      responses:
+        '200':
+          description: Orders list with customer and items
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Order'
+
+  /orders/{id}:
+    get:
+      tags: [Orders]
+      summary: Get order details
+      security:
+        - ApiKeyAuth: []
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Order with items and customer
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Order'
+        '403':
+          description: Order belongs to a different business
+        '404':
+          description: Order not found
+
+  /orders/{id}/status:
+    put:
+      tags: [Orders]
+      summary: Update order status
+      security:
+        - ApiKeyAuth: []
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/StatusUpdateInput'
+      responses:
+        '200':
+          description: Status updated, Socket.io event emitted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Order'
+        '400':
+          description: Invalid status
+        '404':
+          description: Order not found
+
+  # ─── SETTINGS ────────────────────────────────────────────────────────────────
+  /settings:
+    get:
+      tags: [Settings]
+      summary: Get restaurant settings
+      security:
+        - ApiKeyAuth: []
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Restaurant settings
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RestaurantSettings'
+    put:
+      tags: [Settings]
+      summary: Update restaurant settings (upsert)
+      security:
+        - ApiKeyAuth: []
+        - BearerAuth: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RestaurantSettingsInput'
+      responses:
+        '200':
+          description: Settings updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RestaurantSettings'
+
+  # ─── CONVERSATIONS ───────────────────────────────────────────────────────────
+  /conversations:
+    get:
+      tags: [Conversations]
+      summary: List all conversations (customers with recent messages)
+      security:
+        - ApiKeyAuth: []
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Customers sorted by latest message
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Customer'
+
+  /conversations/{phone}:
+    get:
+      tags: [Conversations]
+      summary: Get full conversation history for a customer
+      security:
+        - ApiKeyAuth: []
+        - BearerAuth: []
+      parameters:
+        - name: phone
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Customer with messages grouped by session
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Conversation'
+        '404':
+          description: Customer not found
+
+  # ─── DEBUG ───────────────────────────────────────────────────────────────────
+  /debug/errors:
+    get:
+      tags: [Debug]
+      summary: List error logs
+      security:
+        - ApiKeyAuth: []
+      parameters:
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 50
+        - name: customerId
+          in: query
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Error logs
+    delete:
+      tags: [Debug]
+      summary: Clear error logs
+      security:
+        - ApiKeyAuth: []
+      responses:
+        '200':
+          description: Logs cleared
+
+  # ─── USERS (IAM) ────────────────────────────────────────────────────────────
+  /users:
+    get:
+      tags: [Users (IAM)]
+      summary: List tenant users
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: search
+          in: query
+          schema:
+            type: string
+        - name: isActive
+          in: query
+          schema:
+            type: boolean
+        - name: role
+          in: query
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Sanitized user list (no password hash)
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/User'
+    post:
+      tags: [Users (IAM)]
+      summary: Create a tenant user (auto-assigns Staff role)
+      security:
+        - BearerAuth: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserInput'
+      responses:
+        '201':
+          description: User created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+        '409':
+          description: Email already exists in this business
+
+  /users/{id}:
+    get:
+      tags: [Users (IAM)]
+      summary: Get user with roles and permissions
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: User with roles
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+    put:
+      tags: [Users (IAM)]
+      summary: Update user (name, isActive)
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserUpdateInput'
+      responses:
+        '200':
+          description: User updated
+        '403':
+          description: Cannot modify own account
+    delete:
+      tags: [Users (IAM)]
+      summary: Soft-delete a user (sets isActive=false)
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: User soft-deleted
+        '403':
+          description: Cannot delete own account
+
+  /users/{id}/roles:
+    post:
+      tags: [Users (IAM)]
+      summary: Assign a role to a user
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [roleId]
+              properties:
+                roleId:
+                  type: string
+      responses:
+        '201':
+          description: Role assigned
+        '409':
+          description: Role already assigned
+
+  /users/{id}/roles/{roleId}:
+    delete:
+      tags: [Users (IAM)]
+      summary: Revoke a role from a user
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: roleId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Role revoked
+
+  # ─── ROLES (IAM) ────────────────────────────────────────────────────────────
+  /roles:
+    get:
+      tags: [Roles (IAM)]
+      summary: List roles (system + business-scoped)
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Roles with permission and user counts
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Role'
+    post:
+      tags: [Roles (IAM)]
+      summary: Create a custom tenant role
+      security:
+        - BearerAuth: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RoleInput'
+      responses:
+        '201':
+          description: Role created
+        '409':
+          description: Role name already exists
+
+  /roles/{id}:
+    get:
+      tags: [Roles (IAM)]
+      summary: Get role with its permissions
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Role with nested permissions
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Role'
+                  - type: object
+                    properties:
+                      permissions:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/Permission'
+    put:
+      tags: [Roles (IAM)]
+      summary: Update role name/description
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RoleInput'
+      responses:
+        '200':
+          description: Role updated
+        '403':
+          description: Cannot modify system roles
+    delete:
+      tags: [Roles (IAM)]
+      summary: Delete a custom role
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Role deleted
+        '403':
+          description: Cannot delete system roles
+
+  /roles/{id}/permissions:
+    post:
+      tags: [Roles (IAM)]
+      summary: Replace all permissions on a role
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [permissionIds]
+              properties:
+                permissionIds:
+                  type: array
+                  items:
+                    type: string
+      responses:
+        '200':
+          description: Permissions replaced
+        '403':
+          description: Cannot modify system roles
+
+  /roles/{id}/permissions/{permissionId}:
+    delete:
+      tags: [Roles (IAM)]
+      summary: Revoke a single permission from a role
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: permissionId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Permission revoked
+        '403':
+          description: Cannot modify system roles
+
+  # ─── PERMISSIONS ────────────────────────────────────────────────────────────
+  /permissions:
+    get:
+      tags: [Permissions]
+      summary: List all permissions (global catalog)
+      security:
+        - ApiKeyAuth: []
+        - BearerAuth: []
+      parameters:
+        - name: category
+          in: query
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Permissions grouped by category and flat list
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  permissions:
+                    type: object
+                    additionalProperties:
+                      type: array
+                      items:
+                        $ref: '#/components/schemas/Permission'
+                  flat:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Permission'
+
+  # ═══════════════════════════════════════════════════════════════════════════
+  # PLATFORM ROUTES
+  # ═══════════════════════════════════════════════════════════════════════════
+
+  /platform/businesses:
+    get:
+      tags: [Platform - Businesses]
+      summary: List all businesses
+      security:
+        - PlatformBearerAuth: []
+      parameters:
+        - name: q
+          in: query
+          schema:
+            type: string
+          description: Search by name or phone number
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 20
+      responses:
+        '200':
+          description: Paginated businesses list
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/PlatformBusiness'
+                  meta:
+                    $ref: '#/components/schemas/PaginationMeta'
+    post:
+      tags: [Platform - Businesses]
+      summary: Create a new business (tenant)
+      security:
+        - PlatformBearerAuth: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PlatformBusinessCreateInput'
+      responses:
+        '201':
+          description: Business created with auto-generated API key
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PlatformBusiness'
+
+  /platform/businesses/{id}:
+    get:
+      tags: [Platform - Businesses]
+      summary: Get business details with stats
+      security:
+        - PlatformBearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Business details with order/user/complaint counts
+        '404':
+          description: Not found
+    put:
+      tags: [Platform - Businesses]
+      summary: Update a business
+      security:
+        - PlatformBearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PlatformBusinessUpdateInput'
+      responses:
+        '200':
+          description: Business updated
+        '404':
+          description: Not found
+    delete:
+      tags: [Platform - Businesses]
+      summary: Delete a business and all its data
+      security:
+        - PlatformBearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Business deleted
+
+  /platform/businesses/{id}/stats:
+    get:
+      tags: [Platform - Businesses]
+      summary: Get per-business statistics
+      security:
+        - PlatformBearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: days
+          in: query
+          schema:
+            type: integer
+            default: 30
+      responses:
+        '200':
+          description: Order and revenue stats
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  businessId:
+                    type: string
+                  totalOrders:
+                    type: integer
+                  ordersLast30Days:
+                    type: integer
+                  totalRevenue:
+                    type: number
+                  orderStatusBreakdown:
+                    type: object
+        '404':
+          description: Not found
+
+  /platform/analytics:
+    get:
+      tags: [Platform - Analytics]
+      summary: Get platform-wide aggregate metrics
+      security:
+        - PlatformBearerAuth: []
+      parameters:
+        - name: days
+          in: query
+          schema:
+            type: integer
+            default: 30
+      responses:
+        '200':
+          description: Aggregated platform analytics
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PlatformAnalytics'
+
+  /platform/settings:
+    get:
+      tags: [Platform - Settings]
+      summary: Get all platform settings
+      security:
+        - PlatformBearerAuth: []
+      responses:
+        '200':
+          description: Platform settings as key-value map
+          content:
+            application/json:
+              schema:
+                type: object
+    put:
+      tags: [Platform - Settings]
+      summary: Upsert platform settings
+      security:
+        - PlatformBearerAuth: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              description: Key-value pairs to upsert
+              example:
+                default_ai_rules: "Always be polite"
+                feature_whatsapp_enabled: true
+      responses:
+        '200':
+          description: All settings after update
+
+  /platform/users:
+    get:
+      tags: [Platform - Users]
+      summary: List platform admin users
+      security:
+        - PlatformBearerAuth: []
+      responses:
+        '200':
+          description: Platform admin users
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/User'
+    post:
+      tags: [Platform - Users]
+      summary: Create a new platform admin user
+      security:
+        - PlatformBearerAuth: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, password]
+              properties:
+                email:
+                  type: string
+                  format: email
+                password:
+                  type: string
+                  minLength: 8
+                name:
+                  type: string
+      responses:
+        '201':
+          description: Platform user created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+        '409':
+          description: Platform user with this email already exists
+
+  /platform/users/{id}:
+    delete:
+      tags: [Platform - Users]
+      summary: Deactivate a platform admin (soft-delete)
+      security:
+        - PlatformBearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: User deactivated
+        '404':
+          description: Not found
+
+  /platform/audit-logs:
+    get:
+      tags: [Platform - Audit]
+      summary: Query cross-tenant audit logs
+      security:
+        - PlatformBearerAuth: []
+      parameters:
+        - name: businessId
+          in: query
+          schema:
+            type: string
+          description: Filter by tenant
+        - name: userId
+          in: query
+          schema:
+            type: string
+          description: Filter by user
+        - name: action
+          in: query
+          schema:
+            type: string
+          description: Filter by action type
+        - name: from
+          in: query
+          schema:
+            type: string
+            format: date-time
+          description: Start date filter
+        - name: to
+          in: query
+          schema:
+            type: string
+            format: date-time
+          description: End date filter
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 50
+      responses:
+        '200':
+          description: Paginated audit logs with business and user info
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/AuditLog'
+                  meta:
+                    $ref: '#/components/schemas/PaginationMeta'
+
+  /platform/health:
+    get:
+      tags: [Platform - Health]
+      summary: System health check (DB, stats)
+      security:
+        - PlatformBearerAuth: []
+      responses:
+        '200':
+          description: All systems healthy
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties:
+                  type: object
+                  properties:
+                    status:
+                      type: string
+                    error:
+                      type: string
+        '503':
+          description: One or more systems degraded

@@ -1,0 +1,109 @@
+/* ── Nadil AI Landing Page — Custom Styles ── */
+
+/* RTL: Tailwind handles most RTL via logical props.
+   These are minimal overrides for things Tailwind CDN logical props may miss. */
+
+[dir='rtl'] .rtl-flip {
+  transform: scaleX(-1);
+}
+
+/* Gradient text utility */
+.text-gradient {
+  background: linear-gradient(135deg, #7c3aed, #06b6d4);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* Hero heading gradient */
+h1.text-gradient {
+  background: linear-gradient(135deg, #1e1b4b 0%, #7c3aed 60%, #06b6d4 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* Smooth scroll behavior */
+html {
+  scroll-behavior: smooth;
+}
+
+/* Reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+
+  html {
+    scroll-behavior: auto;
+  }
+
+  [data-reveal],
+  [data-reveal] * {
+    opacity: 1 !important;
+    transform: none !important;
+  }
+}
+
+/* Focus visible ring */
+:focus-visible {
+  outline: 2px solid #7c3aed;
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+/* Selection color */
+::selection {
+  background-color: #ddd6fe;
+  color: #1e1b4b;
+}
+
+[dir='rtl'] ::selection {
+  background-color: #ddd6fe;
+  color: #1e1b4b;
+}
+
+/* Scrollbar styling */
+::-webkit-scrollbar {
+  width: 8px;
+}
+::-webkit-scrollbar-track {
+  background: #faf5ff;
+}
+::-webkit-scrollbar-thumb {
+  background: #c4b5fd;
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #a78bfa;
+}
+
+/* FAQ details marker fix for RTL */
+[dir='rtl'] details summary {
+  text-align: start;
+}
+
+/* Pricing card highlight pulse */
+@keyframes highlightPulse {
+  0%,
+  100% {
+    box-shadow: 0 0 0 4px rgba(124, 58, 237, 0.2);
+  }
+  50% {
+    box-shadow: 0 0 0 8px rgba(124, 58, 237, 0.1);
+  }
+}
+
+/* SVG icon animations for hover */
+.group:hover svg.stroke-brand {
+  stroke: #7c3aed;
+}
+
+/* Language switcher active state */
+#lang-toggle:active {
+  transform: scale(0.96);
+}
