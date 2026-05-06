@@ -32,4 +32,4 @@ RUN mkdir -p /app/data && chown -R backend:nodejs /app /app/node_modules
 USER backend
 EXPOSE 3001
 
-CMD ["sh", "-c", "npx prisma db push --schema=./prisma/schema.prisma && node dist/index.js"]
+CMD ["node", "dist/index.js"]
