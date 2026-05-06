@@ -7,7 +7,7 @@ RUN npm ci
 
 COPY . .
 
-ARG NEXT_PUBLIC_API_URL=https://api.nadil.claude/api
+ARG NEXT_PUBLIC_API_URL=https://api.nadil.cloud/api
 ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
 
 RUN npm run build

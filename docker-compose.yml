@@ -3,7 +3,7 @@ services:
     build:
       context: ./frontend
       args:
-        NEXT_PUBLIC_API_URL: https://api.nadil.claude/api
+        NEXT_PUBLIC_API_URL: https://api.nadil.cloud/api
     restart: unless-stopped
     environment:
       - NODE_ENV=production
@@ -17,6 +17,9 @@ services:
       - NODE_ENV=production
       - PORT=3001
       - DATABASE_URL=file:./data/dev.db
+      - JWT_SECRET=${JWT_SECRET}
+      - FRONTEND_URL=https://nadil.cloud
+      - CORS_ORIGIN=https://nadil.cloud
       - LLM_PROVIDER=${LLM_PROVIDER:-opencode}
       - LLM_MODEL=${LLM_MODEL:-deepseek-v4-flash}
       - OPENCODE_API_KEY=${OPENCODE_API_KEY}

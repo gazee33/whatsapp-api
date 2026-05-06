@@ -1,7 +1,7 @@
-nadil.claude {
+nadil.cloud {
   reverse_proxy frontend:3000
 }
 
-api.nadil.claude {
+api.nadil.cloud {
   reverse_proxy backend:3001
 }
