@@ -25,7 +25,7 @@ COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/dist ./dist
 COPY --from=builder /app/prisma ./prisma
 
-RUN mkdir -p /app/data && chown -R backend:nodejs /app/data
+RUN mkdir -p /app/data && chown -R backend:nodejs /app /app/node_modules
 
 USER backend
 EXPOSE 3001
