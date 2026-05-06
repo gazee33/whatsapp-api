@@ -17,6 +17,8 @@ WORKDIR /app
 ENV NODE_ENV=production
 ENV PORT=3001
 
+RUN apk add --no-cache openssl libc6-compat
+
 RUN addgroup -g 1001 -S nodejs && adduser -S backend -u 1001
 
 COPY --from=builder /app/package.json ./
