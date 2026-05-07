@@ -3,10 +3,12 @@ services:
     build:
       context: ./frontend
       args:
-        NEXT_PUBLIC_API_URL: https://api.nadil.cloud/api
+        NEXT_PUBLIC_API_URL: https://nadil.cloud/api
     restart: unless-stopped
     environment:
       - NODE_ENV=production
+    ports:
+      - "127.0.0.1:3000:3000"
     networks:
       - nadil
 
@@ -16,35 +18,22 @@ services:
     environment:
       - NODE_ENV=production
       - PORT=3001
-      - DATABASE_URL=file:./data/dev.db
-      - JWT_SECRET=${JWT_SECRET}
-      - FRONTEND_URL=https://nadil.cloud
-      - CORS_ORIGIN=https://nadil.cloud
+      - DATABASE_URL=file:/app/data/dev.db
       - LLM_PROVIDER=${LLM_PROVIDER:-opencode}
       - LLM_MODEL=${LLM_MODEL:-deepseek-v4-flash}
       - OPENCODE_API_KEY=${OPENCODE_API_KEY}
+      - JWT_SECRET=${JWT_SECRET}
+      - FRONTEND_URL=https://nadil.cloud
+      - CORS_ORIGIN=https://nadil.cloud
     volumes:
       - backend-data:/app/data
-    networks:
-      - nadil
-
-  caddy:
-    image: caddy:2-alpine
-    restart: unless-stopped
     ports:
-      - "80:80"
-      - "443:443"
-    volumes:
-      - ./Caddyfile:/etc/caddy/Caddyfile
-      - caddy-data:/data
-      - caddy-config:/config
+      - "127.0.0.1:3001:3001"
     networks:
       - nadil
 
 volumes:
   backend-data:
-  caddy-data:
-  caddy-config:
 
 networks:
   nadil:
