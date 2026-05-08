@@ -38,14 +38,12 @@ if [ -z "$DUALHOOK_SIGNING_SECRET" ]; then
   exit 1
 fi
 
-ENV_VARS="JWT_SECRET=$JWT_SECRET OPENCODE_API_KEY=$OPENCODE_API_KEY DUALHOOK_API_KEY=$DUALHOOK_API_KEY DUALHOOK_SIGNING_SECRET=$DUALHOOK_SIGNING_SECRET"
-
 # Build and push (or deploy directly)
 echo "[1/3] Building Docker images..."
-$ENV_VARS docker compose build --no-cache
+docker compose build --no-cache
 
 echo "[2/3] Starting containers..."
-$ENV_VARS docker compose up -d
+docker compose up -d
 
 echo "[3/3] Running database migration..."
 docker compose exec backend npx prisma db push
