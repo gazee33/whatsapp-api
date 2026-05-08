@@ -148,7 +148,6 @@ router.post('/whatsapp/onboarding', async (req: Request, res: Response) => {
     }
 
     const webhookUrl = new URL(config.frontendUrl);
-    webhookUrl.port = String(config.port);
     webhookUrl.pathname = '/api/webhook';
     const webhookOverrideUrl = webhookUrl.toString();
 
