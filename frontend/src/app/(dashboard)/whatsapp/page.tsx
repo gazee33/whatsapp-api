@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback } from "react";
 import { useBusinessStore } from "@/stores/business-store";
+import type { DualhookConnection } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import { Input, Label } from "@/components/ui/input";
 import {
@@ -12,102 +13,100 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
-import { SkeletonBlock, FormSkeleton } from "@/components/shared/skeletons";
+import { SkeletonBlock } from "@/components/shared/skeletons";
 import { toast } from "sonner";
 import {
-  Radio,
   CheckCircle2,
   XCircle,
-  Circle,
-  ChevronDown,
-  ChevronUp,
   ExternalLink,
   RefreshCw,
   Copy,
   Eye,
   EyeOff,
-  Sparkles,
+  Plug,
+  Unplug,
+  Heart,
+  AlertTriangle,
+  Clock,
+  Activity,
 } from "lucide-react";
 import { API_BASE } from "@/lib/config";
 
 const WEBHOOK_URL = `${API_BASE.replace(/\/api$/, "")}/api/webhook`;
 
-const STEPS = [
-  {
-    id: 1,
-    title: "Create a Meta Developer Account",
-    description:
-      "Go to developers.facebook.com and sign up (or log in) with your Facebook account. Complete the developer registration process to access the Meta for Developers dashboard.",
-    link: { url: "https://developers.facebook.com/", label: "Meta Developer Portal" },
-    statusKey: "manual" as const,
-  },
-  {
-    id: 2,
-    title: "Create a Facebook App",
-    description:
-      'In the developer dashboard, click "Create App", select "Business" as the app type, give it a name (e.g., your restaurant name), and submit the creation form. You only need one app per restaurant.',
-    link: {
-      url: "https://developers.facebook.com/apps/",
-      label: "My Apps Dashboard",
-    },
-    statusKey: "manual" as const,
-  },
-  {
-    id: 3,
-    title: "Add the WhatsApp Product",
-    description:
-      'Inside your new app, click "Add Product" in the sidebar then find and select "WhatsApp". Click "Set up" to add the WhatsApp product to your app. This enables the WhatsApp Cloud API.',
-    link: {
-      url: "https://developers.facebook.com/docs/whatsapp/cloud-api/get-started",
-      label: "WhatsApp Cloud API Docs",
-    },
-    statusKey: "manual" as const,
-  },
-  {
-    id: 4,
-    title: "Get Your Phone Number ID",
-    description:
-      'Under WhatsApp → API Setup, add your WhatsApp Business phone number. Verify it via SMS or phone call. Once verified, the Phone Number ID appears — copy and paste it below.',
-    link: null,
-    statusKey: "phoneNumberId" as const,
-  },
-  {
-    id: 5,
-    title: "Configure the Webhook",
-    description:
-      'Under WhatsApp → Configuration, paste the webhook URL and verify token below into the Meta app. Click "Verify and Save" — Meta will send a verification request to our server.',
-    link: {
-      url: "https://developers.facebook.com/docs/graph-api/webhooks/getting-started",
-      label: "Webhooks Guide",
-    },
-    statusKey: "verifyToken" as const,
-  },
-  {
-    id: 6,
-    title: "Enter App Secret & Access Token",
-    description:
-      'From App Settings → Basic, copy the App Secret. Under WhatsApp → API Setup, click "Generate access token" to get a permanent access token. Paste both below and save.',
-    link: null,
-    statusKey: "accessToken" as const,
-  },
-] as const;
+function getHeartbeatColor(status: string | null | undefined): string {
+  switch (status) {
+    case "OK":
+      return "text-emerald-500";
+    case "DUE_SOON":
+      return "text-amber-500";
+    case "OVERDUE":
+      return "text-red-500";
+    default:
+      return "text-muted-foreground";
+  }
+}
+
+function getHeartbeatIcon(status: string | null | undefined) {
+  switch (status) {
+    case "OK":
+      return <Heart className="h-4 w-4 text-emerald-500" />;
+    case "DUE_SOON":
+      return <Clock className="h-4 w-4 text-amber-500" />;
+    case "OVERDUE":
+      return <AlertTriangle className="h-4 w-4 text-red-500" />;
+    default:
+      return <Heart className="h-4 w-4 text-muted-foreground" />;
+  }
+}
+
+function formatHeartbeat(dateStr: string | null | undefined): string {
+  if (!dateStr) return "Unknown";
+  const date = new Date(dateStr);
+  return date.toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  });
+}
 
 export default function WhatsAppPage() {
-  const { business, fetchBusiness, updateWhatsApp, rotateVerifyToken, isLoading } =
-    useBusinessStore();
+  const {
+    business,
+    fetchBusiness,
+    updateWhatsApp,
+    rotateVerifyToken,
+    createOnboardingSession,
+    confirmHeartbeat,
+    disconnectWhatsApp,
+    isLoading,
+  } = useBusinessStore();
 
-  const [phoneNumber, setPhoneNumber] = useState("");
-  const [phoneNumberId, setPhoneNumberId] = useState("");
-  const [accessToken, setAccessToken] = useState("");
   const [appSecret, setAppSecret] = useState("");
   const [verifyToken, setVerifyToken] = useState("");
+  const [connecting, setConnecting] = useState(false);
   const [saving, setSaving] = useState(false);
   const [rotating, setRotating] = useState(false);
-  const [expandedStep, setExpandedStep] = useState<number | null>(null);
-  const [showToken, setShowToken] = useState(false);
   const [showSecret, setShowSecret] = useState(false);
   const [loaded, setLoaded] = useState(false);
   const [copiedField, setCopiedField] = useState<string | null>(null);
+  const [disconnectingId, setDisconnectingId] = useState<string | null>(null);
+
+  useEffect(() => {
+    const searchParams = new URLSearchParams(window.location.search);
+    const sessionStatus = searchParams.get("session_status");
+    if (sessionStatus === "completed") {
+      toast.success("WhatsApp connected successfully");
+      const url = new URL(window.location.href);
+      url.searchParams.delete("session_status");
+      window.history.replaceState({}, "", url.toString());
+    } else if (sessionStatus === "failed") {
+      toast.error("WhatsApp onboarding failed — please try again");
+      const url = new URL(window.location.href);
+      url.searchParams.delete("session_status");
+      window.history.replaceState({}, "", url.toString());
+    }
+  }, []);
 
   useEffect(() => {
     fetchBusiness().then(() => setLoaded(true));
@@ -115,66 +114,34 @@ export default function WhatsAppPage() {
 
   useEffect(() => {
     if (business) {
-      setPhoneNumber(business.whatsappPhoneNumber || "");
-      setPhoneNumberId(business.whatsappPhoneNumberId || "");
       setVerifyToken(business.whatsappVerifyToken || "");
     }
   }, [business]);
 
-  const onboarding = business?.onboarding;
-
-  const getStepStatus = useCallback(
-    (statusKey: (typeof STEPS)[number]["statusKey"]) => {
-      if (statusKey === "manual") return "manual";
-      if (!onboarding) return "pending";
-      if (statusKey === "accessToken") {
-        return onboarding.accessToken && onboarding.appSecret
-          ? "complete"
-          : "pending";
-      }
-      if (onboarding[statusKey] === true) return "complete";
-      return "pending";
-    },
-    [onboarding]
-  );
-
-  const getOverallStatus = () => {
-    if (!onboarding) return "loading";
-    if (onboarding.isComplete) return "live";
-    if (
-      onboarding.phoneNumberId ||
-      onboarding.accessToken ||
-      onboarding.appSecret ||
-      onboarding.verifyToken
-    ) {
-      return "partial";
+  const handleConnect = async () => {
+    setConnecting(true);
+    try {
+      const session = await createOnboardingSession();
+      window.open(session.onboardingUrl, "_blank");
+      toast.success("Onboarding window opened — complete Meta signup to connect");
+    } catch (err: any) {
+      toast.error(err?.message || "Failed to create onboarding session");
+    } finally {
+      setConnecting(false);
     }
-    return "none";
   };
 
-  const copyToClipboard = async (text: string, field: string) => {
-    await navigator.clipboard.writeText(text);
-    setCopiedField(field);
-    setTimeout(() => setCopiedField(null), 2000);
-    toast.success("Copied to clipboard");
-  };
-
-  const handleSave = async () => {
+  const handleSaveAppSecret = async () => {
     setSaving(true);
     try {
       await updateWhatsApp({
-        whatsappPhoneNumber: phoneNumber || undefined,
-        whatsappPhoneNumberId: phoneNumberId || undefined,
-        whatsappAccessToken: accessToken || undefined,
         whatsappAppSecret: appSecret || undefined,
       });
-      setAccessToken("");
       setAppSecret("");
-      setShowToken(false);
       setShowSecret(false);
-      toast.success("WhatsApp credentials saved");
+      toast.success("App secret saved");
     } catch {
-      toast.error("Failed to save credentials");
+      toast.error("Failed to save app secret");
     } finally {
       setSaving(false);
     }
@@ -185,7 +152,7 @@ export default function WhatsAppPage() {
     try {
       const newToken = await rotateVerifyToken();
       setVerifyToken(newToken);
-      toast.success("Verify token rotated — update it in your Meta app");
+      toast.success("Verify token rotated");
     } catch {
       toast.error("Failed to rotate verify token");
     } finally {
@@ -193,15 +160,40 @@ export default function WhatsAppPage() {
     }
   };
 
-  const statusIcon = (status: ReturnType<typeof getStepStatus>) => {
-    if (status === "complete")
-      return <CheckCircle2 className="h-5 w-5 shrink-0 text-emerald-500" />;
-    if (status === "manual")
-      return <Circle className="h-5 w-5 shrink-0 text-muted-foreground/40" />;
-    return <XCircle className="h-5 w-5 shrink-0 text-muted-foreground/30" />;
+  const handleConfirmHeartbeat = async (connectionId: string) => {
+    try {
+      await confirmHeartbeat(connectionId);
+      toast.success("Heartbeat confirmed");
+    } catch (err: any) {
+      const msg =
+        err?.response?.status === 409
+          ? "Heartbeat does not apply to this connection (direct Cloud API)"
+          : "Failed to confirm heartbeat";
+      toast.error(msg);
+    }
   };
 
-  const overallStatus = getOverallStatus();
+  const handleDisconnect = async (connectionId: string) => {
+    setDisconnectingId(connectionId);
+    try {
+      await disconnectWhatsApp(connectionId);
+      toast.success("WhatsApp disconnected");
+    } catch {
+      toast.error("Failed to disconnect");
+    } finally {
+      setDisconnectingId(null);
+    }
+  };
+
+  const copyToClipboard = async (text: string, field: string) => {
+    await navigator.clipboard.writeText(text);
+    setCopiedField(field);
+    setTimeout(() => setCopiedField(null), 2000);
+    toast.success("Copied to clipboard");
+  };
+
+  const connections = business?.dualhookConnections || [];
+  const hasActiveConnections = connections.some((c) => c.status === "active");
 
   if (!loaded || isLoading) {
     return (
@@ -212,8 +204,8 @@ export default function WhatsAppPage() {
             <SkeletonBlock className="mt-1 h-3 w-64" />
           </div>
         </div>
-        <SkeletonBlock className="h-px w-full" />
-        <FormSkeleton sections={3} fieldsPerSection={3} />
+        <SkeletonBlock className="h-16 w-full" />
+        <SkeletonBlock className="h-48 w-full" />
       </div>
     );
   }
@@ -224,8 +216,8 @@ export default function WhatsAppPage() {
         <div>
           <h1 className="text-2xl font-bold tracking-tight">WhatsApp Setup</h1>
           <p className="text-sm text-muted-foreground">
-            Connect your restaurant to WhatsApp and let the AI assistant handle
-            customer orders
+            Connect your restaurant to WhatsApp using DualHook for automated
+            onboarding
           </p>
         </div>
       </div>
@@ -235,383 +227,209 @@ export default function WhatsAppPage() {
       {/* ── Status Banner ── */}
       <Card
         className={
-          overallStatus === "live"
+          hasActiveConnections
             ? "border-emerald-500/50 bg-emerald-500/5"
-            : overallStatus === "partial"
-              ? "border-amber-500/50 bg-amber-500/5"
-              : "border-muted"
+            : "border-muted"
         }
       >
         <CardContent className="flex items-center gap-4 py-4">
           <div className="relative flex h-3 w-3 shrink-0">
-            <span
-              className={`absolute inset-0 rounded-full ${
-                overallStatus === "live"
-                  ? "animate-ping bg-emerald-400 opacity-75"
-                  : "hidden"
-              }`}
-            />
+            {hasActiveConnections && (
+              <span className="absolute inset-0 animate-ping rounded-full bg-emerald-400 opacity-75" />
+            )}
             <span
               className={`relative h-3 w-3 rounded-full ${
-                overallStatus === "live"
+                hasActiveConnections
                   ? "bg-emerald-500"
-                  : overallStatus === "partial"
-                    ? "bg-amber-500"
-                    : "bg-muted-foreground/30"
+                  : "bg-muted-foreground/30"
               }`}
             />
           </div>
           <div className="flex-1">
             <p className="text-sm font-semibold">
-              {overallStatus === "live"
+              {hasActiveConnections
                 ? "WhatsApp is LIVE"
-                : overallStatus === "partial"
-                  ? "Partially Configured"
-                  : "Not Configured"}
+                : "Not Connected"}
             </p>
             <p className="text-xs text-muted-foreground">
-              {overallStatus === "live"
-                ? "Your restaurant is receiving real WhatsApp messages. The AI assistant responds automatically."
-                : overallStatus === "partial"
-                  ? "Some credentials are missing. Complete all 6 steps below to go live."
-                  : "Follow the steps below to connect your WhatsApp Business account."}
+              {hasActiveConnections
+                ? "Your restaurant is receiving WhatsApp messages. The AI assistant responds automatically."
+                : 'Click "Connect WhatsApp" below to start the automated onboarding flow.'}
             </p>
           </div>
         </CardContent>
       </Card>
 
-      {/* ── Setup Guide ── */}
+      {/* ── DualHook Connection Card ── */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-base">
-            <Sparkles className="h-4 w-4" />
-            Setup Guide
+            <Plug className="h-4 w-4" />
+            WhatsApp Connection
           </CardTitle>
           <CardDescription>
-            Complete these steps in the Meta Developer Portal to connect
-            WhatsApp
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-1">
-          {STEPS.map((step) => {
-            const status = getStepStatus(step.statusKey);
-            const isExpanded = expandedStep === step.id;
-
-            return (
-              <div
-                key={step.id}
-                className="rounded-lg border border-transparent hover:border-border/50 transition-colors"
-              >
-                <button
-                  onClick={() =>
-                    setExpandedStep(isExpanded ? null : step.id)
-                  }
-                  className="flex w-full items-center gap-3 px-3 py-3 text-left"
-                >
-                  <span className="flex h-6 w-6 items-center justify-center rounded-full bg-muted text-xs font-semibold text-muted-foreground">
-                    {step.id}
-                  </span>
-                  <div className="min-w-0 flex-1">
-                    <p className="text-sm font-medium truncate">{step.title}</p>
-                  </div>
-                  {statusIcon(status)}
-                  {isExpanded ? (
-                    <ChevronUp className="h-4 w-4 shrink-0 text-muted-foreground" />
-                  ) : (
-                    <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground" />
-                  )}
-                </button>
-
-                {isExpanded && (
-                  <div className="px-3 pb-4 space-y-3">
-                    <p className="text-sm text-muted-foreground leading-relaxed">
-                      {step.description}
-                    </p>
-
-                    {/* Step 5: show webhook URL + verify token */}
-                    {step.id === 5 && (
-                      <div className="space-y-3 rounded-lg border bg-muted/30 p-3">
-                        <div className="space-y-1.5">
-                          <Label className="text-xs">
-                            Webhook Callback URL
-                          </Label>
-                          <div className="flex items-center gap-2">
-                            <code className="flex-1 rounded bg-background px-2.5 py-1.5 text-xs font-mono break-all select-all">
-                              {WEBHOOK_URL}
-                            </code>
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() =>
-                                copyToClipboard(WEBHOOK_URL, "webhook-url")
-                              }
-                            >
-                              {copiedField === "webhook-url" ? (
-                                <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500" />
-                              ) : (
-                                <Copy className="h-3.5 w-3.5" />
-                              )}
-                            </Button>
-                          </div>
-                        </div>
-                        <div className="space-y-1.5">
-                          <Label className="text-xs">Verify Token</Label>
-                          <div className="flex items-center gap-2">
-                            <code className="flex-1 rounded bg-background px-2.5 py-1.5 text-xs font-mono break-all select-all">
-                              {verifyToken || "Not generated yet"}
-                            </code>
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() =>
-                                verifyToken &&
-                                copyToClipboard(verifyToken, "verify-token")
-                              }
-                              disabled={!verifyToken}
-                            >
-                              {copiedField === "verify-token" ? (
-                                <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500" />
-                              ) : (
-                                <Copy className="h-3.5 w-3.5" />
-                              )}
-                            </Button>
-                          </div>
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Step 4: show phone number ID input inline */}
-                    {step.id === 4 && (
-                      <div className="space-y-2 rounded-lg border bg-muted/30 p-3">
-                        <Label htmlFor="inline-phone-id" className="text-xs">
-                          Phone Number ID
-                        </Label>
-                        <Input
-                          id="inline-phone-id"
-                          placeholder="123456789012345"
-                          value={phoneNumberId}
-                          onChange={(e) => setPhoneNumberId(e.target.value)}
-                          className="h-9"
-                        />
-                      </div>
-                    )}
-
-                    {/* Step 6: show token + secret fields inline */}
-                    {step.id === 6 && (
-                      <div className="space-y-3 rounded-lg border bg-muted/30 p-3">
-                        <div className="space-y-1.5">
-                          <Label htmlFor="inline-app-secret" className="text-xs">
-                            App Secret
-                          </Label>
-                          <div className="relative">
-                            <Input
-                              id="inline-app-secret"
-                              type={showSecret ? "text" : "password"}
-                              placeholder="a1b2c3d4e5f6..."
-                              value={appSecret}
-                              onChange={(e) =>
-                                setAppSecret(e.target.value)
-                              }
-                              className="h-9 pr-9"
-                            />
-                            <button
-                              type="button"
-                              onClick={() => setShowSecret(!showSecret)}
-                              className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                            >
-                              {showSecret ? (
-                                <EyeOff className="h-4 w-4" />
-                              ) : (
-                                <Eye className="h-4 w-4" />
-                              )}
-                            </button>
-                          </div>
-                        </div>
-                        <div className="space-y-1.5">
-                          <Label
-                            htmlFor="inline-access-token"
-                            className="text-xs"
-                          >
-                            Permanent Access Token
-                          </Label>
-                          <div className="relative">
-                            <Input
-                              id="inline-access-token"
-                              type={showToken ? "text" : "password"}
-                              placeholder="EAA..."
-                              value={accessToken}
-                              onChange={(e) =>
-                                setAccessToken(e.target.value)
-                              }
-                              className="h-9 pr-9"
-                            />
-                            <button
-                              type="button"
-                              onClick={() => setShowToken(!showToken)}
-                              className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                            >
-                              {showToken ? (
-                                <EyeOff className="h-4 w-4" />
-                              ) : (
-                                <Eye className="h-4 w-4" />
-                              )}
-                            </button>
-                          </div>
-                        </div>
-                      </div>
-                    )}
-
-                    {step.link && (
-                      <a
-                        href={step.link.url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="inline-flex items-center gap-1.5 text-xs font-medium text-primary hover:underline"
-                      >
-                        {step.link.label}
-                        <ExternalLink className="h-3 w-3" />
-                      </a>
-                    )}
-                  </div>
-                )}
-              </div>
-            );
-          })}
-        </CardContent>
-      </Card>
-
-      {/* ── Credential Form ── */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-base">
-            <Radio className="h-4 w-4" />
-            WhatsApp Credentials
-          </CardTitle>
-          <CardDescription>
-            Enter the credentials from your Meta developer app
+            Manage your WhatsApp Business connection via DualHook
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          {/* Phone Number */}
-          <div className="space-y-2">
-            <Label htmlFor="wp-phone">WhatsApp Business Phone Number</Label>
-            <Input
-              id="wp-phone"
-              placeholder="+966557171688"
-              value={phoneNumber}
-              onChange={(e) => setPhoneNumber(e.target.value)}
-            />
-            <p className="text-xs text-muted-foreground">
-              The phone number linked to your WhatsApp Business account
-            </p>
-          </div>
+          {connections.length > 0 ? (
+            <div className="space-y-4">
+              {connections.map((conn: DualhookConnection) => (
+                <div
+                  key={conn.id}
+                  className={`rounded-lg border p-4 ${
+                    conn.status === "active"
+                      ? "border-emerald-500/30"
+                      : "border-muted-foreground/20"
+                  }`}
+                >
+                  <div className="flex items-start justify-between">
+                    <div className="space-y-2 flex-1">
+                      <div className="flex items-center gap-2">
+                        {conn.status === "active" ? (
+                          <CheckCircle2 className="h-4 w-4 text-emerald-500" />
+                        ) : (
+                          <XCircle className="h-4 w-4 text-muted-foreground" />
+                        )}
+                        <span className="font-medium text-sm">
+                          {conn.verifiedName || conn.displayPhoneNumber || "WhatsApp Number"}
+                        </span>
+                      </div>
 
-          {/* Phone Number ID */}
-          <div className="space-y-2">
-            <Label htmlFor="wp-phone-id">
-              Phone Number ID{" "}
-              {onboarding?.phoneNumberId && (
-                <span className="text-emerald-500 text-xs font-normal ml-1">
-                  (configured)
-                </span>
-              )}
-            </Label>
-            <Input
-              id="wp-phone-id"
-              placeholder="123456789012345"
-              value={phoneNumberId}
-              onChange={(e) => setPhoneNumberId(e.target.value)}
-            />
-            <p className="text-xs text-muted-foreground">
-              Found under WhatsApp → API Setup in your Meta app
-            </p>
-          </div>
+                      <div className="grid grid-cols-2 gap-x-6 gap-y-1 text-xs text-muted-foreground">
+                        <div>
+                          Phone:{" "}
+                          <span className="font-mono text-foreground">
+                            {conn.displayPhoneNumber || "N/A"}
+                          </span>
+                        </div>
+                        <div>
+                          Mode:{" "}
+                          <span className="capitalize">
+                            {conn.connectionMode || "unknown"}
+                          </span>
+                        </div>
+                        <div>
+                          WABA:{" "}
+                          <span className="font-mono text-foreground">
+                            {conn.wabaId.slice(0, 12)}...
+                          </span>
+                        </div>
+                        <div>
+                          Phone ID:{" "}
+                          <span className="font-mono text-foreground">
+                            {conn.phoneNumberId.slice(0, 12)}...
+                          </span>
+                        </div>
+                      </div>
 
-          {/* App Secret */}
-          <div className="space-y-2">
-            <Label htmlFor="wp-app-secret">
-              App Secret{" "}
-              {onboarding?.appSecret && (
-                <span className="text-emerald-500 text-xs font-normal ml-1">
-                  (configured)
-                </span>
-              )}
-            </Label>
-            <div className="relative">
-              <Input
-                id="wp-app-secret"
-                type={showSecret ? "text" : "password"}
-                placeholder="a1b2c3d4e5f6..."
-                value={appSecret}
-                onChange={(e) => setAppSecret(e.target.value)}
-                className="pr-9"
-              />
-              <button
-                type="button"
-                onClick={() => setShowSecret(!showSecret)}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-              >
-                {showSecret ? (
-                  <EyeOff className="h-4 w-4" />
-                ) : (
-                  <Eye className="h-4 w-4" />
-                )}
-              </button>
+                      {/* Heartbeat status (coexistence only) */}
+                      {conn.connectionMode !== "cloud_api" &&
+                        conn.heartbeatStatus && (
+                          <div className="flex items-center gap-2 text-xs">
+                            {getHeartbeatIcon(conn.heartbeatStatus)}
+                            <span
+                              className={getHeartbeatColor(
+                                conn.heartbeatStatus
+                              )}
+                            >
+                              Heartbeat: {conn.heartbeatStatus}
+                            </span>
+                            {conn.heartbeatNextDueAt && (
+                              <span className="text-muted-foreground">
+                                due {formatHeartbeat(conn.heartbeatNextDueAt)}
+                              </span>
+                            )}
+                          </div>
+                        )}
+                    </div>
+
+                    <div className="flex flex-col gap-2 ml-4">
+                      {conn.status === "active" &&
+                        conn.connectionMode !== "cloud_api" && (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() =>
+                              handleConfirmHeartbeat(conn.id)
+                            }
+                          >
+                            <Activity className="h-3.5 w-3.5 mr-1" />
+                            I&apos;ve Opened WhatsApp
+                          </Button>
+                        )}
+                      {conn.status === "active" && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleDisconnect(conn.id)}
+                          loading={disconnectingId === conn.id}
+                          className="text-red-500 hover:text-red-600"
+                        >
+                          <Unplug className="h-3.5 w-3.5 mr-1" />
+                          Disconnect
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              ))}
             </div>
-            <p className="text-xs text-muted-foreground">
-              From App Settings → Basic in your Meta developer app
-            </p>
-          </div>
-
-          {/* Access Token */}
-          <div className="space-y-2">
-            <Label htmlFor="wp-access-token">
-              Permanent Access Token{" "}
-              {onboarding?.accessToken && (
-                <span className="text-emerald-500 text-xs font-normal ml-1">
-                  (configured)
-                </span>
-              )}
-            </Label>
-            <div className="relative">
-              <Input
-                id="wp-access-token"
-                type={showToken ? "text" : "password"}
-                placeholder="EAA..."
-                value={accessToken}
-                onChange={(e) => setAccessToken(e.target.value)}
-                className="pr-9"
-              />
-              <button
-                type="button"
-                onClick={() => setShowToken(!showToken)}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-              >
-                {showToken ? (
-                  <EyeOff className="h-4 w-4" />
-                ) : (
-                  <Eye className="h-4 w-4" />
-                )}
-              </button>
+          ) : (
+            <div className="text-center py-8 text-muted-foreground">
+              <Plug className="h-8 w-8 mx-auto mb-2 opacity-30" />
+              <p className="text-sm">No WhatsApp connection yet</p>
             </div>
-            <p className="text-xs text-muted-foreground">
-              Generate under WhatsApp → API Setup in your Meta app. Tokens
-              expire after 24h unless you verify your business.
-            </p>
+          )}
+
+          <Button
+            onClick={handleConnect}
+            loading={connecting}
+            className="w-full"
+            variant={hasActiveConnections ? "outline" : "default"}
+          >
+            {hasActiveConnections
+              ? "Connect Another Number"
+              : "Connect WhatsApp"}
+          </Button>
+        </CardContent>
+      </Card>
+
+      {/* ── Webhook Info ── */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-base">
+            <ExternalLink className="h-4 w-4" />
+            Webhook Configuration
+          </CardTitle>
+          <CardDescription>
+            DualHook automatically configures Meta&apos;s webhook to deliver messages
+            to your endpoint. Your webhook URL and verify token are shown below.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="space-y-2">
+            <Label className="text-xs">Webhook Callback URL</Label>
+            <div className="flex items-center gap-2">
+              <code className="flex-1 rounded-lg border bg-muted/50 px-3 py-2 text-sm font-mono break-all select-all">
+                {WEBHOOK_URL}
+              </code>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => copyToClipboard(WEBHOOK_URL, "webhook-url")}
+              >
+                {copiedField === "webhook-url" ? (
+                  <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500" />
+                ) : (
+                  <Copy className="h-3.5 w-3.5" />
+                )}
+              </Button>
+            </div>
           </div>
 
-          <Separator />
-
-          {/* Verify Token */}
           <div className="space-y-2">
-            <Label htmlFor="wp-verify-token">
-              Verify Token{" "}
-              {onboarding?.verifyToken && (
-                <span className="text-emerald-500 text-xs font-normal ml-1">
-                  (configured)
-                </span>
-              )}
-            </Label>
+            <Label className="text-xs">Verify Token</Label>
             <div className="flex items-center gap-2">
               <code className="flex-1 rounded-lg border bg-muted/50 px-3 py-2 text-sm font-mono break-all select-all">
                 {verifyToken || "Not generated yet"}
@@ -622,28 +440,62 @@ export default function WhatsAppPage() {
                 onClick={handleRotateVerifyToken}
                 loading={rotating}
               >
-                <RefreshCw className="h-4 w-4" />
-                Generate
+                <RefreshCw className="h-3.5 w-3.5" />
+                Rotate
               </Button>
             </div>
-            <p className="text-xs text-muted-foreground">
-              Paste this token into the Meta webhook configuration. Rotate it
-              anytime — make sure to update it in both places.
-            </p>
           </div>
+        </CardContent>
+      </Card>
 
-          <Separator />
-
-          <div className="flex items-center gap-3">
-            <Button onClick={handleSave} loading={saving}>
-              Save Credentials
-            </Button>
-            {overallStatus === "live" && (
-              <span className="inline-flex items-center gap-1.5 text-sm text-emerald-600">
-                <CheckCircle2 className="h-4 w-4" />
-                WhatsApp is live
-              </span>
-            )}
+      {/* ── App Secret (for Meta signature verification) ── */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-base">
+            <EyeOff className="h-4 w-4" />
+            Meta App Secret
+          </CardTitle>
+          <CardDescription>
+            Required to verify the signature on incoming WhatsApp messages. Get
+            this from your Meta app dashboard under App Settings → Basic.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="space-y-2">
+            <Label htmlFor="app-secret">
+              App Secret{" "}
+              {business?.onboarding?.appSecret && (
+                <span className="text-emerald-500 text-xs font-normal ml-1">
+                  (configured)
+                </span>
+              )}
+            </Label>
+            <div className="flex items-center gap-2">
+              <div className="relative flex-1">
+                <Input
+                  id="app-secret"
+                  type={showSecret ? "text" : "password"}
+                  placeholder="a1b2c3d4e5f6..."
+                  value={appSecret}
+                  onChange={(e) => setAppSecret(e.target.value)}
+                  className="pr-9"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowSecret(!showSecret)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                >
+                  {showSecret ? (
+                    <EyeOff className="h-4 w-4" />
+                  ) : (
+                    <Eye className="h-4 w-4" />
+                  )}
+                </button>
+              </div>
+              <Button onClick={handleSaveAppSecret} loading={saving}>
+                Save
+              </Button>
+            </div>
           </div>
         </CardContent>
       </Card>

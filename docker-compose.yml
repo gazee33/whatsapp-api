@@ -25,6 +25,9 @@ services:
       - JWT_SECRET=${JWT_SECRET}
       - FRONTEND_URL=https://nadil.cloud
       - CORS_ORIGIN=https://nadil.cloud
+      - DUALHOOK_API_KEY=${DUALHOOK_API_KEY}
+      - DUALHOOK_SIGNING_SECRET=${DUALHOOK_SIGNING_SECRET}
+      - DUALHOOK_REDIRECT_BASE=https://nadil.cloud
     volumes:
       - backend-data:/app/data
     ports:

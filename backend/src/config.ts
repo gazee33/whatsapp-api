@@ -20,9 +20,21 @@ export const config = {
   bcryptRounds: parseInt(process.env.BCRYPT_ROUNDS || '12', 10),
   maxLoginAttempts: parseInt(process.env.MAX_LOGIN_ATTEMPTS || '5', 10),
   lockoutDurationMinutes: parseInt(process.env.LOCKOUT_DURATION_MINUTES || '30', 10),
+
+  // DualHook Platform API
+  dualhookApiKey: process.env.DUALHOOK_API_KEY || '',
+  dualhookSigningSecret: process.env.DUALHOOK_SIGNING_SECRET || '',
+  dualhookApiBase: process.env.DUALHOOK_API_BASE || 'https://dualhook.com/api/v1',
+  dualhookRedirectBase: process.env.DUALHOOK_REDIRECT_BASE || 'http://localhost:3000',
 };
 
 // Validate critical config at startup
 if (!config.jwtSecret && process.env.NODE_ENV === 'production') {
   throw new Error('JWT_SECRET is required in production');
+}
+if (!config.dualhookApiKey && process.env.NODE_ENV === 'production') {
+  throw new Error('DUALHOOK_API_KEY is required in production');
+}
+if (!config.dualhookSigningSecret && process.env.NODE_ENV === 'production') {
+  throw new Error('DUALHOOK_SIGNING_SECRET is required in production');
 }

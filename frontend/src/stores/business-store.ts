@@ -1,12 +1,15 @@
 import { create } from "zustand";
 import { tenantClient } from "@/lib/api-client";
-import type { Business, RestaurantSettings } from "@/lib/types";
+import type { Business, RestaurantSettings, DualhookConnection } from "@/lib/types";
 
 export interface WhatsAppCredentialsPayload {
-  whatsappPhoneNumber?: string;
-  whatsappPhoneNumberId?: string;
-  whatsappAccessToken?: string;
   whatsappAppSecret?: string;
+}
+
+export interface OnboardingResponse {
+  sessionId: string;
+  onboardingUrl: string;
+  expiresAt: string;
 }
 
 interface BusinessState {
@@ -19,6 +22,13 @@ interface BusinessState {
   updateSettings: (data: Partial<RestaurantSettings>) => Promise<void>;
   updateWhatsApp: (data: WhatsAppCredentialsPayload) => Promise<void>;
   rotateVerifyToken: () => Promise<string>;
+
+  // DualHook methods
+  createOnboardingSession: () => Promise<OnboardingResponse>;
+  fetchConnections: () => Promise<DualhookConnection[]>;
+  confirmHeartbeat: (connectionId: string) => Promise<void>;
+  disconnectWhatsApp: (connectionId: string) => Promise<void>;
+  refreshHealth: (connectionId: string) => Promise<void>;
 }
 
 export const useBusinessStore = create<BusinessState>((set) => ({
@@ -59,5 +69,37 @@ export const useBusinessStore = create<BusinessState>((set) => ({
     const updated = await tenantClient.get("/business");
     set({ business: updated.data });
     return res.data.verifyToken;
+  },
+
+  createOnboardingSession: async () => {
+    const res = await tenantClient.post("/business/whatsapp/onboarding");
+    return res.data as OnboardingResponse;
+  },
+
+  fetchConnections: async () => {
+    const res = await tenantClient.get("/business/whatsapp/connections");
+    return res.data.connections as DualhookConnection[];
+  },
+
+  confirmHeartbeat: async (connectionId: string) => {
+    await tenantClient.post(
+      `/business/whatsapp/connections/${connectionId}/heartbeat/confirm`
+    );
+    const res = await tenantClient.get("/business");
+    set({ business: res.data });
+  },
+
+  disconnectWhatsApp: async (connectionId: string) => {
+    await tenantClient.delete(
+      `/business/whatsapp/connections/${connectionId}`
+    );
+    const res = await tenantClient.get("/business");
+    set({ business: res.data });
+  },
+
+  refreshHealth: async (connectionId: string) => {
+    await tenantClient.post(
+      `/business/whatsapp/connections/${connectionId}/health/refresh`
+    );
   },
 }));

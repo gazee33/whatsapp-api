@@ -1,4 +1,20 @@
 // ── Business / Tenant ──
+export interface DualhookConnection {
+  id: string;
+  connectionId: string;
+  wabaId: string;
+  phoneNumberId: string;
+  displayPhoneNumber?: string | null;
+  verifiedName?: string | null;
+  status: string;
+  connectionMode?: string | null;
+  heartbeatStatus?: string | null;
+  heartbeatLastConfirmedAt?: string | null;
+  heartbeatNextDueAt?: string | null;
+  webhookUrl?: string | null;
+  createdAt: string;
+}
+
 export interface Business {
   id: string;
   name: string;
@@ -11,9 +27,9 @@ export interface Business {
     phoneNumberId: boolean;
     accessToken: boolean;
     appSecret: boolean;
-    verifyToken: boolean;
     isComplete: boolean;
   };
+  dualhookConnections?: DualhookConnection[];
   createdAt: string;
 }
 
@@ -58,6 +74,23 @@ export interface LoginPayload {
 }
 
 // ── Menu ──
+export interface CustomizationHeader {
+  id: string;
+  menuItemId: string;
+  name: string;
+  nameAr?: string | null;
+  details?: CustomizationDetail[];
+}
+
+export interface CustomizationDetail {
+  id: string;
+  headerId: string;
+  name: string;
+  nameAr?: string | null;
+  price: number;
+  header?: CustomizationHeader;
+}
+
 export interface MenuCategory {
   id: string;
   businessId: string;
@@ -73,9 +106,11 @@ export interface MenuItem {
   nameAr?: string | null;
   description?: string | null;
   price: number;
+  image?: string | null;
   available: boolean;
   categoryId: string;
   category?: MenuCategory;
+  customizationHeaders?: CustomizationHeader[];
 }
 
 export interface MenuCategoryPayload {
@@ -89,6 +124,7 @@ export interface MenuItemPayload {
   nameAr?: string;
   description?: string;
   price: number;
+  image?: string;
   categoryId: string;
   available?: boolean;
 }

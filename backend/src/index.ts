@@ -8,6 +8,7 @@ import { initSocket } from './socket.js';
 
 // Routes
 import webhookRouter from './routes/webhook.js';
+import dualhookEventsRouter from './routes/dualhook-events.js';
 import menuRouter from './routes/menu.js';
 import ordersRouter from './routes/orders.js';
 import settingsRouter from './routes/settings.js';
@@ -62,6 +63,15 @@ const webhookLimiter = rateLimit({
   legacyHeaders: false,
 });
 
+// Rate limiting for DualHook event webhooks (60/min — room for bursts + retries)
+const dualhookEventsLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 60,
+  message: { error: 'Too many requests' },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
 // Health check
 app.get('/api/health', (req, res) => {
   res.json({ status: 'ok' });
@@ -102,6 +112,9 @@ app.get('/privacy', (req, res) => {
 
 // Webhook route (no auth required) with rate limiting
 app.use('/api/webhook', webhookLimiter, webhookRouter);
+
+// DualHook event webhook — raw body captured by express.json verify callback
+app.use('/api/dualhook/events', dualhookEventsLimiter, dualhookEventsRouter);
 
 const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,

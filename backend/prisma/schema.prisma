@@ -29,6 +29,7 @@ model Business {
   users       User[]
   roles       Role[]
   auditLogs   AuditLog[]
+  dualhookConnections DualhookConnection[]
 
   @@map("Business")
 }
@@ -192,6 +193,42 @@ model AuditLog {
   @@map("AuditLog")
 }
 
+// ─── DUALHOOK CONNECTION ─────────────────────────────────────────────────────
+
+model DualhookConnection {
+  id               String   @id @default(cuid())
+  businessId       String
+  business         Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+
+  connectionId     String   @unique
+  wabaId           String
+  phoneNumberId    String   @unique
+  displayPhoneNumber String?
+  verifiedName     String?
+
+  status           String   @default("active")        // active, disconnected
+  connectionMode   String?                             // coexistence, cloud_api, unknown
+
+  // Coexistence heartbeat
+  heartbeatStatus  String?                             // OK, DUE_SOON, OVERDUE
+  heartbeatLastConfirmedAt DateTime?
+  heartbeatNextDueAt      DateTime?
+
+  // Webhook config
+  webhookUrl       String?
+  webhookVerifyToken String?
+
+  // Onboarding session metadata (round-tripped)
+  metadata         String?                             // JSON
+
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  @@index([businessId])
+  @@index([status])
+  @@map("DualhookConnection")
+}
+
 // ─── EXISTING MODELS (unchanged) ────────────────────────────────────────────
 
 model Customer {
@@ -237,17 +274,41 @@ model MenuCategory {
 }
 
 model MenuItem {
-  id          String       @id @default(cuid())
-  name        String
-  nameAr      String?
-  description String?
-  price       Float
-  available   Boolean      @default(true)
-  categoryId  String
-  category    MenuCategory @relation(fields: [categoryId], references: [id], onDelete: Cascade)
-  orderItems  OrderItem[]
+  id                    String                @id @default(cuid())
+  name                  String
+  nameAr                String?
+  description           String?
+  price                 Float
+  image                 String?
+  available             Boolean               @default(true)
+  categoryId            String
+  category              MenuCategory          @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  orderItems            OrderItem[]
+  customizationHeaders  CustomizationHeader[]
 
   @@map("MenuItem")
+}
+
+model CustomizationHeader {
+  id         String               @id @default(cuid())
+  menuItemId String
+  menuItem   MenuItem             @relation(fields: [menuItemId], references: [id], onDelete: Cascade)
+  name       String
+  nameAr     String?
+  details    CustomizationDetail[]
+
+  @@map("CustomizationHeader")
+}
+
+model CustomizationDetail {
+  id       String             @id @default(cuid())
+  headerId String
+  header   CustomizationHeader @relation(fields: [headerId], references: [id], onDelete: Cascade)
+  name     String
+  nameAr   String?
+  price    Float              @default(0)
+
+  @@map("CustomizationDetail")
 }
 
 model Order {

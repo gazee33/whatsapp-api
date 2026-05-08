@@ -19,12 +19,26 @@ if [ -z "$JWT_SECRET" ]; then
   exit 1
 fi
 
+if [ -z "$DUALHOOK_API_KEY" ]; then
+  echo "Error: DUALHOOK_API_KEY not set."
+  echo "  export DUALHOOK_API_KEY=dh_live_xxx"
+  exit 1
+fi
+
+if [ -z "$DUALHOOK_SIGNING_SECRET" ]; then
+  echo "Error: DUALHOOK_SIGNING_SECRET not set."
+  echo "  export DUALHOOK_SIGNING_SECRET=whsec_xxx"
+  exit 1
+fi
+
+ENV_VARS="JWT_SECRET=$JWT_SECRET OPENCODE_API_KEY=$OPENCODE_API_KEY DUALHOOK_API_KEY=$DUALHOOK_API_KEY DUALHOOK_SIGNING_SECRET=$DUALHOOK_SIGNING_SECRET"
+
 # Build and push (or deploy directly)
 echo "[1/3] Building Docker images..."
-JWT_SECRET=$JWT_SECRET OPENCODE_API_KEY=$OPENCODE_API_KEY docker compose build --no-cache
+$ENV_VARS docker compose build --no-cache
 
 echo "[2/3] Starting containers..."
-JWT_SECRET=$JWT_SECRET OPENCODE_API_KEY=$OPENCODE_API_KEY docker compose up -d
+$ENV_VARS docker compose up -d
 
 echo "[3/3] Running database migration..."
 docker compose exec backend npx prisma db push

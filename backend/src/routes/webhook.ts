@@ -11,13 +11,18 @@ const router = Router();
 function verifyWebhookSignature(req: Request, appSecret: string): boolean {
   const signature = req.headers['x-hub-signature-256'] as string;
   if (!signature) {
-    console.warn('[Webhook] No x-hub-signature-256 header — skipping HMAC check');
-    return true;
+    console.warn('[Webhook] No x-hub-signature-256 header — rejecting');
+    return false;
   }
 
   const rawBody = (req as any).rawBody as Buffer | undefined;
+  if (!rawBody) {
+    console.error('[Webhook] rawBody not available — cannot verify signature');
+    return false;
+  }
+
   const hmac = crypto.createHmac('sha256', appSecret);
-  const digest = 'sha256=' + hmac.update(rawBody ?? JSON.stringify(req.body)).digest('hex');
+  const digest = 'sha256=' + hmac.update(rawBody).digest('hex');
 
   try {
     return crypto.timingSafeEqual(
@@ -40,8 +45,7 @@ function safeEqual(a: string, b: string): boolean {
 function isOnboardingComplete(business: any): boolean {
   return !!(
     business.whatsappPhoneNumberId &&
-    business.whatsappAccessToken &&
-    business.whatsappAppSecret
+    business.whatsappAccessToken
   );
 }
 
@@ -134,10 +138,37 @@ router.post('/', async (req: Request, res: Response) => {
         return res.status(400).json({ error: 'Missing phone_number_id in payload' });
       }
 
+      // Look up by phone_number_id: check Business first, then DualhookConnection
       business = await prisma.business.findFirst({
         where: { whatsappPhoneNumberId: phoneNumberId },
         include: { settings: true },
       });
+
+      if (!business) {
+        // Fallback: check DualhookConnection for this phone number
+        const conn = await prisma.dualhookConnection.findUnique({
+          where: { phoneNumberId },
+          include: { business: { include: { settings: true } } },
+        });
+        if (conn) {
+          business = conn.business;
+          // If the Business record doesn't have the access token yet, fetch it
+          if (!business.whatsappAccessToken && conn.status === 'active') {
+            try {
+              const { revealSecrets } = await import('../services/dualhook-client.js');
+              const secrets = await revealSecrets(conn.connectionId);
+              await prisma.business.update({
+                where: { id: business.id },
+                data: { whatsappAccessToken: secrets.secrets.access_token },
+              });
+              business.whatsappAccessToken = secrets.secrets.access_token;
+            } catch {
+              // continue with whatever we have
+            }
+          }
+        }
+      }
+
       console.log(`[Webhook] Business lookup by phone_number_id="${phoneNumberId}": ${business ? `found ${business.name} (${business.id})` : 'NOT FOUND'}`);
     }
 
@@ -149,8 +180,10 @@ router.post('/', async (req: Request, res: Response) => {
     // Verify signature using this tenant's app secret (skip for simulator)
     if (!isSimulator) {
       if (!business.whatsappAppSecret) {
-        console.warn(`[Webhook] Business ${business.id} has no app secret configured, skipping signature check`);
-      } else if (!verifyWebhookSignature(req, business.whatsappAppSecret)) {
+        console.warn(`[Webhook] Business ${business.id} has no app secret configured — rejecting`);
+        return res.status(403).json({ error: 'App secret not configured' });
+      }
+      if (!verifyWebhookSignature(req, business.whatsappAppSecret)) {
         return res.status(403).json({ error: 'Invalid signature' });
       }
     }
