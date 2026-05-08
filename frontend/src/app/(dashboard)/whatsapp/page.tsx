@@ -125,7 +125,8 @@ export default function WhatsAppPage() {
       window.open(session.onboardingUrl, "_blank");
       toast.success("Onboarding window opened — complete Meta signup to connect");
     } catch (err: any) {
-      toast.error(err?.message || "Failed to create onboarding session");
+      const msg = err?.response?.data?.message || err?.response?.data?.error || err?.message || "Failed to create onboarding session";
+      toast.error(msg);
     } finally {
       setConnecting(false);
     }

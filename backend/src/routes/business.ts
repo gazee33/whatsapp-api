@@ -165,6 +165,7 @@ router.post('/whatsapp/onboarding', async (req: Request, res: Response) => {
     res.json(session);
   } catch (error) {
     if (error instanceof DualhookApiError) {
+      console.error('DualHook API error:', { status: error.status, code: error.code, message: error.message });
       return res.status(error.status).json({
         error: error.code,
         message: error.message,
