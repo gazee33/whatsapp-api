@@ -73,6 +73,8 @@ export class OpencodeProvider implements LLMProvider {
       }));
     }
 
+    console.log(`[Opencode] Calling model=${this.model}, messages=${messages.length}, tools=${tools.length}`);
+
     const response = await fetch(`${this.baseUrl}/chat/completions`, {
       method: 'POST',
       headers: {
@@ -85,8 +87,8 @@ export class OpencodeProvider implements LLMProvider {
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.error('[Opencode] API error:', { status: response.status, body: errorText });
-      throw new Error(`OpenCode API error: ${response.status}`);
+      console.error(`[Opencode] API error (model=${this.model}, status=${response.status}): ${errorText}`);
+      throw new Error(`OpenCode API error ${response.status} (model=${this.model}): ${errorText.substring(0, 300)}`);
     }
 
     const data = await response.json() as {
