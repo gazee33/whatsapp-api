@@ -1,6 +1,13 @@
 #!/bin/bash
 set -e
 
+# Auto-load .env into shell environment
+if [ -f backend/.env ]; then
+  set -a; source backend/.env; set +a
+elif [ -f .env ]; then
+  set -a; source .env; set +a
+fi
+
 echo "=== Nadil AI — Deploy to VPS ==="
 echo ""
 
