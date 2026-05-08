@@ -128,6 +128,7 @@ router.post('/', async (req: Request, res: Response) => {
 
     // Find business by API key (simulator) or phone_number_id (real webhook)
     let business;
+    let isDualhook = false;
     if (isSimulator) {
       business = await prisma.business.findUnique({
         where: { apiKey },
@@ -144,15 +145,37 @@ router.post('/', async (req: Request, res: Response) => {
         include: { settings: true },
       });
 
-      if (!business) {
+      if (business) {
+        // Check if this is a DualHook-managed connection
+        const dhConn = await prisma.dualhookConnection.findUnique({
+          where: { phoneNumberId },
+        });
+        if (dhConn && dhConn.status === 'active') {
+          isDualhook = true;
+          // Ensure access token is populated (may have been missed during onboarding)
+          if (!business.whatsappAccessToken) {
+            try {
+              const { revealSecrets } = await import('../services/dualhook-client.js');
+              const secrets = await revealSecrets(dhConn.connectionId);
+              await prisma.business.update({
+                where: { id: business.id },
+                data: { whatsappAccessToken: secrets.secrets.access_token },
+              });
+              business.whatsappAccessToken = secrets.secrets.access_token;
+            } catch {
+              // continue with whatever we have
+            }
+          }
+        }
+      } else {
         // Fallback: check DualhookConnection for this phone number
         const conn = await prisma.dualhookConnection.findUnique({
           where: { phoneNumberId },
           include: { business: { include: { settings: true } } },
         });
         if (conn) {
+          isDualhook = true;
           business = conn.business;
-          // If the Business record doesn't have the access token yet, fetch it
           if (!business.whatsappAccessToken && conn.status === 'active') {
             try {
               const { revealSecrets } = await import('../services/dualhook-client.js');
@@ -169,7 +192,7 @@ router.post('/', async (req: Request, res: Response) => {
         }
       }
 
-      console.log(`[Webhook] Business lookup by phone_number_id="${phoneNumberId}": ${business ? `found ${business.name} (${business.id})` : 'NOT FOUND'}`);
+      console.log(`[Webhook] Business lookup by phone_number_id="${phoneNumberId}": ${business ? `found ${business.name} (${business.id})` : 'NOT FOUND'}${isDualhook ? ' [DualHook]' : ''}`);
     }
 
     if (!business) {
@@ -177,8 +200,8 @@ router.post('/', async (req: Request, res: Response) => {
       return res.status(200).json({ ok: true, note: 'Business not configured for this phone_number_id' });
     }
 
-    // Verify signature using this tenant's app secret (skip for simulator)
-    if (!isSimulator) {
+    // Verify signature using this tenant's app secret (skip for simulator and DualHook connections)
+    if (!isSimulator && !isDualhook) {
       if (!business.whatsappAppSecret) {
         console.warn(`[Webhook] Business ${business.id} has no app secret configured — rejecting`);
         return res.status(403).json({ error: 'App secret not configured' });
@@ -188,6 +211,8 @@ router.post('/', async (req: Request, res: Response) => {
         return res.status(403).json({ error: 'Invalid signature' });
       }
       console.log(`[Webhook] Signature verified OK for business ${business.id}`);
+    } else if (isDualhook) {
+      console.log(`[Webhook] Signature verification skipped (DualHook connection)`);
     }
 
     // Find or create customer
