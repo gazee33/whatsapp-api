@@ -37,9 +37,9 @@ export class OpencodeProvider implements LLMProvider {
         };
       }
       
-      // Include tool calls for assistant messages
+      // Include tool calls and reasoning_content for assistant messages
       if (msg.role === 'assistant' && (msg as any).toolCalls) {
-        return {
+        const formatted: Record<string, unknown> = {
           ...base,
           tool_calls: (msg as any).toolCalls.map((tc: any) => ({
             id: tc.id,
@@ -50,6 +50,10 @@ export class OpencodeProvider implements LLMProvider {
             },
           })),
         };
+        if ((msg as any).reasoningContent) {
+          formatted.reasoning_content = (msg as any).reasoningContent;
+        }
+        return formatted;
       }
       
       return base;
@@ -95,6 +99,7 @@ export class OpencodeProvider implements LLMProvider {
       choices: Array<{
         message: {
           content: string | null;
+          reasoning_content?: string;
           tool_calls?: Array<{
             id: string;
             function: {
@@ -112,6 +117,7 @@ export class OpencodeProvider implements LLMProvider {
     }
 
     const content = choice.message.content || null;
+    const reasoningContent = choice.message.reasoning_content || undefined;
     const toolCalls = choice.message.tool_calls?.map(tc => {
       let parsedArgs: Record<string, unknown>;
       try {
@@ -129,6 +135,6 @@ export class OpencodeProvider implements LLMProvider {
       };
     }) || [];
 
-    return { content, toolCalls };
+    return { content, toolCalls, reasoningContent };
   }
 }

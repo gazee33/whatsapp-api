@@ -19,6 +19,7 @@ export interface ToolCall {
 export interface LLMResponse {
   content: string | null;
   toolCalls: ToolCall[];
+  reasoningContent?: string;
 }
 
 export interface LLMProvider {
