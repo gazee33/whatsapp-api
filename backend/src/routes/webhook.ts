@@ -184,8 +184,10 @@ router.post('/', async (req: Request, res: Response) => {
         return res.status(403).json({ error: 'App secret not configured' });
       }
       if (!verifyWebhookSignature(req, business.whatsappAppSecret)) {
+        console.warn(`[Webhook] Signature verification FAILED for business ${business.id}`);
         return res.status(403).json({ error: 'Invalid signature' });
       }
+      console.log(`[Webhook] Signature verified OK for business ${business.id}`);
     }
 
     // Find or create customer
@@ -206,10 +208,16 @@ router.post('/', async (req: Request, res: Response) => {
           name: name,
         },
       });
+      console.log(`[Webhook] New customer created: ${customer.id}`);
+    } else {
+      console.log(`[Webhook] Existing customer: ${customer.id}`);
     }
 
+    const onboardingOK = isOnboardingComplete(business);
+    console.log(`[Webhook] Onboarding complete: ${onboardingOK} (hasPhoneId=${!!business.whatsappPhoneNumberId}, hasToken=${!!business.whatsappAccessToken})`);
+
     // Send typing indicator to customer (only if onboarding is complete)
-    if (isOnboardingComplete(business)) {
+    if (onboardingOK) {
       await sendTypingIndicator(business, phoneNumberId, from, message.id);
     }
 
@@ -223,9 +231,12 @@ router.post('/', async (req: Request, res: Response) => {
       });
       sessionId = lastMsg?.sessionId;
 
+      console.log(`[Webhook] Calling AI agent for customer ${customer.id}...`);
       reply = await processMessage(business, customer, text);
+      console.log(`[Webhook] AI reply: ${reply.substring(0, 100)}`);
     } catch (error: any) {
       const isRateLimit = error?.message?.includes('rate limit');
+      console.error(`[Webhook] AI agent error: ${error?.message}`);
 
       await logError({
         businessId: business.id,
@@ -250,14 +261,17 @@ router.post('/', async (req: Request, res: Response) => {
     }
 
     // Send the reply back to WhatsApp (only if onboarding is complete)
-    const onboardingComplete = isOnboardingComplete(business);
-    if (onboardingComplete) {
+    console.log(`[Webhook] Sending WhatsApp reply to ${from} (onboardingComplete=${onboardingOK})`);
+    if (onboardingOK) {
       await sendWhatsAppText({
         business,
         phoneNumberId,
         to: from,
         body: reply,
       });
+      console.log(`[Webhook] WhatsApp send completed for customer ${customer.id}`);
+    } else {
+      console.warn(`[Webhook] Reply NOT sent — onboarding incomplete`);
     }
 
     // Emit socket event for real-time updates
@@ -273,7 +287,7 @@ router.post('/', async (req: Request, res: Response) => {
       });
     }
 
-    res.json({ reply, onboardingComplete });
+    res.json({ reply, onboardingComplete: onboardingOK });
   } catch (error) {
     console.error('Webhook error:', error);
     res.status(500).json({ error: 'Internal server error' });
