@@ -472,8 +472,10 @@ export class AIAgentService {
         const isErrorResult = execution.result.toLowerCase().includes('error') ||
                              execution.result.toLowerCase().includes('could not') ||
                              execution.result.toLowerCase().includes('failed') ||
-                             execution.result.toLowerCase().includes('لم') ||
-                             execution.result.toLowerCase().includes('خطأ');
+                             execution.result.includes('لا يوجد') ||
+                             execution.result.includes('غير متوفر') ||
+                             execution.result.includes('عذراً') ||
+                             execution.result.includes('خطأ');
 
         if (isErrorResult) {
           console.error(`[AI-Agent] Tool ${toolCall.name} returned error result: ${execution.result.substring(0, 200)}`);
