@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Search, X } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
+import { useLanguage } from "@/i18n/language-context";
 
 interface SearchInputProps {
   placeholder?: string;
@@ -14,11 +15,13 @@ interface SearchInputProps {
 }
 
 export function SearchInput({
-  placeholder = "Search...",
+  placeholder: placeholderProp,
   value,
   onChange,
   className,
 }: SearchInputProps) {
+  const { t } = useLanguage();
+  const placeholder = placeholderProp ?? t("common.search");
   const [localValue, setLocalValue] = useState(value);
 
   return (

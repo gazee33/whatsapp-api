@@ -1,8 +1,7 @@
-import { cn } from "@/lib/utils";
-import {
-  ORDER_STATUS_CONFIG,
-  COMPLAINT_STATUS_CONFIG,
-} from "@/lib/utils";
+"use client";
+
+import { cn, getOrderStatusConfig, getComplaintStatusConfig } from "@/lib/utils";
+import { useLanguage } from "@/i18n/language-context";
 
 interface StatusBadgeProps {
   status: string;
@@ -11,10 +10,12 @@ interface StatusBadgeProps {
 }
 
 export function StatusBadge({ status, type = "order", className }: StatusBadgeProps) {
-  const config =
+  const { t } = useLanguage();
+  const configMap: Record<string, { label: string; color: string; bgColor?: string }> =
     type === "order"
-      ? ORDER_STATUS_CONFIG[status]
-      : COMPLAINT_STATUS_CONFIG[status];
+      ? getOrderStatusConfig(t)
+      : getComplaintStatusConfig(t);
+  const config = configMap[status];
 
   if (!config) return <span className="text-xs text-muted-foreground">{status}</span>;
 

@@ -33,7 +33,10 @@ interface AuthState {
   clearPlatformAuth: () => void;
 }
 
-let _setStore: any;
+type _SetState = (
+  partial: AuthState | Partial<AuthState> | ((state: AuthState) => AuthState | Partial<AuthState>)
+) => void;
+let _setStore: _SetState | undefined;
 
 export const useAuthStore = create<AuthState>()(
   persist(

@@ -7,6 +7,7 @@ import { TenantHeader } from "@/components/layouts/tenant-header";
 import { useEffect } from "react";
 import { useBusinessStore } from "@/stores/business-store";
 import { connectSocket, disconnectSocket } from "@/lib/socket";
+import { LanguageProvider } from "@/i18n/language-context";
 
 export default function DashboardLayout({
   children,
@@ -14,9 +15,11 @@ export default function DashboardLayout({
   children: React.ReactNode;
 }) {
   return (
-    <AuthGuard type="tenant">
-      <DashboardContent>{children}</DashboardContent>
-    </AuthGuard>
+    <LanguageProvider>
+      <AuthGuard type="tenant">
+        <DashboardContent>{children}</DashboardContent>
+      </AuthGuard>
+    </LanguageProvider>
   );
 }
 
@@ -41,7 +44,7 @@ function DashboardContent({ children }: { children: React.ReactNode }) {
   return (
     <div className="flex h-full min-h-screen">
       <TenantSidebar open={sidebarOpen} onClose={() => setSidebarOpen(false)} />
-      <div className="flex flex-1 flex-col lg:ml-[260px] transition-all duration-300">
+      <div className="flex flex-1 flex-col lg:ms-[260px] transition-all duration-300">
         <TenantHeader onToggleSidebar={() => setSidebarOpen((v) => !v)} />
         <main className="flex-1 p-4 sm:p-6 lg:p-8 animate-fade-in">{children}</main>
       </div>

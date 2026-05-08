@@ -2,6 +2,7 @@
 
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { useLanguage } from "@/i18n/language-context";
 import { ShoppingBag, Clock, ChevronRight } from "lucide-react";
 import { useOrderStore } from "@/stores/order-store";
 import { Card, CardContent } from "@/components/ui/card";
@@ -12,17 +13,18 @@ import { EmptyState } from "@/components/shared/empty-state";
 import { cn, formatCurrency, formatTimeAgo } from "@/lib/utils";
 import type { OrderStatus } from "@/lib/types";
 
-const STATUS_TABS: { value: OrderStatus | "all"; label: string }[] = [
-  { value: "all", label: "All" },
-  { value: "pending", label: "Pending" },
-  { value: "confirmed", label: "Confirmed" },
-  { value: "preparing", label: "Preparing" },
-  { value: "ready", label: "Ready" },
-  { value: "delivered", label: "Delivered" },
-  { value: "cancelled", label: "Cancelled" },
+const STATUS_TABS: { value: OrderStatus | "all"; labelKey: string }[] = [
+  { value: "all", labelKey: "orders.tab_all" },
+  { value: "pending", labelKey: "orders.tab_pending" },
+  { value: "confirmed", labelKey: "orders.tab_confirmed" },
+  { value: "preparing", labelKey: "orders.tab_preparing" },
+  { value: "ready", labelKey: "orders.tab_ready" },
+  { value: "delivered", labelKey: "orders.tab_delivered" },
+  { value: "cancelled", labelKey: "orders.tab_cancelled" },
 ];
 
 export default function OrdersPage() {
+  const { t } = useLanguage();
   const router = useRouter();
   const { orders, isLoading, statusFilter, fetchOrders, setStatusFilter } =
     useOrderStore();
@@ -84,9 +86,9 @@ export default function OrdersPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">Orders</h1>
+          <h1 className="text-2xl font-bold tracking-tight">{t("orders.title")}</h1>
           <p className="text-sm text-muted-foreground">
-            Manage and track all incoming orders
+            {t("orders.subtitle")}
           </p>
         </div>
       </div>
@@ -95,7 +97,7 @@ export default function OrdersPage() {
         <TabsList className="w-full justify-start overflow-x-auto">
           {STATUS_TABS.map((tab) => (
             <TabsTrigger key={tab.value} value={tab.value}>
-              {tab.label}
+              {t(tab.labelKey)}
             </TabsTrigger>
           ))}
         </TabsList>
@@ -104,11 +106,11 @@ export default function OrdersPage() {
       {orders.length === 0 ? (
         <EmptyState
           icon={ShoppingBag}
-          title="No orders found"
+          title={t("orders.no_orders")}
           description={
             statusFilter !== "all"
-              ? `No orders with status "${statusFilter}"`
-              : "Orders will appear here when customers place them"
+              ? t("orders.no_orders_status").replace("{status}", statusFilter)
+              : t("orders.no_orders_desc")
           }
         />
       ) : (
@@ -139,7 +141,7 @@ export default function OrdersPage() {
                         <span>{order.customer.phone}</span>
                       )}
                       {order.items && (
-                        <span>{order.items.length} item{order.items.length !== 1 ? "s" : ""}</span>
+                        <span>{order.items.length} {order.items.length === 1 ? t("orders.item") : t("orders.items")}</span>
                       )}
                       <span className="flex items-center gap-1">
                         <Clock className="h-3 w-3" />

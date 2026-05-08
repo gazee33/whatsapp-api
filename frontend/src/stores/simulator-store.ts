@@ -71,8 +71,14 @@ export const useSimulatorStore = create<SimulatorState>((set) => ({
         ],
         isLoading: false,
       }));
-    } catch (err: any) {
-      const errorMessage = err?.response?.data?.error || err?.message || "Failed to send message";
+    } catch (err: unknown) {
+      let errorMessage = "Failed to send message";
+      if (err && typeof err === "object" && "response" in err) {
+        const axiosErr = err as { response?: { data?: { error?: string } }; message?: string };
+        errorMessage = axiosErr.response?.data?.error || axiosErr.message || errorMessage;
+      } else if (err instanceof Error) {
+        errorMessage = err.message;
+      }
       set((state) => ({
         messages: state.messages,
         isLoading: false,

@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useAuthStore } from "@/stores/auth-store";
+import { useLanguage } from "@/i18n/language-context";
 import { Button } from "@/components/ui/button";
 import { Input, Label } from "@/components/ui/input";
 import { Eye, EyeOff, LogIn } from "lucide-react";
@@ -11,6 +12,7 @@ import { Eye, EyeOff, LogIn } from "lucide-react";
 export default function LoginPage() {
   const router = useRouter();
   const { apiKey, setApiKey, login, isLoading } = useAuthStore();
+  const { t } = useLanguage();
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -22,7 +24,7 @@ export default function LoginPage() {
     setError(null);
 
     if (!apiKey) {
-      setError("API Key is required");
+      setError(t("login.api_key_required"));
       return;
     }
 
@@ -30,16 +32,16 @@ export default function LoginPage() {
       await login(email, password);
       router.push("/dashboard");
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Invalid credentials");
+      setError(err instanceof Error ? err.message : t("login.invalid_credentials"));
     }
   };
 
   return (
     <form onSubmit={handleSubmit} className="space-y-5">
       <div className="space-y-1.5">
-        <h2 className="text-xl font-semibold text-foreground">Welcome back</h2>
+        <h2 className="text-xl font-semibold text-foreground">{t("login.welcome_back")}</h2>
         <p className="text-sm text-muted-foreground">
-          Sign in to your restaurant dashboard
+          {t("login.sign_in_subtitle")}
         </p>
       </div>
 
@@ -50,22 +52,22 @@ export default function LoginPage() {
       )}
 
       <div className="space-y-2">
-        <Label htmlFor="apiKey">API Key</Label>
+        <Label htmlFor="apiKey">{t("login.api_key_label")}</Label>
         <Input
           id="apiKey"
           type="password"
-          placeholder="Enter your business API key"
+          placeholder={t("login.api_key_placeholder")}
           value={apiKey ?? ""}
           onChange={(e) => setApiKey(e.target.value)}
         />
       </div>
 
       <div className="space-y-2">
-        <Label htmlFor="email">Email</Label>
+        <Label htmlFor="email">{t("login.email_label")}</Label>
         <Input
           id="email"
           type="email"
-          placeholder="admin@example.com"
+          placeholder={t("login.email_placeholder")}
           value={email}
           onChange={(e) => setEmail(e.target.value)}
           required
@@ -74,12 +76,12 @@ export default function LoginPage() {
       </div>
 
       <div className="space-y-2">
-        <Label htmlFor="password">Password</Label>
+        <Label htmlFor="password">{t("login.password_label")}</Label>
         <div className="relative">
           <Input
             id="password"
             type={showPassword ? "text" : "password"}
-            placeholder="••••••••"
+            placeholder={t("login.password_placeholder")}
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             required
@@ -103,17 +105,17 @@ export default function LoginPage() {
 
       <Button type="submit" className="w-full" loading={isLoading}>
         <LogIn className="h-4 w-4" />
-        Sign In
+        {t("login.sign_in")}
       </Button>
 
       <div className="space-y-2 text-center text-sm">
         <p className="text-muted-foreground">
-          Don&apos;t have an account?{" "}
+          {t("login.no_account")}{" "}
           <Link
             href="/register"
             className="font-medium text-primary hover:text-primary/90 transition-colors"
           >
-            Create an account
+            {t("login.create_account")}
           </Link>
         </p>
         <p className="text-muted-foreground">
@@ -121,7 +123,7 @@ export default function LoginPage() {
             href="/platform-login"
             className="font-medium text-primary/70 hover:text-primary transition-colors"
           >
-            Platform Admin Login
+            {t("login.platform_login")}
           </Link>
         </p>
       </div>

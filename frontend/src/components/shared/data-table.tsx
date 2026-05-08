@@ -2,6 +2,7 @@
 
 import type { ReactNode } from "react";
 import { cn } from "@/lib/utils";
+import { useLanguage } from "@/i18n/language-context";
 import { EmptyState } from "@/components/shared/empty-state";
 import { FileText } from "lucide-react";
 
@@ -37,11 +38,13 @@ export function DataTable<T extends Record<string, unknown>>({
   columns,
   data,
   loading = false,
-  emptyTitle = "No data",
+  emptyTitle,
   emptyDescription,
   renderActions,
 }: DataTableProps<T>) {
+  const { t } = useLanguage();
   const colCount = columns.length + (renderActions ? 1 : 0);
+  const resolvedEmptyTitle = emptyTitle ?? t("common.no_data");
 
   return (
     <>
@@ -64,7 +67,7 @@ export function DataTable<T extends Record<string, unknown>>({
                 ))}
                 {renderActions && (
                   <th className="px-4 py-3 text-right text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-                    Actions
+                    {t("common.actions")}
                   </th>
                 )}
               </tr>
@@ -79,7 +82,7 @@ export function DataTable<T extends Record<string, unknown>>({
                   <td colSpan={colCount} className="p-0">
                     <EmptyState
                       icon={FileText}
-                      title={emptyTitle}
+                      title={resolvedEmptyTitle}
                       description={emptyDescription}
                       className="py-12"
                     />
@@ -101,7 +104,7 @@ export function DataTable<T extends Record<string, unknown>>({
                       >
                         {col.render
                           ? col.render(row[col.key], row)
-                          : (row[col.key] as ReactNode) ?? "—"}
+                          : (row[col.key] as ReactNode) ?? t("common.dash")}
                       </td>
                     ))}
                     {renderActions && (
@@ -133,7 +136,7 @@ export function DataTable<T extends Record<string, unknown>>({
         ) : data.length === 0 ? (
           <EmptyState
             icon={FileText}
-            title={emptyTitle}
+            title={resolvedEmptyTitle}
             description={emptyDescription}
           />
         ) : (
@@ -153,7 +156,7 @@ export function DataTable<T extends Record<string, unknown>>({
                   <span className={cn("text-sm text-right", col.className)}>
                     {col.render
                       ? col.render(row[col.key], row)
-                      : (row[col.key] as ReactNode) ?? "—"}
+                      : (row[col.key] as ReactNode) ?? t("common.dash")}
                   </span>
                 </div>
               ))}

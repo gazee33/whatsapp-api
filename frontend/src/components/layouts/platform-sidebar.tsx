@@ -14,31 +14,34 @@ import {
   Activity,
   X,
 } from "lucide-react";
+import { useLanguage } from "@/i18n/language-context";
 
-const navItems = [
-  {
-    section: "Overview",
-    items: [
-      { href: "/platform", label: "Dashboard", icon: LayoutDashboard },
-      { href: "/platform/analytics", label: "Analytics", icon: BarChart3 },
-      { href: "/platform/health", label: "Health", icon: Activity },
-    ],
-  },
-  {
-    section: "Management",
-    items: [
-      { href: "/platform/businesses", label: "Businesses", icon: Building2 },
-      { href: "/platform/audit-logs", label: "Audit Logs", icon: FileText },
-    ],
-  },
-  {
-    section: "System",
-    items: [
-      { href: "/platform/users", label: "Platform Users", icon: Users },
-      { href: "/platform/settings", label: "Settings", icon: Settings },
-    ],
-  },
-];
+function getNavItems(t: (key: string) => string) {
+  return [
+    {
+      section: t("platform_sidebar.overview"),
+      items: [
+        { href: "/platform", label: t("sidebar.dashboard"), icon: LayoutDashboard },
+        { href: "/platform/analytics", label: t("platform_sidebar.analytics"), icon: BarChart3 },
+        { href: "/platform/health", label: t("platform_sidebar.health"), icon: Activity },
+      ],
+    },
+    {
+      section: t("platform_sidebar.management"),
+      items: [
+        { href: "/platform/businesses", label: t("platform_sidebar.businesses"), icon: Building2 },
+        { href: "/platform/audit-logs", label: t("platform_sidebar.audit_logs"), icon: FileText },
+      ],
+    },
+    {
+      section: t("platform_sidebar.system"),
+      items: [
+        { href: "/platform/users", label: t("platform_sidebar.platform_users"), icon: Users },
+        { href: "/platform/settings", label: t("sidebar.settings"), icon: Settings },
+      ],
+    },
+  ];
+}
 
 interface PlatformSidebarProps {
   open: boolean;
@@ -47,6 +50,8 @@ interface PlatformSidebarProps {
 
 export function PlatformSidebar({ open, onClose }: PlatformSidebarProps) {
   const pathname = usePathname();
+  const { t } = useLanguage();
+  const navItems = getNavItems(t);
 
   const isActive = (href: string) => {
     if (href === "/platform") return pathname === "/platform";
@@ -65,7 +70,7 @@ export function PlatformSidebar({ open, onClose }: PlatformSidebarProps) {
 
       <aside
         className={cn(
-          "fixed left-0 top-0 z-50 flex h-full w-[260px] flex-col border-r border-sidebar-border bg-sidebar transition-transform duration-300",
+          "fixed start-0 top-0 z-50 flex h-full w-[260px] flex-col border-e border-sidebar-border bg-sidebar transition-transform duration-300",
           open ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
         )}
       >
@@ -76,7 +81,7 @@ export function PlatformSidebar({ open, onClose }: PlatformSidebarProps) {
           </div>
           <div className="min-w-0 flex-1">
             <p className="truncate text-sm font-semibold text-sidebar-foreground">
-              Platform Admin
+              {t("platform_sidebar.platform_admin")}
             </p>
           </div>
           <button
@@ -94,10 +99,10 @@ export function PlatformSidebar({ open, onClose }: PlatformSidebarProps) {
           </div>
           <div className="min-w-0 flex-1">
             <p className="truncate text-sm font-semibold text-sidebar-foreground">
-              Platform Admin
+              {t("platform_sidebar.platform_admin")}
             </p>
             <p className="truncate text-xs text-muted-foreground">
-              Management Console
+              {t("platform_sidebar.management_console")}
             </p>
           </div>
         </div>

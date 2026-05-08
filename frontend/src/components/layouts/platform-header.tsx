@@ -2,7 +2,7 @@
 
 import { useAuthStore } from "@/stores/auth-store";
 import { getInitials } from "@/lib/utils";
-import { Moon, Sun, LogOut, Menu } from "lucide-react";
+import { Moon, Sun, LogOut, Menu, Languages } from "lucide-react";
 import { useTheme } from "next-themes";
 import { Button } from "@/components/ui/button";
 import {
@@ -14,6 +14,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useRouter } from "next/navigation";
+import { useLanguage } from "@/i18n/language-context";
 
 interface PlatformHeaderProps {
   onToggleSidebar: () => void;
@@ -22,6 +23,7 @@ interface PlatformHeaderProps {
 export function PlatformHeader({ onToggleSidebar }: PlatformHeaderProps) {
   const { platformUser, platformLogout } = useAuthStore();
   const { theme, setTheme } = useTheme();
+  const { t, lang, setLang } = useLanguage();
   const router = useRouter();
 
   const handleLogout = async () => {
@@ -40,7 +42,7 @@ export function PlatformHeader({ onToggleSidebar }: PlatformHeaderProps) {
           <Menu className="h-5 w-5" />
         </button>
         <h1 className="text-lg font-semibold tracking-tight">
-          Platform Administration
+          {t("header.platform_admin")}
         </h1>
       </div>
 
@@ -53,6 +55,16 @@ export function PlatformHeader({ onToggleSidebar }: PlatformHeaderProps) {
         >
           <Sun className="h-5 w-5 rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
           <Moon className="absolute h-5 w-5 rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
+        </Button>
+
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={() => setLang(lang === "en" ? "ar" : "en")}
+          className="text-muted-foreground hover:text-foreground"
+          title={t("header.toggle_language")}
+        >
+          <Languages className="h-5 w-5" />
         </Button>
 
         <DropdownMenu>
@@ -72,8 +84,8 @@ export function PlatformHeader({ onToggleSidebar }: PlatformHeaderProps) {
             </DropdownMenuLabel>
             <DropdownMenuSeparator />
             <DropdownMenuItem onClick={handleLogout} className="text-destructive">
-              <LogOut className="mr-2 h-4 w-4" />
-              Log out
+              <LogOut className="me-2 h-4 w-4" />
+              {t("header.log_out")}
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>

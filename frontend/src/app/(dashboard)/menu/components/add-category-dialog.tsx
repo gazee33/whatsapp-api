@@ -12,6 +12,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input, Label } from "@/components/ui/input";
 import { useMenuStore } from "@/stores/menu-store";
+import { useLanguage } from "@/i18n/language-context";
 import type { MenuCategory } from "@/lib/types";
 
 interface AddCategoryDialogProps {
@@ -28,6 +29,7 @@ export function AddCategoryDialog({
   onSuccess,
 }: AddCategoryDialogProps) {
   const isEditing = !!category;
+  const { t } = useLanguage();
   const { createCategory, updateCategory } = useMenuStore();
 
   const [name, setName] = useState(category?.name ?? "");
@@ -101,7 +103,7 @@ export function AddCategoryDialog({
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="sortOrder">Sort Order</Label>
+            <Label htmlFor="sortOrder">{t("menu.sort_order_label")}</Label>
             <Input
               id="sortOrder"
               type="number"
@@ -118,10 +120,10 @@ export function AddCategoryDialog({
               onClick={() => onOpenChange(false)}
               disabled={loading}
             >
-              Cancel
+              {t("common.cancel")}
             </Button>
             <Button type="submit" loading={loading}>
-              {isEditing ? "Save Changes" : "Create Category"}
+              {isEditing ? t("common.save_changes") : t("menu.create_category")}
             </Button>
           </DialogFooter>
         </form>

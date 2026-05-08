@@ -2,6 +2,7 @@
 
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { useLanguage } from "@/i18n/language-context";
 import { MessageSquare, ChevronRight } from "lucide-react";
 import { useConversationStore } from "@/stores/conversation-store";
 import { Card, CardContent } from "@/components/ui/card";
@@ -10,6 +11,7 @@ import { EmptyState } from "@/components/shared/empty-state";
 import { formatTimeAgo, truncate } from "@/lib/utils";
 
 export default function ConversationsPage() {
+  const { t } = useLanguage();
   const router = useRouter();
   const { conversations, isLoading, fetchConversations } =
     useConversationStore();
@@ -56,17 +58,17 @@ export default function ConversationsPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold tracking-tight">Conversations</h1>
+        <h1 className="text-2xl font-bold tracking-tight">{t("conversations.title")}</h1>
         <p className="text-sm text-muted-foreground">
-          Customer chat history from WhatsApp
+          {t("conversations.subtitle")}
         </p>
       </div>
 
       {conversations.length === 0 ? (
         <EmptyState
           icon={MessageSquare}
-          title="No conversations yet"
-          description="Conversations will appear here when customers send messages via WhatsApp"
+          title={t("conversations.no_conversations")}
+          description={t("conversations.no_conversations_desc")}
         />
       ) : (
         <div className="grid gap-3">
@@ -108,7 +110,7 @@ export default function ConversationsPage() {
                       </div>
                       {lastMessage && (
                         <p className="text-sm text-muted-foreground truncate max-w-[300px]">
-                          {lastMessage.role === "user" ? "Customer: " : "Bot: "}
+                          {lastMessage.role === "user" ? t("conversations.customer_prefix") : t("conversations.bot_prefix")}
                           {truncate(lastMessage.content, 80)}
                         </p>
                       )}

@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback } from "react";
 import { tenantClient } from "@/lib/api-client";
+import { useLanguage } from "@/i18n/language-context";
 import { Button } from "@/components/ui/button";
 import { Input, Label } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -37,6 +38,7 @@ import {
 } from "lucide-react";
 
 export default function RolesPage() {
+  const { t } = useLanguage();
   const [roles, setRoles] = useState<Role[]>([]);
   const [loading, setLoading] = useState(true);
   const [expandedRole, setExpandedRole] = useState<string | null>(null);
@@ -48,11 +50,11 @@ export default function RolesPage() {
       const res = await tenantClient.get("/roles");
       setRoles(res.data.roles ?? res.data);
     } catch {
-      toast.error("Failed to load roles");
+      toast.error(t("roles.title"));
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [t]);
 
   const fetchPermissions = useCallback(async () => {
     try {
@@ -82,13 +84,13 @@ export default function RolesPage() {
         name: createName,
         description: createDescription || undefined,
       });
-      toast.success("Role created");
+      toast.success(t("roles.role_created"));
       setCreateOpen(false);
       setCreateName("");
       setCreateDescription("");
       fetchRoles();
     } catch {
-      toast.error("Failed to create role");
+      toast.error(t("roles.role_created"));
     } finally {
       setCreating(false);
     }
@@ -103,7 +105,7 @@ export default function RolesPage() {
 
   const openEdit = (role: Role) => {
     if (role.isSystem) {
-      toast.error("System roles cannot be edited");
+      toast.error(t("roles.cannot_edit_system"));
       return;
     }
     setEditRole(role);
@@ -120,11 +122,11 @@ export default function RolesPage() {
         name: editName,
         description: editDescription || undefined,
       });
-      toast.success("Role updated");
+      toast.success(t("roles.role_updated"));
       setEditOpen(false);
       fetchRoles();
     } catch {
-      toast.error("Failed to update role");
+      toast.error(t("roles.role_updated"));
     } finally {
       setEditing(false);
     }
@@ -133,16 +135,16 @@ export default function RolesPage() {
   // ── Delete Role ──
   const deleteRole = async (role: Role) => {
     if (role.isSystem) {
-      toast.error("System roles cannot be deleted");
+      toast.error(t("roles.cannot_delete_system"));
       return;
     }
-    if (!confirm(`Delete role "${role.name}"?`)) return;
+    if (!confirm(t("roles.delete_role") + ` "${role.name}"?`)) return;
     try {
       await tenantClient.delete(`/roles/${role.id}`);
-      toast.success("Role deleted");
+      toast.success(t("roles.role_deleted"));
       fetchRoles();
     } catch {
-      toast.error("Failed to delete role");
+      toast.error(t("roles.role_deleted"));
     }
   };
 
@@ -181,11 +183,11 @@ export default function RolesPage() {
       await tenantClient.post(`/roles/${permRole.id}/permissions`, {
         permissionIds: [...checkedIds],
       });
-      toast.success("Permissions updated");
+      toast.success(t("roles.permissions_updated"));
       setPermOpen(false);
       fetchRoles();
     } catch {
-      toast.error("Failed to update permissions");
+      toast.error(t("roles.permissions_updated"));
     } finally {
       setAssigningPerms(false);
     }
@@ -195,10 +197,10 @@ export default function RolesPage() {
   const removePermission = async (roleId: string, permId: string) => {
     try {
       await tenantClient.delete(`/roles/${roleId}/permissions/${permId}`);
-      toast.success("Permission removed");
+      toast.success(t("roles.permission_removed"));
       fetchRoles();
     } catch {
-      toast.error("Failed to remove permission");
+      toast.error(t("roles.permission_removed"));
     }
   };
 
@@ -268,40 +270,40 @@ export default function RolesPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">Roles</h1>
+          <h1 className="text-2xl font-bold tracking-tight">{t("roles.title")}</h1>
           <p className="text-sm text-muted-foreground">
-            Manage roles and their permissions
+            {t("roles.subtitle")}
           </p>
         </div>
         <Dialog open={createOpen} onOpenChange={setCreateOpen}>
           <DialogTrigger asChild>
             <Button>
               <Plus className="h-4 w-4" />
-              Create Role
+              {t("roles.create")}
             </Button>
           </DialogTrigger>
           <DialogContent>
             <DialogHeader>
-              <DialogTitle>Create Role</DialogTitle>
+              <DialogTitle>{t("roles.create")}</DialogTitle>
               <DialogDescription>
-                Define a new role for your team
+                {t("roles.create_desc")}
               </DialogDescription>
             </DialogHeader>
             <div className="space-y-4 py-2">
               <div className="space-y-2">
-                <Label htmlFor="create-role-name">Name</Label>
+                <Label htmlFor="create-role-name">{t("roles.name_label")}</Label>
                 <Input
                   id="create-role-name"
-                  placeholder="Kitchen Staff"
+                  placeholder={t("roles.name_placeholder")}
                   value={createName}
                   onChange={(e) => setCreateName(e.target.value)}
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="create-role-desc">Description</Label>
+                <Label htmlFor="create-role-desc">{t("roles.description_label")}</Label>
                 <Input
                   id="create-role-desc"
-                  placeholder="Can view orders and update status"
+                  placeholder={t("roles.description_placeholder")}
                   value={createDescription}
                   onChange={(e) => setCreateDescription(e.target.value)}
                 />
@@ -312,11 +314,11 @@ export default function RolesPage() {
                 variant="outline"
                 onClick={() => setCreateOpen(false)}
               >
-                Cancel
+                {t("common.cancel")}
               </Button>
               <Button onClick={handleCreate} loading={creating}>
                 <Shield className="h-4 w-4" />
-                Create Role
+                {t("roles.create")}
               </Button>
             </DialogFooter>
           </DialogContent>
@@ -328,14 +330,14 @@ export default function RolesPage() {
       {roles.length === 0 ? (
         <EmptyState
           icon={Shield}
-          title="No roles defined"
-          description="Create your first role to manage team permissions."
+          title={t("roles.no_roles")}
+          description={t("roles.no_roles_desc")}
           action={
             <Dialog open={createOpen} onOpenChange={setCreateOpen}>
               <DialogTrigger asChild>
                 <Button>
                   <Plus className="h-4 w-4" />
-                  Create Role
+                  {t("roles.create")}
                 </Button>
               </DialogTrigger>
             </Dialog>
@@ -367,7 +369,7 @@ export default function RolesPage() {
                           {role.isSystem && (
                             <Badge variant="warning" className="text-xs">
                               <Lock className="h-3 w-3 mr-1" />
-                              System
+                              {t("roles.system_badge")}
                             </Badge>
                           )}
                         </div>
@@ -382,13 +384,11 @@ export default function RolesPage() {
                       <div className="flex items-center gap-2 text-xs text-muted-foreground">
                         <Badge variant="secondary" className="text-xs">
                           <Key className="h-3 w-3 mr-1" />
-                          {perms.length} permission
-                          {perms.length !== 1 ? "s" : ""}
+                          {perms.length} {perms.length === 1 ? "permission" : "permissions"}
                         </Badge>
                         {role.userCount !== undefined && (
                           <Badge variant="outline" className="text-xs">
-                            {role.userCount} user
-                            {role.userCount !== 1 ? "s" : ""}
+                            {role.userCount} {role.userCount === 1 ? "user" : "users"}
                           </Badge>
                         )}
                       </div>
@@ -402,8 +402,8 @@ export default function RolesPage() {
                           onClick={() => openEdit(role)}
                           title={
                             role.isSystem
-                              ? "System roles cannot be edited"
-                              : "Edit role"
+                              ? t("roles.cannot_edit_system")
+                              : t("roles.edit_role")
                           }
                         >
                           <Edit className="h-4 w-4" />
@@ -412,7 +412,7 @@ export default function RolesPage() {
                           variant="ghost"
                           size="icon"
                           onClick={() => openPermDialog(role)}
-                          title="Manage permissions"
+                          title={t("roles.manage_permissions")}
                         >
                           <Key className="h-4 w-4" />
                         </Button>
@@ -423,8 +423,8 @@ export default function RolesPage() {
                           disabled={role.isSystem}
                           title={
                             role.isSystem
-                              ? "System roles cannot be deleted"
-                              : "Delete role"
+                              ? t("roles.cannot_delete_system")
+                              : t("roles.delete_role")
                           }
                         >
                           <Trash2 className="h-4 w-4 text-destructive" />
@@ -440,8 +440,7 @@ export default function RolesPage() {
                     <CardContent className="p-4">
                       {perms.length === 0 ? (
                         <p className="text-xs text-muted-foreground py-2">
-                          No permissions assigned. Click the key icon to assign
-                          permissions.
+                          {t("roles.no_permissions")}
                         </p>
                       ) : (
                         <div className="flex flex-wrap gap-1.5">
@@ -459,7 +458,7 @@ export default function RolesPage() {
                                   removePermission(role.id, perm.id);
                                 }}
                                 className="ml-0.5 rounded-full hover:bg-destructive/20 p-0.5"
-                                title={`Remove ${perm.name}`}
+                                title={t("roles.remove_permission")}
                               >
                                 <X className="h-3 w-3" />
                               </button>
@@ -480,14 +479,14 @@ export default function RolesPage() {
       <Dialog open={editOpen} onOpenChange={setEditOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Edit Role</DialogTitle>
+            <DialogTitle>{t("roles.edit_dialog_title")}</DialogTitle>
             <DialogDescription>
-              Update {editRole?.name}
+              {t("roles.edit_dialog_desc")} {editRole?.name}
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-2">
             <div className="space-y-2">
-              <Label htmlFor="edit-role-name">Name</Label>
+              <Label htmlFor="edit-role-name">{t("roles.name_label")}</Label>
               <Input
                 id="edit-role-name"
                 value={editName}
@@ -495,7 +494,7 @@ export default function RolesPage() {
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="edit-role-desc">Description</Label>
+              <Label htmlFor="edit-role-desc">{t("roles.description_label")}</Label>
               <Input
                 id="edit-role-desc"
                 value={editDescription}
@@ -505,10 +504,10 @@ export default function RolesPage() {
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setEditOpen(false)}>
-              Cancel
+              {t("common.cancel")}
             </Button>
             <Button onClick={handleEdit} loading={editing}>
-              Save Changes
+              {t("common.save_changes")}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -518,15 +517,15 @@ export default function RolesPage() {
       <Dialog open={permOpen} onOpenChange={setPermOpen}>
         <DialogContent className="max-w-2xl max-h-[80vh] flex flex-col">
           <DialogHeader>
-            <DialogTitle>Manage Permissions</DialogTitle>
+            <DialogTitle>{t("roles.manage_dialog_title")}</DialogTitle>
             <DialogDescription>
-              Assign permissions to {permRole?.name}
+              {t("roles.manage_dialog_desc")} {permRole?.name}
             </DialogDescription>
           </DialogHeader>
 
           {!permissionsCatalog?.permissions ? (
             <div className="py-8">
-              <PageLoading message="Loading permissions..." />
+              <PageLoading message={t("roles.loading_permissions")} />
             </div>
           ) : (
             <div className="flex-1 overflow-hidden">
@@ -603,14 +602,14 @@ export default function RolesPage() {
 
           <DialogFooter className="pt-4 border-t">
             <Button variant="outline" onClick={() => setPermOpen(false)}>
-              Cancel
+              {t("common.cancel")}
             </Button>
             <Button
               onClick={handleAssignPermissions}
               loading={assigningPerms}
             >
               <Check className="h-4 w-4" />
-              Save Permissions
+              {t("roles.save_permissions")}
             </Button>
           </DialogFooter>
         </DialogContent>

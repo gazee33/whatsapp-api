@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useBusinessStore } from "@/stores/business-store";
+import { useLanguage } from "@/i18n/language-context";
 import { Button } from "@/components/ui/button";
 import { Input, Label } from "@/components/ui/input";
 import {
@@ -38,6 +39,7 @@ const CURRENCIES = [
 ];
 
 export default function SettingsPage() {
+  const { t } = useLanguage();
   const { settings, fetchSettings, updateSettings, isLoading } =
     useBusinessStore();
 
@@ -78,9 +80,9 @@ export default function SettingsPage() {
         aiRules,
         currency,
       });
-      toast.success("Settings saved successfully");
+      toast.success(t("settings.saved"));
     } catch {
-      toast.error("Failed to save settings");
+      toast.error(t("settings.save_failed"));
     } finally {
       setSaving(false);
     }
@@ -106,14 +108,14 @@ export default function SettingsPage() {
     <div className="mx-auto max-w-3xl space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">Settings</h1>
+          <h1 className="text-2xl font-bold tracking-tight">{t("settings.title")}</h1>
           <p className="text-sm text-muted-foreground">
-            Manage your restaurant configuration
+            {t("settings.subtitle")}
           </p>
         </div>
         <Button onClick={handleSave} loading={saving}>
           <Save className="h-4 w-4" />
-          Save Changes
+          {t("common.save_changes")}
         </Button>
       </div>
 
@@ -124,18 +126,18 @@ export default function SettingsPage() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-base">
               <Store className="h-4 w-4" />
-              Restaurant Details
+              {t("settings.restaurant_details")}
             </CardTitle>
             <CardDescription>
-              Basic information about your restaurant
+              {t("settings.restaurant_details_desc")}
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="name">Restaurant Name</Label>
+              <Label htmlFor="name">{t("settings.restaurant_name")}</Label>
               <Input
                 id="name"
-                placeholder="My Restaurant"
+                placeholder={t("settings.restaurant_name_placeholder")}
                 value={name}
                 onChange={(e) => setName(e.target.value)}
               />
@@ -145,7 +147,7 @@ export default function SettingsPage() {
               <div className="space-y-2">
                 <Label htmlFor="openingTime" className="flex items-center gap-1.5">
                   <Clock className="h-3.5 w-3.5 text-muted-foreground" />
-                  Opening Time
+                  {t("settings.opening_time")}
                 </Label>
                 <Input
                   id="openingTime"
@@ -157,7 +159,7 @@ export default function SettingsPage() {
               <div className="space-y-2">
                 <Label htmlFor="closingTime" className="flex items-center gap-1.5">
                   <Clock className="h-3.5 w-3.5 text-muted-foreground" />
-                  Closing Time
+                  {t("settings.closing_time")}
                 </Label>
                 <Input
                   id="closingTime"
@@ -171,11 +173,11 @@ export default function SettingsPage() {
             <div className="space-y-2">
               <Label htmlFor="currency" className="flex items-center gap-1.5">
                 <DollarSign className="h-3.5 w-3.5 text-muted-foreground" />
-                Currency
+                {t("settings.currency")}
               </Label>
               <Select value={currency} onValueChange={setCurrency}>
                 <SelectTrigger id="currency">
-                  <SelectValue placeholder="Select currency" />
+                  <SelectValue placeholder={t("settings.select_currency")} />
                 </SelectTrigger>
                 <SelectContent>
                   {CURRENCIES.map((c) => (
@@ -193,19 +195,19 @@ export default function SettingsPage() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-base">
               <MessageSquare className="h-4 w-4" />
-              Customer Communication
+              {t("settings.customer_communication")}
             </CardTitle>
             <CardDescription>
-              Configure how your AI assistant talks to customers
+              {t("settings.customer_communication_desc")}
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="welcomeMsg">Welcome Message</Label>
+              <Label htmlFor="welcomeMsg">{t("settings.welcome_message")}</Label>
               <textarea
                 id="welcomeMsg"
                 rows={3}
-                placeholder="Welcome! How can I help you today?"
+                placeholder={t("settings.welcome_message_placeholder")}
                 value={welcomeMsg}
                 onChange={(e) => setWelcomeMsg(e.target.value)}
                 className="flex w-full rounded-lg border border-input bg-background px-3 py-2 text-sm shadow-sm transition-colors duration-200 placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring resize-none"
@@ -215,19 +217,18 @@ export default function SettingsPage() {
             <div className="space-y-2">
               <Label htmlFor="aiRules" className="flex items-center gap-1.5">
                 <Sparkles className="h-3.5 w-3.5 text-muted-foreground" />
-                AI Rules / Guidelines
+                {t("settings.ai_rules")}
               </Label>
               <textarea
                 id="aiRules"
                 rows={5}
-                placeholder="You are a helpful restaurant assistant...&#10;Always confirm orders before submitting...&#10;Be polite and use formal Arabic greetings..."
+                placeholder={t("settings.ai_rules_placeholder")}
                 value={aiRules}
                 onChange={(e) => setAiRules(e.target.value)}
                 className="flex w-full rounded-lg border border-input bg-background px-3 py-2 text-sm shadow-sm transition-colors duration-200 placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring resize-none font-mono"
               />
               <p className="text-xs text-muted-foreground">
-                These rules guide the AI assistant&apos;s behavior when
-                interacting with customers via WhatsApp.
+                {t("settings.ai_rules_help")}
               </p>
             </div>
           </CardContent>

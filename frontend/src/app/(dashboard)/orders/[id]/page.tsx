@@ -2,6 +2,7 @@
 
 import { useEffect, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
+import { useLanguage } from "@/i18n/language-context";
 import {
   ArrowLeft,
   Clock,
@@ -39,6 +40,7 @@ const STATUS_OPTIONS: OrderStatus[] = [
 ];
 
 export default function OrderDetailPage() {
+  const { t } = useLanguage();
   const params = useParams();
   const router = useRouter();
   const id = params.id as string;
@@ -72,16 +74,16 @@ export default function OrderDetailPage() {
         className="-ml-2"
       >
         <ArrowLeft className="h-4 w-4" />
-        Back
+        {t("common.back")}
       </Button>
 
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-2xl font-bold tracking-tight">
-            Order {order.referenceId}
+            {t("order_detail.title")} {order.referenceId}
           </h1>
           <p className="text-sm text-muted-foreground">
-            Manage order details and status
+            {t("order_detail.subtitle")}
           </p>
         </div>
       </div>
@@ -90,7 +92,7 @@ export default function OrderDetailPage() {
         <div className="lg:col-span-2 space-y-6 order-2 lg:order-1">
           <Card>
             <CardHeader className="flex flex-row items-center justify-between">
-              <CardTitle className="text-lg">Items</CardTitle>
+              <CardTitle className="text-lg">{t("order_detail.items_card")}</CardTitle>
               <span className="text-sm font-semibold">
                 {formatCurrency(order.totalPrice)}
               </span>
@@ -105,11 +107,11 @@ export default function OrderDetailPage() {
                     >
                       <div className="space-y-0.5">
                         <p className="text-sm font-medium">
-                          {item.menuItem?.name ?? "Unknown item"}
+                          {item.menuItem?.name ?? t("order_detail.unknown_item")}
                         </p>
                         {item.notes && (
                           <p className="text-xs text-muted-foreground">
-                            Note: {item.notes}
+                            {t("order_detail.note_prefix")}: {item.notes}
                           </p>
                         )}
                       </div>
@@ -130,7 +132,7 @@ export default function OrderDetailPage() {
                   ))}
                 </div>
               ) : (
-                <p className="text-sm text-muted-foreground">No items</p>
+                <p className="text-sm text-muted-foreground">{t("order_detail.no_items")}</p>
               )}
             </CardContent>
           </Card>
@@ -140,7 +142,7 @@ export default function OrderDetailPage() {
               <CardHeader>
                 <CardTitle className="flex items-center gap-2 text-lg">
                   <FileText className="h-5 w-5" />
-                  Order Notes
+                  {t("order_detail.notes_card")}
                 </CardTitle>
               </CardHeader>
               <CardContent>
@@ -154,18 +156,18 @@ export default function OrderDetailPage() {
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-lg">
-                <Clock className="h-5 w-5" />
-                Timestamps
+                  <Clock className="h-5 w-5" />
+                  {t("order_detail.timestamps_card")}
               </CardTitle>
             </CardHeader>
             <CardContent>
               <div className="space-y-2 text-sm">
                 <div className="flex justify-between">
-                  <span className="text-muted-foreground">Created</span>
+                  <span className="text-muted-foreground">{t("order_detail.created")}</span>
                   <span>{formatDate(order.createdAt)}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-muted-foreground">Last Updated</span>
+                  <span className="text-muted-foreground">{t("order_detail.last_updated")}</span>
                   <span>{formatDate(order.updatedAt)}</span>
                 </div>
               </div>
@@ -178,31 +180,31 @@ export default function OrderDetailPage() {
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-lg">
                 <Package className="h-5 w-5" />
-                Status
+                {t("order_detail.status_card")}
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="flex items-center justify-between">
                 <span className="text-sm text-muted-foreground">
-                  Current Status
+                  {t("order_detail.current_status")}
                 </span>
                 <StatusBadge status={order.status} />
               </div>
               <div className="space-y-2">
-                <label className="text-sm font-medium">Change Status</label>
+                <label className="text-sm font-medium">{t("order_detail.change_status")}</label>
                 <Select
                   value={order.status}
                   onValueChange={handleStatusChange}
                 >
                   <SelectTrigger>
-                    <SelectValue placeholder="Select status" />
+                    <SelectValue placeholder={t("order_detail.select_status")} />
                   </SelectTrigger>
                   <SelectContent>
                     {STATUS_OPTIONS.map((status) => {
                       const config = ORDER_STATUS_CONFIG[status];
                       return (
                         <SelectItem key={status} value={status}>
-                          <span className={config.color}>{config.label}</span>
+                          <span className={config.color}>{t("status." + status)}</span>
                         </SelectItem>
                       );
                     })}
@@ -217,7 +219,7 @@ export default function OrderDetailPage() {
               <CardHeader>
                 <CardTitle className="flex items-center gap-2 text-lg">
                   <User className="h-5 w-5" />
-                  Customer
+                  {t("order_detail.customer_card")}
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-3">

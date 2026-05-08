@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useAuthStore } from "@/stores/auth-store";
+import { useLanguage } from "@/i18n/language-context";
 import { Button } from "@/components/ui/button";
 import { Input, Label } from "@/components/ui/input";
 import { LogIn, Eye, EyeOff } from "lucide-react";
@@ -11,6 +12,7 @@ import { LogIn, Eye, EyeOff } from "lucide-react";
 export default function RegisterPage() {
   const router = useRouter();
   const { apiKey, setApiKey, register, isLoading } = useAuthStore();
+  const { t } = useLanguage();
 
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -23,7 +25,7 @@ export default function RegisterPage() {
     setError(null);
 
     if (!apiKey) {
-      setError("API Key is required");
+      setError(t("login.api_key_required"));
       return;
     }
 
@@ -31,7 +33,7 @@ export default function RegisterPage() {
       await register(email, password, name || undefined);
       router.push("/dashboard");
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Registration failed");
+      setError(err instanceof Error ? err.message : t("register.registration_failed"));
     }
   };
 
@@ -39,10 +41,10 @@ export default function RegisterPage() {
     <form onSubmit={handleSubmit} className="space-y-5">
       <div className="space-y-1.5">
         <h2 className="text-xl font-semibold text-foreground">
-          Create an account
+          {t("register.title")}
         </h2>
         <p className="text-sm text-muted-foreground">
-          Set up your restaurant dashboard
+          {t("register.subtitle")}
         </p>
       </div>
 
@@ -53,22 +55,22 @@ export default function RegisterPage() {
       )}
 
       <div className="space-y-2">
-        <Label htmlFor="apiKey">API Key</Label>
+        <Label htmlFor="apiKey">{t("login.api_key_label")}</Label>
         <Input
           id="apiKey"
           type="password"
-          placeholder="Enter your business API key"
+          placeholder={t("login.api_key_placeholder")}
           value={apiKey ?? ""}
           onChange={(e) => setApiKey(e.target.value)}
         />
       </div>
 
       <div className="space-y-2">
-        <Label htmlFor="name">Full Name</Label>
+        <Label htmlFor="name">{t("register.full_name_label")}</Label>
         <Input
           id="name"
           type="text"
-          placeholder="Your name"
+          placeholder={t("register.full_name_placeholder")}
           value={name}
           onChange={(e) => setName(e.target.value)}
           autoComplete="name"
@@ -76,11 +78,11 @@ export default function RegisterPage() {
       </div>
 
       <div className="space-y-2">
-        <Label htmlFor="email">Email</Label>
+        <Label htmlFor="email">{t("login.email_label")}</Label>
         <Input
           id="email"
           type="email"
-          placeholder="admin@example.com"
+          placeholder={t("login.email_placeholder")}
           value={email}
           onChange={(e) => setEmail(e.target.value)}
           required
@@ -89,12 +91,12 @@ export default function RegisterPage() {
       </div>
 
       <div className="space-y-2">
-        <Label htmlFor="password">Password</Label>
+        <Label htmlFor="password">{t("login.password_label")}</Label>
         <div className="relative">
           <Input
             id="password"
             type={showPassword ? "text" : "password"}
-            placeholder="••••••••"
+            placeholder={t("login.password_placeholder")}
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             required
@@ -118,16 +120,16 @@ export default function RegisterPage() {
 
       <Button type="submit" className="w-full" loading={isLoading}>
         <LogIn className="h-4 w-4" />
-        Create Account
+        {t("register.create_account")}
       </Button>
 
       <p className="text-center text-sm text-muted-foreground">
-        Already have an account?{" "}
+        {t("register.have_account")}{" "}
         <Link
           href="/login"
           className="font-medium text-primary hover:text-primary/90 transition-colors"
         >
-          Sign in
+          {t("register.sign_in")}
         </Link>
       </p>
     </form>

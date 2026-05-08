@@ -19,6 +19,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useMenuStore } from "@/stores/menu-store";
+import { useLanguage } from "@/i18n/language-context";
 import type { MenuItem, MenuCategory } from "@/lib/types";
 
 interface MenuItemDialogProps {
@@ -37,6 +38,7 @@ export function MenuItemDialog({
   onSuccess,
 }: MenuItemDialogProps) {
   const isEditing = !!item;
+  const { t } = useLanguage();
   const { categories, createItem, updateItem } = useMenuStore();
 
   const [name, setName] = useState(item?.name ?? "");
@@ -50,11 +52,11 @@ export function MenuItemDialog({
 
   const validate = (): boolean => {
     const errs: Record<string, string> = {};
-    if (!name.trim()) errs.name = "Name is required";
-    if (!selectedCategoryId) errs.categoryId = "Category is required";
+    if (!name.trim()) errs.name = t("menu.name_required");
+    if (!selectedCategoryId) errs.categoryId = t("menu.category_required");
     const priceVal = Number(price);
-    if (price === "" || isNaN(priceVal)) errs.price = "Price is required";
-    else if (priceVal < 0) errs.price = "Price must be 0 or greater";
+    if (price === "" || isNaN(priceVal)) errs.price = t("menu.price_required");
+    else if (priceVal < 0) errs.price = t("menu.price_min");
     setErrors(errs);
     return Object.keys(errs).length === 0;
   };
@@ -80,7 +82,7 @@ export function MenuItemDialog({
       onOpenChange(false);
       onSuccess?.();
     } catch {
-      setErrors({ form: "Failed to save item" });
+      setErrors({ form: t("menu.edit_item") });
     } finally {
       setLoading(false);
     }
@@ -90,21 +92,21 @@ export function MenuItemDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>{isEditing ? "Edit Item" : "Add Item"}</DialogTitle>
+          <DialogTitle>{isEditing ? t("menu.edit_item") : t("menu.add_item")}</DialogTitle>
           <DialogDescription>
             {isEditing
-              ? "Update the menu item details below."
-              : "Add a new item to your menu."}
+              ? t("menu.edit_item_desc")
+              : t("menu.add_item_desc")}
           </DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="item-name">Name</Label>
+            <Label htmlFor="item-name">{t("menu.name_label")}</Label>
             <Input
               id="item-name"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              placeholder="e.g. Chicken Shawarma"
+              placeholder={t("menu.item_name_placeholder")}
               disabled={loading}
             />
             {errors.name && (
@@ -112,7 +114,7 @@ export function MenuItemDialog({
             )}
           </div>
           <div className="space-y-2">
-            <Label htmlFor="item-nameAr">Arabic Name (optional)</Label>
+            <Label htmlFor="item-nameAr">{t("menu.name_ar_label")}</Label>
             <Input
               id="item-nameAr"
               value={nameAr}
@@ -123,18 +125,18 @@ export function MenuItemDialog({
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="item-desc">Description</Label>
+            <Label htmlFor="item-desc">{t("menu.item_description_label")}</Label>
             <Input
               id="item-desc"
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              placeholder="Brief description of the item"
+              placeholder={t("menu.item_description_placeholder")}
               disabled={loading}
             />
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label htmlFor="item-price">Price</Label>
+              <Label htmlFor="item-price">{t("menu.price_label")}</Label>
               <Input
                 id="item-price"
                 type="number"
@@ -142,7 +144,7 @@ export function MenuItemDialog({
                 min="0"
                 value={price}
                 onChange={(e) => setPrice(e.target.value)}
-                placeholder="0.00"
+                placeholder={t("menu.price_placeholder")}
                 disabled={loading}
               />
               {errors.price && (
@@ -150,14 +152,14 @@ export function MenuItemDialog({
               )}
             </div>
             <div className="space-y-2">
-              <Label htmlFor="item-category">Category</Label>
+              <Label htmlFor="item-category">{t("menu.category_label")}</Label>
               <Select
                 value={selectedCategoryId}
                 onValueChange={setSelectedCategoryId}
                 disabled={loading}
               >
                 <SelectTrigger id="item-category">
-                  <SelectValue placeholder="Select category" />
+                  <SelectValue placeholder={t("menu.select_category")} />
                 </SelectTrigger>
                 <SelectContent>
                   {categories.map((c: MenuCategory) => (
@@ -181,7 +183,7 @@ export function MenuItemDialog({
               className="h-4 w-4 rounded border-input text-primary focus:ring-2 focus:ring-ring"
               disabled={loading}
             />
-            <Label htmlFor="item-available">Available for ordering</Label>
+            <Label htmlFor="item-available">{t("menu.available_checkbox")}</Label>
           </div>
           {errors.form && (
             <p className="text-sm text-destructive">{errors.form}</p>
@@ -193,10 +195,10 @@ export function MenuItemDialog({
               onClick={() => onOpenChange(false)}
               disabled={loading}
             >
-              Cancel
+              {t("common.cancel")}
             </Button>
             <Button type="submit" loading={loading}>
-              {isEditing ? "Save Changes" : "Add Item"}
+              {isEditing ? t("common.save_changes") : t("menu.add_item")}
             </Button>
           </DialogFooter>
         </form>

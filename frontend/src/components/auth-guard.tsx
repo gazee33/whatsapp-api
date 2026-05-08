@@ -4,6 +4,7 @@ import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useAuthStore } from "@/stores/auth-store";
 import { useShallow } from "zustand/react/shallow";
+import { useLanguage } from "@/i18n/language-context";
 import { PageLoading } from "@/components/shared/loading";
 
 interface AuthGuardProps {
@@ -13,6 +14,7 @@ interface AuthGuardProps {
 
 export function AuthGuard({ children, type }: AuthGuardProps) {
   const router = useRouter();
+  const { t } = useLanguage();
 
   const tenantAuth = useAuthStore(
     useShallow((s) => ({
@@ -43,11 +45,11 @@ export function AuthGuard({ children, type }: AuthGuardProps) {
   }, [auth.hydrated, auth.isAuth, router, type]);
 
   if (!auth.hydrated) {
-    return <PageLoading message="Restoring session..." />;
+    return <PageLoading message={t("auth_guard.restoring_session")} />;
   }
 
   if (!auth.isAuth) {
-    return <PageLoading message="Redirecting to login..." />;
+    return <PageLoading message={t("auth_guard.redirecting")} />;
   }
 
   return <>{children}</>;

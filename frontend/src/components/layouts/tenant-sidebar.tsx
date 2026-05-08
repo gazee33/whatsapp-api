@@ -20,33 +20,36 @@ import {
 } from "lucide-react";
 import { useState } from "react";
 import { useBusinessStore } from "@/stores/business-store";
+import { useLanguage } from "@/i18n/language-context";
 
-const navItems = [
-  {
-    section: "Main",
-    items: [
-      { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
-      { href: "/menu", label: "Menu", icon: UtensilsCrossed },
-      { href: "/orders", label: "Orders", icon: ShoppingBag },
-      { href: "/conversations", label: "Conversations", icon: MessageSquare },
-    ],
-  },
-  {
-    section: "Simulation",
-    items: [
-      { href: "/simulator", label: "Simulator", icon: Terminal },
-    ],
-  },
-  {
-    section: "Management",
-    items: [
-      { href: "/whatsapp", label: "WhatsApp", icon: Radio },
-      { href: "/settings", label: "Settings", icon: Settings },
-      { href: "/users", label: "Users", icon: Users },
-      { href: "/roles", label: "Roles", icon: Shield },
-    ],
-  },
-];
+function getNavItems(t: (key: string) => string) {
+  return [
+    {
+      section: t("sidebar.main"),
+      items: [
+        { href: "/dashboard", label: t("sidebar.dashboard"), icon: LayoutDashboard },
+        { href: "/menu", label: t("sidebar.menu"), icon: UtensilsCrossed },
+        { href: "/orders", label: t("sidebar.orders"), icon: ShoppingBag },
+        { href: "/conversations", label: t("sidebar.conversations"), icon: MessageSquare },
+      ],
+    },
+    {
+      section: t("sidebar.simulation"),
+      items: [
+        { href: "/simulator", label: t("sidebar.simulator"), icon: Terminal },
+      ],
+    },
+    {
+      section: t("sidebar.management"),
+      items: [
+        { href: "/whatsapp", label: t("sidebar.whatsapp"), icon: Radio },
+        { href: "/settings", label: t("sidebar.settings"), icon: Settings },
+        { href: "/users", label: t("sidebar.users"), icon: Users },
+        { href: "/roles", label: t("sidebar.roles"), icon: Shield },
+      ],
+    },
+  ];
+}
 
 interface TenantSidebarProps {
   open: boolean;
@@ -57,6 +60,8 @@ export function TenantSidebar({ open, onClose }: TenantSidebarProps) {
   const pathname = usePathname();
   const [collapsed, setCollapsed] = useState(false);
   const { business } = useBusinessStore();
+  const { t, isRtl } = useLanguage();
+  const navItems = getNavItems(t);
 
   const isActive = (href: string) => {
     return pathname.startsWith(href);
@@ -74,7 +79,7 @@ export function TenantSidebar({ open, onClose }: TenantSidebarProps) {
 
       <aside
         className={cn(
-          "fixed left-0 top-0 z-50 flex h-full flex-col border-r border-sidebar-border bg-sidebar transition-all duration-300",
+          "fixed start-0 top-0 z-50 flex h-full flex-col border-e border-sidebar-border bg-sidebar transition-all duration-300",
           "lg:flex lg:translate-x-0",
           collapsed ? "lg:w-[72px]" : "lg:w-[260px]",
           "w-[260px]",
@@ -110,7 +115,7 @@ export function TenantSidebar({ open, onClose }: TenantSidebarProps) {
                 {business?.name || "Restaurant"}
               </p>
               <p className="truncate text-xs text-muted-foreground">
-                Dashboard
+                {t("sidebar.dashboard")}
               </p>
             </div>
           )}
@@ -163,12 +168,12 @@ export function TenantSidebar({ open, onClose }: TenantSidebarProps) {
             onClick={() => setCollapsed(!collapsed)}
             className="flex w-full items-center justify-center rounded-lg py-2 text-muted-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground transition-colors"
           >
-            {collapsed ? (
+            {collapsed !== isRtl ? (
               <ChevronRight className="h-4 w-4" />
             ) : (
               <>
                 <ChevronLeft className="h-4 w-4" />
-                <span className="ml-2 text-xs">Collapse</span>
+                <span className="ms-2 text-xs">{t("sidebar.collapse")}</span>
               </>
             )}
           </button>

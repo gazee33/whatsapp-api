@@ -8,6 +8,7 @@ import {
   Sun,
   LogOut,
   Menu,
+  Languages,
 } from "lucide-react";
 import { useTheme } from "next-themes";
 import { Button } from "@/components/ui/button";
@@ -20,6 +21,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useRouter } from "next/navigation";
+import { useLanguage } from "@/i18n/language-context";
 
 interface TenantHeaderProps {
   onToggleSidebar: () => void;
@@ -29,6 +31,7 @@ export function TenantHeader({ onToggleSidebar }: TenantHeaderProps) {
   const { user, logout } = useAuthStore();
   const { business } = useBusinessStore();
   const { theme, setTheme } = useTheme();
+  const { t, lang, setLang } = useLanguage();
   const router = useRouter();
 
   const handleLogout = async () => {
@@ -47,7 +50,7 @@ export function TenantHeader({ onToggleSidebar }: TenantHeaderProps) {
           <Menu className="h-5 w-5" />
         </button>
         <h1 className="text-lg font-semibold tracking-tight">
-          {business?.name || "Dashboard"}
+          {business?.name || t("header.dashboard_fallback")}
         </h1>
       </div>
 
@@ -60,7 +63,17 @@ export function TenantHeader({ onToggleSidebar }: TenantHeaderProps) {
         >
           <Sun className="h-5 w-5 rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
           <Moon className="absolute h-5 w-5 rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
-          <span className="sr-only">Toggle theme</span>
+          <span className="sr-only">{t("header.toggle_theme")}</span>
+        </Button>
+
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={() => setLang(lang === "en" ? "ar" : "en")}
+          className="text-muted-foreground hover:text-foreground"
+          title={t("header.toggle_language")}
+        >
+          <Languages className="h-5 w-5" />
         </Button>
 
         <DropdownMenu>
@@ -75,7 +88,7 @@ export function TenantHeader({ onToggleSidebar }: TenantHeaderProps) {
             <DropdownMenuLabel className="font-normal">
               <div className="flex flex-col space-y-1">
                 <p className="text-sm font-medium leading-none">
-                  {user?.name || "User"}
+                  {user?.name || t("header.user_fallback")}
                 </p>
                 <p className="text-xs leading-none text-muted-foreground">
                   {user?.email}
@@ -84,12 +97,12 @@ export function TenantHeader({ onToggleSidebar }: TenantHeaderProps) {
             </DropdownMenuLabel>
             <DropdownMenuSeparator />
             <DropdownMenuItem onClick={() => router.push("/settings")}>
-              Settings
+              {t("header.settings")}
             </DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem onClick={handleLogout} className="text-destructive">
-              <LogOut className="mr-2 h-4 w-4" />
-              Log out
+              <LogOut className="me-2 h-4 w-4" />
+              {t("header.log_out")}
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>

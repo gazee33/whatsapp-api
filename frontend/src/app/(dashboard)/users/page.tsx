@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback } from "react";
 import { tenantClient } from "@/lib/api-client";
+import { useLanguage } from "@/i18n/language-context";
 import { Button } from "@/components/ui/button";
 import { Input, Label } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -40,6 +41,7 @@ import {
 } from "lucide-react";
 
 export default function UsersPage() {
+  const { t } = useLanguage();
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   const [roles, setRoles] = useState<Role[]>([]);
@@ -49,11 +51,11 @@ export default function UsersPage() {
       const res = await tenantClient.get("/users");
       setUsers(res.data.users ?? res.data);
     } catch {
-      toast.error("Failed to load users");
+      toast.error(t("users.title"));
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [t]);
 
   const fetchRoles = useCallback(async () => {
     try {
@@ -85,14 +87,14 @@ export default function UsersPage() {
         password: addPassword,
         name: addName || undefined,
       });
-      toast.success("User created");
+      toast.success(t("users.user_created"));
       setAddOpen(false);
       setAddEmail("");
       setAddPassword("");
       setAddName("");
       fetchUsers();
     } catch {
-      toast.error("Failed to create user");
+      toast.error(t("users.user_create_failed"));
     } finally {
       setAdding(false);
     }
@@ -115,11 +117,11 @@ export default function UsersPage() {
     setEditing(true);
     try {
       await tenantClient.put(`/users/${editUser.id}`, { name: editName });
-      toast.success("User updated");
+      toast.success(t("users.user_updated"));
       setEditOpen(false);
       fetchUsers();
     } catch {
-      toast.error("Failed to update user");
+      toast.error(t("users.user_update_failed"));
     } finally {
       setEditing(false);
     }
@@ -131,22 +133,22 @@ export default function UsersPage() {
       await tenantClient.put(`/users/${user.id}`, {
         isActive: !user.isActive,
       });
-      toast.success(user.isActive ? "User deactivated" : "User activated");
+      toast.success(user.isActive ? t("users.user_deactivated") : t("users.user_activated"));
       fetchUsers();
     } catch {
-      toast.error("Failed to update user");
+      toast.error(t("users.user_update_failed"));
     }
   };
 
   // ── Delete User ──
   const deleteUser = async (user: User) => {
-    if (!confirm(`Delete user "${user.email}"?`)) return;
+    if (!confirm(t("users.delete_user_tip") + ` "${user.email}"?`)) return;
     try {
       await tenantClient.delete(`/users/${user.id}`);
-      toast.success("User deleted");
+      toast.success(t("users.user_deleted"));
       fetchUsers();
     } catch {
-      toast.error("Failed to delete user");
+      toast.error(t("users.user_delete_failed"));
     }
   };
 
@@ -169,11 +171,11 @@ export default function UsersPage() {
       await tenantClient.post(`/users/${roleUser.id}/roles`, {
         roleId: selectedRole,
       });
-      toast.success("Role assigned");
+      toast.success(t("users.role_assigned"));
       setRoleOpen(false);
       fetchUsers();
     } catch {
-      toast.error("Failed to assign role");
+      toast.error(t("users.role_assign_failed"));
     } finally {
       setAssigning(false);
     }
@@ -183,10 +185,10 @@ export default function UsersPage() {
   const removeRole = async (userId: string, roleId: string) => {
     try {
       await tenantClient.delete(`/users/${userId}/roles/${roleId}`);
-      toast.success("Role removed");
+      toast.success(t("users.role_removed"));
       fetchUsers();
     } catch {
-      toast.error("Failed to remove role");
+      toast.error(t("users.role_remove_failed"));
     }
   };
 
@@ -213,51 +215,51 @@ export default function UsersPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">Users</h1>
+          <h1 className="text-2xl font-bold tracking-tight">{t("users.title")}</h1>
           <p className="text-sm text-muted-foreground">
-            Manage team members and their access
+            {t("users.subtitle")}
           </p>
         </div>
         <Dialog open={addOpen} onOpenChange={setAddOpen}>
           <DialogTrigger asChild>
             <Button>
               <Plus className="h-4 w-4" />
-              Add User
+              {t("users.add")}
             </Button>
           </DialogTrigger>
           <DialogContent>
             <DialogHeader>
-              <DialogTitle>Add Team Member</DialogTitle>
+              <DialogTitle>{t("users.add_title")}</DialogTitle>
               <DialogDescription>
-                Create an account for a new team member
+                {t("users.add_desc")}
               </DialogDescription>
             </DialogHeader>
             <div className="space-y-4 py-2">
               <div className="space-y-2">
-                <Label htmlFor="add-email">Email</Label>
+                <Label htmlFor="add-email">{t("users.email_label")}</Label>
                 <Input
                   id="add-email"
                   type="email"
-                  placeholder="user@example.com"
+                  placeholder={t("users.email_placeholder")}
                   value={addEmail}
                   onChange={(e) => setAddEmail(e.target.value)}
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="add-password">Password</Label>
+                <Label htmlFor="add-password">{t("users.password_label")}</Label>
                 <Input
                   id="add-password"
                   type="password"
-                  placeholder="••••••••"
+                  placeholder={t("users.password_placeholder")}
                   value={addPassword}
                   onChange={(e) => setAddPassword(e.target.value)}
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="add-name">Name (optional)</Label>
+                <Label htmlFor="add-name">{t("users.name_optional_label")}</Label>
                 <Input
                   id="add-name"
-                  placeholder="Ahmed Mohammed"
+                  placeholder={t("users.name_placeholder")}
                   value={addName}
                   onChange={(e) => setAddName(e.target.value)}
                 />
@@ -265,11 +267,11 @@ export default function UsersPage() {
             </div>
             <DialogFooter>
               <Button variant="outline" onClick={() => setAddOpen(false)}>
-                Cancel
+                {t("common.cancel")}
               </Button>
               <Button onClick={handleAdd} loading={adding}>
                 <UserPlus className="h-4 w-4" />
-                Create User
+                {t("users.create_user")}
               </Button>
             </DialogFooter>
           </DialogContent>
@@ -281,14 +283,14 @@ export default function UsersPage() {
       {users.length === 0 ? (
         <EmptyState
           icon={Users}
-          title="No team members"
-          description="Add your first team member to get started."
+          title={t("users.no_users")}
+          description={t("users.no_users_desc")}
           action={
             <Dialog open={addOpen} onOpenChange={setAddOpen}>
               <DialogTrigger asChild>
                 <Button>
                   <Plus className="h-4 w-4" />
-                  Add User
+                  {t("users.add")}
                 </Button>
               </DialogTrigger>
             </Dialog>
@@ -299,7 +301,7 @@ export default function UsersPage() {
           <CardHeader className="pb-3">
             <CardTitle className="text-base flex items-center gap-2">
               <Users className="h-4 w-4" />
-              Team Members ({users.length})
+              {t("users.team_members")} ({users.length})
             </CardTitle>
           </CardHeader>
           <CardContent className="p-0">
@@ -308,19 +310,19 @@ export default function UsersPage() {
                 <thead>
                   <tr className="border-b text-left">
                     <th className="py-3 px-3 sm:px-6 text-xs font-medium text-muted-foreground">
-                      User
+                      {t("users.col_user")}
                     </th>
                     <th className="py-3 px-3 sm:px-6 text-xs font-medium text-muted-foreground hidden sm:table-cell">
-                      Roles
+                      {t("users.col_roles")}
                     </th>
                     <th className="py-3 px-3 sm:px-6 text-xs font-medium text-muted-foreground">
-                      Status
+                      {t("users.col_status")}
                     </th>
                     <th className="py-3 px-3 sm:px-6 text-xs font-medium text-muted-foreground hidden md:table-cell">
-                      Last Login
+                      {t("users.col_last_login")}
                     </th>
                     <th className="py-3 px-3 sm:px-6 text-xs font-medium text-muted-foreground text-right">
-                      Actions
+                      {t("users.col_actions")}
                     </th>
                   </tr>
                 </thead>
@@ -359,7 +361,7 @@ export default function UsersPage() {
                             ))
                           ) : (
                             <span className="text-xs text-muted-foreground">
-                              No roles
+                              {t("users.no_roles")}
                             </span>
                           )}
                         </div>
@@ -373,14 +375,14 @@ export default function UsersPage() {
                             )}
                           />
                           <span className="text-xs">
-                            {user.isActive ? "Active" : "Inactive"}
+                            {user.isActive ? t("users.active") : t("users.inactive")}
                           </span>
                         </div>
                       </td>
                       <td className="py-3 px-3 sm:px-6 text-xs text-muted-foreground hidden md:table-cell">
                         {user.lastLoginAt
                           ? formatDate(user.lastLoginAt)
-                          : "Never"}
+                          : t("users.never")}
                       </td>
                       <td className="py-3 px-3 sm:px-6">
                         <div className="flex items-center justify-end gap-1">
@@ -388,7 +390,7 @@ export default function UsersPage() {
                             variant="ghost"
                             size="icon"
                             onClick={() => openEdit(user)}
-                            title="Edit user"
+                            title={t("users.edit_user_tip")}
                           >
                             <Edit className="h-4 w-4" />
                           </Button>
@@ -396,7 +398,7 @@ export default function UsersPage() {
                             variant="ghost"
                             size="icon"
                             onClick={() => toggleActive(user)}
-                            title={user.isActive ? "Deactivate" : "Activate"}
+                            title={user.isActive ? t("users.deactivate_tip") : t("users.activate_tip")}
                           >
                             {user.isActive ? (
                               <UserX className="h-4 w-4" />
@@ -408,7 +410,7 @@ export default function UsersPage() {
                             variant="ghost"
                             size="icon"
                             onClick={() => openRoleDialog(user)}
-                            title="Assign role"
+                            title={t("users.assign_role_tip")}
                           >
                             <Shield className="h-4 w-4" />
                           </Button>
@@ -416,7 +418,7 @@ export default function UsersPage() {
                             variant="ghost"
                             size="icon"
                             onClick={() => deleteUser(user)}
-                            title="Delete user"
+                            title={t("users.delete_user_tip")}
                           >
                             <Trash2 className="h-4 w-4 text-destructive" />
                           </Button>
@@ -435,14 +437,14 @@ export default function UsersPage() {
       <Dialog open={editOpen} onOpenChange={setEditOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Edit User</DialogTitle>
+            <DialogTitle>{t("users.edit_title")}</DialogTitle>
             <DialogDescription>
-              Update details for {editUser?.email}
+              {t("users.edit_desc")} {editUser?.email}
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-2">
             <div className="space-y-2">
-              <Label htmlFor="edit-name">Name</Label>
+              <Label htmlFor="edit-name">{t("users.name_label")}</Label>
               <Input
                 id="edit-name"
                 value={editName}
@@ -452,10 +454,10 @@ export default function UsersPage() {
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setEditOpen(false)}>
-              Cancel
+              {t("common.cancel")}
             </Button>
             <Button onClick={handleEdit} loading={editing}>
-              Save Changes
+              {t("common.save_changes")}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -465,37 +467,37 @@ export default function UsersPage() {
       <Dialog open={roleOpen} onOpenChange={setRoleOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Assign Role</DialogTitle>
+            <DialogTitle>{t("users.assign_role_title")}</DialogTitle>
             <DialogDescription>
-              Give {roleUser?.email} a new role
+              {t("users.assign_role_desc")} {roleUser?.email}
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-2">
             <div className="space-y-2">
-              <Label htmlFor="role-select">Role</Label>
+              <Label htmlFor="role-select">{t("users.role_label")}</Label>
               <Select value={selectedRole} onValueChange={setSelectedRole}>
                 <SelectTrigger id="role-select">
-                  <SelectValue placeholder="Select a role" />
+                  <SelectValue placeholder={t("users.select_role")} />
                 </SelectTrigger>
                 <SelectContent>
                   {availableRoles.map((role) => (
                     <SelectItem key={role.id} value={role.id}>
                       {role.name}
-                      {role.isSystem && " (System)"}
+                      {role.isSystem && ` (${t("users.system_suffix")})`}
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
               {availableRoles.length === 0 && (
                 <p className="text-xs text-muted-foreground">
-                  All available roles are already assigned.
+                  {t("users.all_roles_assigned")}
                 </p>
               )}
             </div>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setRoleOpen(false)}>
-              Cancel
+              {t("common.cancel")}
             </Button>
             <Button
               onClick={handleAssignRole}
@@ -503,7 +505,7 @@ export default function UsersPage() {
               disabled={!selectedRole}
             >
               <Shield className="h-4 w-4" />
-              Assign Role
+              {t("users.assign_role_title")}
             </Button>
           </DialogFooter>
         </DialogContent>

@@ -79,3 +79,22 @@ export const COMPLAINT_STATUS_CONFIG: Record<
   resolved: { label: "Resolved", color: "text-green-600" },
   closed: { label: "Closed", color: "text-gray-500" },
 };
+
+export function getOrderStatusConfig(t: (key: string) => string) {
+  return {
+    pending: { label: t("status.pending"), color: "text-yellow-700", bgColor: "bg-yellow-100" },
+    confirmed: { label: t("status.confirmed"), color: "text-blue-700", bgColor: "bg-blue-100" },
+    preparing: { label: t("status.preparing"), color: "text-purple-700", bgColor: "bg-purple-100" },
+    ready: { label: t("status.ready"), color: "text-green-700", bgColor: "bg-green-100" },
+    delivered: { label: t("status.delivered"), color: "text-emerald-700", bgColor: "bg-emerald-100" },
+    cancelled: { label: t("status.cancelled"), color: "text-red-700", bgColor: "bg-red-100" },
+  };
+}
+
+export function getComplaintStatusConfig(t: (key: string) => string) {
+  return {
+    open: { label: t("status.open"), color: "text-red-600" },
+    resolved: { label: t("status.resolved"), color: "text-green-600" },
+    closed: { label: t("status.closed"), color: "text-gray-500" },
+  };
+}

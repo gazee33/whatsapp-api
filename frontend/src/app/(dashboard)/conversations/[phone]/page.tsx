@@ -2,6 +2,7 @@
 
 import { useEffect, useRef } from "react";
 import { useParams, useRouter } from "next/navigation";
+import { useLanguage } from "@/i18n/language-context";
 import { ArrowLeft, Phone, MessageSquare } from "lucide-react";
 import { useConversationStore } from "@/stores/conversation-store";
 import { Button } from "@/components/ui/button";
@@ -50,13 +51,13 @@ function MessageBubble({ message }: { message: Message }) {
   );
 }
 
-function SessionGroup({ sessionId, messages }: { sessionId: string; messages: Message[] }) {
+function SessionGroup({ sessionId, messages, t }: { sessionId: string; messages: Message[]; t: (key: string) => string }) {
   return (
     <div className="space-y-1">
       <div className="flex items-center gap-2 py-2">
         <div className="h-px flex-1 bg-border" />
         <span className="text-xs text-muted-foreground shrink-0">
-          Session {sessionId.slice(0, 8)}
+          {t("conv_detail.session")} {sessionId.slice(0, 8)}
         </span>
         <div className="h-px flex-1 bg-border" />
       </div>
@@ -70,6 +71,7 @@ function SessionGroup({ sessionId, messages }: { sessionId: string; messages: Me
 }
 
 export default function ConversationDetailPage() {
+  const { t } = useLanguage();
   const params = useParams();
   const router = useRouter();
   const phone = decodeURIComponent(params.phone as string);
@@ -121,7 +123,7 @@ export default function ConversationDetailPage() {
         className="-ml-2"
       >
         <ArrowLeft className="h-4 w-4" />
-        Back
+        {t("common.back")}
       </Button>
 
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
@@ -136,7 +138,7 @@ export default function ConversationDetailPage() {
             </span>
             <span className="flex items-center gap-1">
               <MessageSquare className="h-3.5 w-3.5" />
-              {totalMessages} messages
+              {totalMessages} {t("conv_detail.messages_count")}
             </span>
           </div>
         </div>
@@ -146,8 +148,8 @@ export default function ConversationDetailPage() {
         {sessionEntries.length === 0 ? (
           <EmptyState
             icon={MessageSquare}
-            title="No messages"
-            description="No messages found in this conversation"
+            title={t("conv_detail.no_messages")}
+            description={t("conv_detail.no_messages_desc")}
           />
         ) : (
           <div className="space-y-6">
@@ -156,6 +158,7 @@ export default function ConversationDetailPage() {
                 key={sessionId}
                 sessionId={sessionId}
                 messages={messages}
+                t={t}
               />
             ))}
             <div ref={bottomRef} />

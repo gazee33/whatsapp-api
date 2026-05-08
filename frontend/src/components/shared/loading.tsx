@@ -10,16 +10,19 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useLanguage } from "@/i18n/language-context";
 
 interface PageLoadingProps {
   message?: string;
 }
 
-export function PageLoading({ message = "Loading..." }: PageLoadingProps) {
+export function PageLoading({ message }: PageLoadingProps) {
+  const { t } = useLanguage();
+  const displayMessage = message ?? t("common.loading");
   return (
     <div className="flex flex-1 flex-col items-center justify-center gap-3 py-20">
       <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-      <p className="text-sm text-muted-foreground">{message}</p>
+      <p className="text-sm text-muted-foreground">{displayMessage}</p>
     </div>
   );
 }

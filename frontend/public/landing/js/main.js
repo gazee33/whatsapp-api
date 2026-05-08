@@ -86,7 +86,6 @@
     var navbar = document.getElementById('navbar');
     if (!navbar) return;
 
-    var lastScroll = 0;
     window.addEventListener('scroll', function () {
       var currentScroll = window.pageYOffset;
       if (currentScroll > 50) {
@@ -94,7 +93,6 @@
       } else {
         navbar.classList.remove('shadow-md');
       }
-      lastScroll = currentScroll;
     });
   }
 

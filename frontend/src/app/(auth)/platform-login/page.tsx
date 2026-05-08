@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useAuthStore } from "@/stores/auth-store";
+import { useLanguage } from "@/i18n/language-context";
 import { Button } from "@/components/ui/button";
 import { Input, Label } from "@/components/ui/input";
 import { Shield, Eye, EyeOff, LogIn } from "lucide-react";
@@ -11,6 +12,7 @@ import { Shield, Eye, EyeOff, LogIn } from "lucide-react";
 export default function PlatformLoginPage() {
   const router = useRouter();
   const { platformLogin, isLoading } = useAuthStore();
+  const { t } = useLanguage();
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -26,7 +28,7 @@ export default function PlatformLoginPage() {
       router.push("/platform");
     } catch (err) {
       setError(
-        err instanceof Error ? err.message : "Invalid platform credentials"
+        err instanceof Error ? err.message : t("platform_login.invalid")
       );
     }
   };
@@ -38,10 +40,10 @@ export default function PlatformLoginPage() {
           <Shield className="h-5 w-5 text-amber-500" />
         </div>
         <h2 className="text-xl font-semibold text-foreground">
-          Platform Admin
+          {t("platform_login.title")}
         </h2>
         <p className="text-sm text-muted-foreground">
-          Sign in to the platform management console
+          {t("platform_login.subtitle")}
         </p>
       </div>
 
@@ -52,7 +54,7 @@ export default function PlatformLoginPage() {
       )}
 
       <div className="space-y-2">
-        <Label htmlFor="email">Email</Label>
+        <Label htmlFor="email">{t("login.email_label")}</Label>
         <Input
           id="email"
           type="email"
@@ -65,12 +67,12 @@ export default function PlatformLoginPage() {
       </div>
 
       <div className="space-y-2">
-        <Label htmlFor="password">Password</Label>
+        <Label htmlFor="password">{t("login.password_label")}</Label>
         <div className="relative">
           <Input
             id="password"
             type={showPassword ? "text" : "password"}
-            placeholder="••••••••"
+            placeholder={t("login.password_placeholder")}
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             required
@@ -94,7 +96,7 @@ export default function PlatformLoginPage() {
 
       <Button type="submit" className="w-full" loading={isLoading}>
         <LogIn className="h-4 w-4" />
-        Sign In to Platform
+        {t("platform_login.sign_in")}
       </Button>
 
       <p className="text-center text-sm text-muted-foreground">
@@ -102,7 +104,7 @@ export default function PlatformLoginPage() {
           href="/login"
           className="font-medium text-primary/70 hover:text-primary transition-colors"
         >
-          Back to restaurant login
+          {t("platform_login.back_restaurant")}
         </Link>
       </p>
     </form>

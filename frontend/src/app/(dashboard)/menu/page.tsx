@@ -12,6 +12,7 @@ import {
   ChevronUp,
 } from "lucide-react";
 import { useMenuStore } from "@/stores/menu-store";
+import { useLanguage } from "@/i18n/language-context";
 import { formatCurrency } from "@/lib/utils";
 import { cn } from "@/lib/utils";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -26,6 +27,7 @@ import { MenuItemDialog } from "./components/menu-item-dialog";
 import type { MenuCategory, MenuItem } from "@/lib/types";
 
 export default function MenuPage() {
+  const { t } = useLanguage();
   const {
     categories,
     searchResults,
@@ -101,7 +103,7 @@ export default function MenuPage() {
   };
 
   const handleDeleteItem = async (item: MenuItem) => {
-    if (!confirm(`Delete "${item.name}"? This cannot be undone.`)) return;
+    if (!confirm(`${t("menu.off_badge")} "${item.name}"?`)) return;
     await deleteItem(item.id);
   };
 

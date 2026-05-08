@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect } from "react";
 import { MessageSquare, Send, RotateCcw } from "lucide-react";
 import { useSimulatorStore } from "@/stores/simulator-store";
+import { useLanguage } from "@/i18n/language-context";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { EmptyState } from "@/components/shared/empty-state";
@@ -36,6 +37,7 @@ function SimMessage({ message }: { message: { role: string; content: string; tim
 }
 
 export default function SimulatorPage() {
+  const { t } = useLanguage();
   const { messages, isLoading, error, sendMessage, reset } = useSimulatorStore();
   const [input, setInput] = useState("");
   const bottomRef = useRef<HTMLDivElement>(null);
@@ -64,9 +66,9 @@ export default function SimulatorPage() {
     <div className="flex h-[calc(100vh-8rem)] flex-col">
       <div className="flex items-center justify-between mb-4">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">Simulator</h1>
+          <h1 className="text-2xl font-bold tracking-tight">{t("simulator.title")}</h1>
           <p className="text-sm text-muted-foreground">
-            Test how the AI assistant responds to customer messages
+            {t("simulator.subtitle")}
           </p>
         </div>
         <Button
@@ -76,7 +78,7 @@ export default function SimulatorPage() {
           disabled={isLoading || messages.length === 0}
         >
           <RotateCcw className="h-4 w-4" />
-          Reset
+          {t("simulator.reset")}
         </Button>
       </div>
 
@@ -84,8 +86,8 @@ export default function SimulatorPage() {
         {messages.length === 0 ? (
           <EmptyState
             icon={MessageSquare}
-            title="Send a test message"
-            description="Type a message below to simulate a customer and see how the AI assistant responds."
+            title={t("simulator.empty_title")}
+            description={t("simulator.empty_desc")}
           />
         ) : (
           <div className="space-y-4">
@@ -118,13 +120,13 @@ export default function SimulatorPage() {
           value={input}
           onChange={(e) => setInput(e.target.value)}
           onKeyDown={handleKeyDown}
-          placeholder="Type a customer message..."
+          placeholder={t("simulator.placeholder")}
           disabled={isLoading}
           className="flex-1"
         />
         <Button onClick={handleSend} disabled={!input.trim() || isLoading} loading={isLoading}>
           <Send className="h-4 w-4" />
-          Send
+          {t("simulator.send")}
         </Button>
       </div>
     </div>

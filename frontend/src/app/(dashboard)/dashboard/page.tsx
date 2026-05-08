@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import { useLanguage } from "@/i18n/language-context";
 import {
   ShoppingBag,
   DollarSign,
@@ -25,28 +26,29 @@ import { formatCurrency, formatTimeAgo, truncate, cn } from "@/lib/utils";
 
 const statCards = [
   {
-    label: "Total Orders",
+    labelKey: "dashboard.total_orders",
     icon: ShoppingBag,
     bg: "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400",
   },
   {
-    label: "Revenue",
+    labelKey: "dashboard.revenue",
     icon: DollarSign,
     bg: "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400",
   },
   {
-    label: "Pending Orders",
+    labelKey: "dashboard.pending_orders",
     icon: Clock,
     bg: "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400",
   },
   {
-    label: "Active Conversations",
+    labelKey: "dashboard.active_conversations",
     icon: MessageSquare,
     bg: "bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400",
   },
 ] as const;
 
 export default function DashboardPage() {
+  const { t } = useLanguage();
   const { orders, isLoading: ordersLoading, fetchOrders } = useOrderStore();
   const { conversations, isLoading: convosLoading, fetchConversations } =
     useConversationStore();
@@ -57,6 +59,7 @@ export default function DashboardPage() {
 
   const [bannerDismissed, setBannerDismissed] = useState(false);
 
+  /* eslint-disable react-hooks/set-state-in-effect */
   useEffect(() => {
     if (business?.id) {
       const key = `whatsapp-banner-dismissed-${business.id}`;
@@ -65,6 +68,7 @@ export default function DashboardPage() {
       }
     }
   }, [business?.id]);
+  /* eslint-enable react-hooks/set-state-in-effect */
 
   const dismissBanner = () => {
     if (!business?.id) return;
@@ -151,7 +155,7 @@ export default function DashboardPage() {
 
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-bold tracking-tight">Dashboard</h1>
+      <h1 className="text-2xl font-bold tracking-tight">{t("dashboard.title")}</h1>
 
       {/* WhatsApp Setup Banner */}
       {isNotOnboarded && !bannerDismissed && (
@@ -161,15 +165,14 @@ export default function DashboardPage() {
           </div>
           <div className="min-w-0 flex-1">
             <p className="text-sm font-medium">
-              Complete your WhatsApp setup
+              {t("dashboard.whatsapp_setup_banner")}
             </p>
             <p className="text-xs text-muted-foreground">
-              Connect WhatsApp to start receiving customer orders directly
-              through the AI assistant.
+              {t("dashboard.whatsapp_setup_desc")}
             </p>
           </div>
           <Button variant="outline" size="sm" asChild>
-            <Link href="/whatsapp">Setup</Link>
+            <Link href="/whatsapp">{t("dashboard.setup")}</Link>
           </Button>
           <button
             onClick={dismissBanner}
@@ -183,7 +186,7 @@ export default function DashboardPage() {
       {/* Stat Cards */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {statCards.map((stat, i) => (
-          <Card key={stat.label}>
+          <Card key={stat.labelKey}>
             <CardContent className="p-4 sm:p-6">
               <div className="flex items-center justify-between">
                 <div className={cn("rounded-lg p-2.5", stat.bg)}>
@@ -195,7 +198,7 @@ export default function DashboardPage() {
                 <p className="text-2xl font-bold tracking-tight tabular-nums">
                   {stats[i]}
                 </p>
-                <p className="text-sm text-muted-foreground">{stat.label}</p>
+                <p className="text-sm text-muted-foreground">{t(stat.labelKey)}</p>
               </div>
             </CardContent>
           </Card>
@@ -205,10 +208,10 @@ export default function DashboardPage() {
       {/* Recent Orders */}
       <Card>
         <CardHeader className="flex flex-row items-center justify-between pb-2">
-          <CardTitle>Recent Orders</CardTitle>
+          <CardTitle>{t("dashboard.recent_orders")}</CardTitle>
           <Button variant="ghost" size="sm" asChild>
             <Link href="/orders">
-              View all
+              {t("orders.title")}
               <ArrowUpRight className="ml-1 h-4 w-4" />
             </Link>
           </Button>
@@ -217,8 +220,8 @@ export default function DashboardPage() {
           {recentOrders.length === 0 ? (
             <EmptyState
               icon={PackageOpen}
-              title="No orders yet"
-              description="Orders placed by customers will appear here."
+              title={t("dashboard.no_orders")}
+              description={t("dashboard.no_orders_desc")}
             />
           ) : (
             <div className="space-y-2">
@@ -254,10 +257,10 @@ export default function DashboardPage() {
       {/* Recent Conversations */}
       <Card>
         <CardHeader className="flex flex-row items-center justify-between pb-2">
-          <CardTitle>Recent Conversations</CardTitle>
+          <CardTitle>{t("dashboard.recent_conversations")}</CardTitle>
           <Button variant="ghost" size="sm" asChild>
             <Link href="/conversations">
-              View all
+              {t("conversations.title")}
               <ArrowUpRight className="ml-1 h-4 w-4" />
             </Link>
           </Button>
@@ -266,8 +269,8 @@ export default function DashboardPage() {
           {recentConversations.length === 0 ? (
             <EmptyState
               icon={MessageCircle}
-              title="No conversations yet"
-              description="Customer conversations will appear here when messages come in."
+              title={t("dashboard.no_conversations")}
+              description={t("dashboard.no_conversations_desc")}
             />
           ) : (
             <div className="space-y-2">

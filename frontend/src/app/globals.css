@@ -35,6 +35,7 @@
   --font-mono: var(--font-geist-mono);
   --font-serif: var(--font-playfair);
   --font-karla: var(--font-karla);
+  --font-cairo: var(--font-cairo);
 }
 
 :root {
@@ -143,4 +144,19 @@ body {
 
 .animate-slide-in-right {
   animation: slide-in-right 0.3s ease-out;
+}
+
+/* Arabic RTL overrides */
+[dir="rtl"] body {
+  font-family: var(--font-cairo), system-ui, -apple-system, sans-serif;
+}
+
+[dir="rtl"] .lucide-chevron-left,
+[dir="rtl"] .lucide-arrow-right {
+  transform: scaleX(-1);
+}
+
+[dir="rtl"] .lucide-chevron-right,
+[dir="rtl"] .lucide-arrow-left {
+  transform: scaleX(-1);
 }

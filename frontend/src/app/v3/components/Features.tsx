@@ -1,3 +1,4 @@
+/* eslint-disable @next/next/no-img-element */
 import { Bot, Zap, ShieldCheck, RefreshCw } from "lucide-react";
 
 export default function Features() {
@@ -132,7 +133,7 @@ export default function Features() {
                 </div>
                 <div className="space-y-4">
                   <div className="bg-slate-800 p-3 rounded-lg text-sm border-s-4 border-emerald-500">
-                    <p className="text-slate-300">"أريد التحدث مع خدمة العملاء بخصوص شكوى"</p>
+                    <p className="text-slate-300">&ldquo;أريد التحدث مع خدمة العملاء بخصوص شكوى&rdquo;</p>
                   </div>
                   <div className="flex items-center gap-3 text-sm text-yellow-400">
                     <RefreshCw className="w-4 h-4" />
