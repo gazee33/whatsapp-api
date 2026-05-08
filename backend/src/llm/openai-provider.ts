@@ -118,6 +118,23 @@ export class OpenAIProvider implements LLMProvider {
           content: msg.content,
           tool_call_id: msg.toolCallId,
         });
+      } else if (msg.role === 'assistant' && (msg as any).toolCalls) {
+        const toolCalls = (msg as any).toolCalls;
+        result.push({
+          role: 'assistant',
+          content: msg.content,
+          tool_calls: toolCalls.map((tc: any) => ({
+            id: tc.id,
+            type: 'function',
+            function: {
+              name: tc.name,
+              arguments:
+                typeof tc.arguments === 'string'
+                  ? tc.arguments
+                  : JSON.stringify(tc.arguments),
+            },
+          })),
+        });
       } else {
         result.push({
           role: msg.role,
