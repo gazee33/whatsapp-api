@@ -141,7 +141,7 @@ export async function handleQueryMenu(
           }
           optionsParts.push(`${header.name} (${detailParts.join(', ')})`);
         }
-        lines.push(`  Options: ${optionsParts.join(', ')}`);
+        lines.push(`  🔹 OPTIONS — MUST ASK: ${optionsParts.join(', ')}`);
       }
     }
   }
