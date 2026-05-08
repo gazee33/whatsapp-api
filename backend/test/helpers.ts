@@ -14,6 +14,8 @@ const prisma = new PrismaClient({
 export async function resetDatabase(): Promise<void> {
   await prisma.$transaction([
     prisma.orderItem.deleteMany(),
+    prisma.customizationDetail.deleteMany(),
+    prisma.customizationHeader.deleteMany(),
     prisma.order.deleteMany(),
     prisma.complaint.deleteMany(),
     prisma.message.deleteMany(),
@@ -99,6 +101,7 @@ export async function createTestMenuItem(
     description: string;
     price: number;
     available: boolean;
+    image: string;
   }>
 ): Promise<any> {
   return prisma.menuItem.create({
@@ -109,6 +112,36 @@ export async function createTestMenuItem(
       description: data?.description || 'Delicious chicken shawarma',
       price: data?.price || 25.00,
       available: data?.available ?? true,
+      image: data?.image || null,
+    },
+  });
+}
+
+// Create test customization header
+export async function createTestCustomizationHeader(
+  menuItemId: string,
+  data?: Partial<{ name: string; nameAr: string }>
+): Promise<any> {
+  return prisma.customizationHeader.create({
+    data: {
+      menuItemId,
+      name: data?.name || 'Size',
+      nameAr: data?.nameAr || 'الحجم',
+    },
+  });
+}
+
+// Create test customization detail
+export async function createTestCustomizationDetail(
+  headerId: string,
+  data?: Partial<{ name: string; nameAr: string; price: number }>
+): Promise<any> {
+  return prisma.customizationDetail.create({
+    data: {
+      headerId,
+      name: data?.name || 'Large',
+      nameAr: data?.nameAr || 'كبير',
+      price: data?.price || 0,
     },
   });
 }
@@ -138,7 +171,7 @@ export async function createTestOrder(
 export async function createTestOrderItem(
   orderId: string,
   menuItemId: string,
-  data?: Partial<{ quantity: number; notes: string }>
+  data?: Partial<{ quantity: number; notes: string; customizationDetailId: string }>
 ): Promise<any> {
   return prisma.orderItem.create({
     data: {
@@ -146,6 +179,7 @@ export async function createTestOrderItem(
       menuItemId,
       quantity: data?.quantity || 1,
       notes: data?.notes || '',
+      customizationDetailId: data?.customizationDetailId || null,
     },
   });
 }
@@ -213,6 +247,27 @@ export async function createTestFixture() {
     description: 'Refreshing cola beverage',
     price: 5.00,
   });
+
+  // Create customization for shawarma chicken
+  const sizeHeader = await createTestCustomizationHeader(shawarmaChicken.id, {
+    name: 'Size',
+    nameAr: 'الحجم',
+  });
+  const sizeLarge = await createTestCustomizationDetail(sizeHeader.id, {
+    name: 'Large',
+    nameAr: 'كبير',
+    price: 5.00,
+  });
+  const sizeMedium = await createTestCustomizationDetail(sizeHeader.id, {
+    name: 'Medium',
+    nameAr: 'وسط',
+    price: 0,
+  });
+  const sizeSmall = await createTestCustomizationDetail(sizeHeader.id, {
+    name: 'Small',
+    nameAr: 'صغير',
+    price: 0,
+  });
   
   // Create settings
   const settings = await createTestSettings(business.id);
@@ -222,6 +277,7 @@ export async function createTestFixture() {
     customer,
     categories: { appetizers, mainDishes, drinks },
     menuItems: { shawarmaChicken, shawarmaMeat, fries, cola },
+    customization: { sizeHeader, sizeLarge, sizeMedium, sizeSmall },
     settings,
   };
 }

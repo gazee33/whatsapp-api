@@ -34,6 +34,8 @@ interface CartItem {
   nameAr?: string | null;
   quantity: number;
   unitPrice: number;
+  customizationDetailName?: string;
+  customizationDetailPrice?: number;
   notes?: string;
 }
 
@@ -75,7 +77,7 @@ function normalizeToolArgs<T>(args: unknown): T {
 }
 
 function calculateCartTotal(items: CartItem[]): number {
-  return items.reduce((sum, item) => sum + item.unitPrice * item.quantity, 0);
+  return items.reduce((sum, item) => sum + (item.unitPrice + (item.customizationDetailPrice || 0)) * item.quantity, 0);
 }
 
 function formatCartForPrompt(cart: CartState, currency: string): string {
@@ -84,8 +86,10 @@ function formatCartForPrompt(cart: CartState, currency: string): string {
   }
 
   const lines = cart.items.map((item, index) => {
-    const lineTotal = item.unitPrice * item.quantity;
-    return `${index + 1}. ${item.quantity}x ${item.name} - ${lineTotal} ${currency}${item.notes ? ` - Notes: ${item.notes}` : ''}`;
+    const itemPrice = item.unitPrice + (item.customizationDetailPrice || 0);
+    const lineTotal = itemPrice * item.quantity;
+    const customizationStr = item.customizationDetailName ? ` (${item.customizationDetailName})` : '';
+    return `${index + 1}. ${item.quantity}x ${item.name}${customizationStr} - ${lineTotal} ${currency}${item.notes ? ` - Notes: ${item.notes}` : ''}`;
   });
 
   return `${lines.join('\n')}\nTotal: ${calculateCartTotal(cart.items)} ${currency}\nMode: ${cart.mode}\nConfirmation requested: ${cart.lastAssistantAskedForConfirmation ? 'yes' : 'no'}`;
@@ -189,6 +193,14 @@ Behavior:
 - If customer says yes/ok/تمام to a non-confirmation question (like "want to see more?"), do NOT submit an order.
 - If customer changes/removes/adds/hesitates/says not yet, keep unsubmitted.
 - After successful submit, don't submit again until new order.
+
+Customization Handling (CRITICAL):
+- Menu items with "Options:" in query_menu results have customization (size, quantity level, etc).
+- When customer selects an item with customization, you MUST ask them which option they want BEFORE adding to cart.
+- List the available options to the customer and wait for their choice.
+- In submit_order, include the EXACT customizationDetailName the customer chose (e.g. "Large", "3 سيخ").
+- Items without "Options:" in the menu do NOT need customizationDetailName — just name and quantity.
+- The customization detail name must match EXACTLY what was shown in the menu results.
 
 Tools: query_menu (search menu), submit_order (place order with items from conversation when customer confirmed the order ), check_order_status, file_complaint
 `;

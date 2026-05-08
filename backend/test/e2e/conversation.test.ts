@@ -93,7 +93,7 @@ describe('E2E: Customer Conversation Flow', () => {
 
     expect(response).toBeDefined();
     expect(response.reply).toBeDefined();
-    expect(response.reply.toLowerCase()).toMatch(/shawarma|chicken/i);
+    expect(response.reply.toLowerCase()).toMatch(/shawarma|chicken|شاورما|دجاج/i);
   });
 
   it('should handle order placement', async () => {

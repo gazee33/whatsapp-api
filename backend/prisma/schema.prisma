@@ -301,12 +301,13 @@ model CustomizationHeader {
 }
 
 model CustomizationDetail {
-  id       String             @id @default(cuid())
-  headerId String
-  header   CustomizationHeader @relation(fields: [headerId], references: [id], onDelete: Cascade)
-  name     String
-  nameAr   String?
-  price    Float              @default(0)
+  id         String               @id @default(cuid())
+  headerId   String
+  header     CustomizationHeader   @relation(fields: [headerId], references: [id], onDelete: Cascade)
+  name       String
+  nameAr     String?
+  price      Float                @default(0)
+  orderItems OrderItem[]
 
   @@map("CustomizationDetail")
 }
@@ -333,13 +334,15 @@ model Order {
 }
 
 model OrderItem {
-  id         String   @id @default(cuid())
-  orderId    String
-  order      Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
-  menuItemId String
-  menuItem  MenuItem @relation(fields: [menuItemId], references: [id], onDelete: Cascade)
-  quantity  Int
-  notes     String?
+  id                     String               @id @default(cuid())
+  orderId                String
+  order                  Order                @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  menuItemId             String
+  menuItem              MenuItem             @relation(fields: [menuItemId], references: [id], onDelete: Cascade)
+  customizationDetailId  String?
+  customizationDetail    CustomizationDetail? @relation(fields: [customizationDetailId], references: [id], onDelete: SetNull)
+  quantity               Int
+  notes                  String?
 
   @@map("OrderItem")
 }
