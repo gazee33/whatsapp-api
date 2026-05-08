@@ -22,6 +22,7 @@ services:
       - LLM_PROVIDER=${LLM_PROVIDER:-opencode}
       - LLM_MODEL=${LLM_MODEL:-deepseek-v4-flash}
       - OPENCODE_API_KEY=${OPENCODE_API_KEY}
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
       - JWT_SECRET=${JWT_SECRET}
       - FRONTEND_URL=https://nadil.cloud
       - CORS_ORIGIN=https://nadil.cloud
