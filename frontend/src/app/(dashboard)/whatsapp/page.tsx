@@ -97,16 +97,21 @@ export default function WhatsAppPage() {
     const sessionStatus = searchParams.get("session_status");
     if (sessionStatus === "completed") {
       toast.success("WhatsApp connected successfully");
-      const url = new URL(window.location.href);
-      url.searchParams.delete("session_status");
-      window.history.replaceState({}, "", url.toString());
+      fetchBusiness();
     } else if (sessionStatus === "failed") {
       toast.error("WhatsApp onboarding failed — please try again");
+    } else if (sessionStatus === "cancelled") {
+      toast.info("WhatsApp onboarding was cancelled");
+    }
+    // Clean up query params
+    if (sessionStatus) {
       const url = new URL(window.location.href);
       url.searchParams.delete("session_status");
+      url.searchParams.delete("sessionId");
+      url.searchParams.delete("status");
       window.history.replaceState({}, "", url.toString());
     }
-  }, []);
+  }, [fetchBusiness]);
 
   useEffect(() => {
     fetchBusiness().then(() => setLoaded(true));

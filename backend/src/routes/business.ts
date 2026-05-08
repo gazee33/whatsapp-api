@@ -154,9 +154,9 @@ router.post('/whatsapp/onboarding', async (req: Request, res: Response) => {
     const session = await createOnboardingSession({
       tenantId: biz.id,
       tenantName: biz.name,
-      successRedirectUrl: `${config.dualhookRedirectBase}/dashboard/whatsapp?session_status=completed`,
-      failureRedirectUrl: `${config.dualhookRedirectBase}/dashboard/whatsapp?session_status=failed`,
-      cancelRedirectUrl: `${config.dualhookRedirectBase}/dashboard/whatsapp?session_status=cancelled`,
+      successRedirectUrl: `${config.dualhookRedirectBase}/whatsapp?session_status=completed`,
+      failureRedirectUrl: `${config.dualhookRedirectBase}/whatsapp?session_status=failed`,
+      cancelRedirectUrl: `${config.dualhookRedirectBase}/whatsapp?session_status=cancelled`,
       webhookOverrideUrl,
       webhookVerifyToken: verifyToken,
       metadata: { businessId: biz.id, businessName: biz.name },
