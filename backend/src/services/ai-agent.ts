@@ -69,8 +69,9 @@ function normalizeToolArgs<T>(args: unknown): T {
   if (typeof args === 'string') {
     try {
       return JSON.parse(args) as T;
-    } catch {
-      return {} as T;
+    } catch (err) {
+      console.error('[normalizeToolArgs] Failed to parse tool arguments:', args);
+      throw new Error(`Invalid tool arguments format: ${(args as string).substring(0, 200)}`);
     }
   }
   return (args ?? {}) as T;
@@ -248,7 +249,12 @@ async function executeTool(params: {
       const toolParams = normalizeToolArgs<SubmitOrderParams>(toolCall.arguments);
 
       if (toolParams && typeof (toolParams as any).items === 'string') {
-        (toolParams as any).items = JSON.parse((toolParams as any).items);
+        try {
+          (toolParams as any).items = JSON.parse((toolParams as any).items);
+        } catch {
+          console.error('[executeTool] items field is not valid JSON:', (toolParams as any).items);
+          return { result: 'The order items data was malformed. Please try again with valid item names and quantities.' };
+        }
       }
 
       const result = await handleSubmitOrder(businessId, customerId, toolParams);
@@ -432,12 +438,34 @@ export class AIAgentService {
         });
 
         const toolStartTime = Date.now();
-        const execution = await executeTool({
-          toolCall,
-          businessId: this.businessId,
-          customerId,
-          cartState,
-        });
+        let execution: ToolExecutionResult;
+        try {
+          execution = await executeTool({
+            toolCall,
+            businessId: this.businessId,
+            customerId,
+            cartState,
+          });
+        } catch (toolError: any) {
+          console.error(`[AI-Agent] Tool ${toolCall.name} threw exception:`, toolError);
+          await logError({
+            businessId: this.businessId,
+            customerId,
+            sessionId,
+            errorType: toolError?.constructor?.name || 'ToolExecutionError',
+            errorMessage: toolError?.message || `Tool ${toolCall.name} failed`,
+            errorStack: toolError?.stack,
+            context: {
+              iteration,
+              toolName: toolCall.name,
+              toolArgs: toolCall.arguments,
+              originalMessage: message,
+            },
+          });
+          execution = {
+            result: 'The tool encountered an error. Please try again or rephrase your request.',
+          };
+        }
 
         if (execution.cartState) {
           cartState = execution.cartState;
@@ -467,6 +495,12 @@ export class AIAgentService {
         const isErrorResult = execution.result.toLowerCase().includes('error') ||
                              execution.result.toLowerCase().includes('could not') ||
                              execution.result.toLowerCase().includes('failed') ||
+                             execution.result.toLowerCase().includes('no items provided') ||
+                             execution.result.toLowerCase().includes('no valid items') ||
+                             execution.result.toLowerCase().includes('does not have customization') ||
+                             execution.result.toLowerCase().includes('please specify a customization') ||
+                             execution.result.toLowerCase().includes('malformed') ||
+                             execution.result.toLowerCase().includes('unknown tool') ||
                              execution.result.includes('لا يوجد') ||
                              execution.result.includes('غير متوفر') ||
                              execution.result.includes('عذراً') ||

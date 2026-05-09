@@ -158,6 +158,7 @@ export async function handleSubmitOrder(
 
   try {
     if (!items || items.length === 0) {
+      console.error('[SubmitOrder] Validation: no items provided', { businessId, customerId, params });
       return 'No items provided for the order.';
     }
 
@@ -212,7 +213,7 @@ export async function handleSubmitOrder(
         if (item.customizationDetailName) {
           // Check if menu item has customization options
           if (!fullMenuItem.customizationHeaders || fullMenuItem.customizationHeaders.length === 0) {
-            // Item has no customization options but one was requested
+            console.error('[SubmitOrder] Customization requested for item with no options', { businessId, customerId, itemName: item.name, detailName: item.customizationDetailName });
             return `Item '${item.name}' does not have customization options. Please remove the customization '${item.customizationDetailName}' and try again.`;
           }
 
@@ -223,11 +224,12 @@ export async function handleSubmitOrder(
 
           if (!customizationDetail) {
             const availableOptions = getAvailableCustomizations(fullMenuItem.customizationHeaders);
+            console.error('[SubmitOrder] Customization option not found', { businessId, customerId, itemName: item.name, detailName: item.customizationDetailName, availableOptions });
             return `Could not find customization option '${item.customizationDetailName}' for item '${item.name}'. Available options: ${availableOptions}`;
           }
         } else if (fullMenuItem.customizationHeaders && fullMenuItem.customizationHeaders.length > 0) {
-          // Item has customization options but none was provided
           const availableOptions = getAvailableCustomizations(fullMenuItem.customizationHeaders);
+          console.error('[SubmitOrder] Customization required but not provided', { businessId, customerId, itemName: item.name, availableOptions });
           return `Please specify a customization option for '${item.name}'. Available options: ${availableOptions}`;
         }
 
@@ -243,10 +245,12 @@ export async function handleSubmitOrder(
     }
 
     if (unmatched.length > 0) {
+      console.error('[SubmitOrder] Items not found in menu', { businessId, customerId, unmatched, items });
       return `Could not find: ${unmatched.join(', ')}. Please check the menu and try again.`;
     }
 
     if (matchedItems.length === 0) {
+      console.error('[SubmitOrder] No valid items to order', { businessId, customerId, items });
       return 'No valid items found to order.';
     }
 
