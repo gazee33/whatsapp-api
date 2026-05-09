@@ -68,13 +68,27 @@ function emptyCartState(): CartState {
 function normalizeToolArgs<T>(args: unknown): T {
   if (typeof args === 'string') {
     try {
-      return JSON.parse(args) as T;
+      return unwrapToolArgs(JSON.parse(args)) as T;
     } catch (err) {
       console.error('[normalizeToolArgs] Failed to parse tool arguments:', args);
       throw new Error(`Invalid tool arguments format: ${(args as string).substring(0, 200)}`);
     }
   }
-  return (args ?? {}) as T;
+  return unwrapToolArgs(args ?? {}) as T;
+}
+
+function unwrapToolArgs(parsed: unknown): unknown {
+  if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+    const obj = parsed as Record<string, unknown>;
+    if (typeof obj.properties === 'string') {
+      try {
+        return JSON.parse(obj.properties);
+      } catch {
+        console.error('[unwrapToolArgs] Failed to parse properties string:', obj.properties);
+      }
+    }
+  }
+  return parsed;
 }
 
 function calculateCartTotal(items: CartItem[]): number {
