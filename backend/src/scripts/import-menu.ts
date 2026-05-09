@@ -159,12 +159,7 @@ async function main() {
         created++;
       }
 
-      // Clear old options for this item
-      await prisma.option.deleteMany({
-        where: { itemId: menuItem.id },
-      });
-
-      // Import customized_header as flat options
+      // Import customized_header as flat options (find-or-create)
       const headers = product.customized_header?.filter(
         (h) => h.id && h.id !== '' && !isEmpty(h)
       ) || [];
@@ -175,29 +170,47 @@ async function main() {
         ) || [];
 
         for (const detail of details) {
-          await prisma.option.create({
-            data: {
-              itemId: menuItem.id,
-              name: detail.name,
-              price: parseFloat(detail.additional_price) || 0,
-            },
+          if (!detail.name) continue;
+          const price = parseFloat(detail.additional_price) || 0;
+
+          const existing = await prisma.option.findFirst({
+            where: { itemId: menuItem.id, name: detail.name },
           });
+
+          if (existing) {
+            if (existing.price !== price) {
+              await prisma.option.update({ where: { id: existing.id }, data: { price } });
+            }
+          } else {
+            await prisma.option.create({
+              data: { itemId: menuItem.id, name: detail.name, price },
+            });
+          }
         }
       }
 
-      // Import addons as flat options
+      // Import addons as flat options (find-or-create)
       const addons = product.addon?.filter(
         (a) => a.id && a.id !== '' && !isEmpty(a)
       ) || [];
 
       for (const addon of addons) {
-        await prisma.option.create({
-          data: {
-            itemId: menuItem.id,
-            name: addon.name,
-            price: parseFloat(addon.price) || 0,
-          },
+        if (!addon.name) continue;
+        const price = parseFloat(addon.price) || 0;
+
+        const existing = await prisma.option.findFirst({
+          where: { itemId: menuItem.id, name: addon.name },
         });
+
+        if (existing) {
+          if (existing.price !== price) {
+            await prisma.option.update({ where: { id: existing.id }, data: { price } });
+          }
+        } else {
+          await prisma.option.create({
+            data: { itemId: menuItem.id, name: addon.name, price },
+          });
+        }
       }
     } catch (error: any) {
       console.error(`Error importing "${product.name}":`, error.message);

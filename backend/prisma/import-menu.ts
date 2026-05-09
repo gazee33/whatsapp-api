@@ -2,9 +2,9 @@ import { PrismaClient } from '@prisma/client';
 
 const prisma = new PrismaClient();
 
-const IMPORT_API_URL = process.env.IMPORT_API_URL || 'http://alsultanonline.com/backend3/admin/index.php/rest/products/get';
-const IMPORT_API_KEY = process.env.IMPORT_API_KEY || '';
-const API_URL = `${IMPORT_API_URL}?limit=20&offset=0&api_key=${IMPORT_API_KEY}`;
+const API_BASE = 'http://alsultanonline.com/backend3/admin/index.php/rest/products/get';
+const API_KEY = 'U92g9TtSJBKwzg92yBSq';
+const IMAGE_BASE = 'http://alsultanonline.com/backend3/uploads/';
 const DEMO_API_KEY = 'demo-api-key-123';
 
 // ─── Types for the API response ────────────────────────────────────────────────
@@ -21,6 +21,13 @@ interface ApiCustomizedHeader {
   name: string;
   is_empty_object?: string;
   customized_detail: ApiCustomizationDetail[];
+}
+
+interface ApiAddon {
+  id: string;
+  name: string;
+  price: string;
+  is_empty_object?: string;
 }
 
 interface ApiProduct {
@@ -41,6 +48,59 @@ interface ApiProduct {
     img_path?: string;
   };
   customized_header: ApiCustomizedHeader[];
+  addon: ApiAddon[];
+}
+
+// ─── Helpers ────────────────────────────────────────────────────────────────
+
+function isEmpty(obj: any): boolean {
+  if (!obj) return true;
+  if (Array.isArray(obj)) {
+    return obj.length === 0 || obj.every((item: any) => isEmpty(item));
+  }
+  if (typeof obj === 'object') {
+    return Object.keys(obj).length === 0 || obj.is_empty_object === '1';
+  }
+  return false;
+}
+
+function buildImageUrl(imgPath?: string): string | null {
+  if (!imgPath) return null;
+  return IMAGE_BASE + encodeURI(imgPath);
+}
+
+// ─── API Fetch ──────────────────────────────────────────────────────────────
+
+async function fetchPage(limit: number, offset: number): Promise<ApiProduct[]> {
+  const url = `${API_BASE}?limit=${limit}&offset=${offset}&api_key=${API_KEY}`;
+  const response = await fetch(url);
+
+  if (!response.ok) {
+    throw new Error(`API returned status ${response.status}: ${response.statusText}`);
+  }
+
+  const data = await response.json();
+  return Array.isArray(data) ? data : [];
+}
+
+async function fetchAllProducts(): Promise<ApiProduct[]> {
+  const allProducts: ApiProduct[] = [];
+  const limit = 20;
+  let offset = 0;
+
+  while (true) {
+    console.log(`Fetching: offset=${offset}, limit=${limit}...`);
+    const batch = await fetchPage(limit, offset);
+
+    if (batch.length === 0) break;
+
+    allProducts.push(...batch);
+    offset += limit;
+
+    if (batch.length < limit) break;
+  }
+
+  return allProducts;
 }
 
 // ─── Main ─────────────────────────────────────────────────────────────────────
@@ -59,23 +119,8 @@ async function main() {
 
   console.log(`Business found: ${business.name} (id: ${business.id})`);
 
-  // 2. Fetch API data
-  console.log(`Fetching ${API_URL}...`);
-  let products: ApiProduct[];
-
-  try {
-    const response = await fetch(API_URL);
-
-    if (!response.ok) {
-      throw new Error(`API returned status ${response.status}: ${response.statusText}`);
-    }
-
-    products = (await response.json()) as ApiProduct[];
-  } catch (err) {
-    const message = err instanceof Error ? err.message : String(err);
-    throw new Error(`Failed to fetch products: ${message}`);
-  }
-
+  // 2. Fetch all products (paginated)
+  const products = await fetchAllProducts();
   console.log(`Fetched ${products.length} products from API`);
 
   // 3. Process each product
@@ -85,12 +130,18 @@ async function main() {
   let itemsFound = 0;
   let optionsCreated = 0;
   let optionsFound = 0;
+  let skipped = 0;
 
   for (const product of products) {
-    const categoryName = product.category.name;
-    const unitPrice = parseFloat(product.unit_price);
-    const isAvailable = product.is_available === '1';
-    const imagePath = product.default_photo?.img_path || null;
+    // Skip unavailable products
+    if (product.is_available !== '1') {
+      skipped++;
+      continue;
+    }
+
+    const categoryName = product.category.name || 'Uncategorized';
+    const unitPrice = parseFloat(product.unit_price) || 0;
+    const imagePath = buildImageUrl(product.default_photo?.img_path);
 
     // ── Category: find or create ──────────────────────────────────────────
 
@@ -119,6 +170,16 @@ async function main() {
     });
 
     if (menuItem) {
+      // Update existing item (price, availability, etc.)
+      menuItem = await prisma.menuItem.update({
+        where: { id: menuItem.id },
+        data: {
+          description: product.description || null,
+          price: unitPrice,
+          image: imagePath,
+          available: true,
+        },
+      });
       itemsFound++;
     } else {
       menuItem = await prisma.menuItem.create({
@@ -127,7 +188,7 @@ async function main() {
           nameAr: product.name,
           description: product.description || null,
           price: unitPrice,
-          available: isAvailable,
+          available: true,
           image: imagePath,
           categoryId: category.id,
         },
@@ -135,48 +196,97 @@ async function main() {
       itemsCreated++;
     }
 
-    // ── Options ───────────────────────────────────────────────────────
+    // ── Options: import customized_header details ─────────────────────────
 
-    const headers = product.customized_header || [];
+    const headers = product.customized_header?.filter(
+      (h) => h.id && h.id !== '' && !isEmpty(h)
+    ) || [];
 
     for (const apiHeader of headers) {
-      // Skip empty sentinel objects
-      if (apiHeader.is_empty_object === '1') continue;
-
-      const details = apiHeader.customized_detail || [];
+      const details = apiHeader.customized_detail?.filter(
+        (d) => d.id && d.id !== '' && !isEmpty(d)
+      ) || [];
 
       for (const apiDetail of details) {
-        // Skip empty sentinel objects
-        if (apiDetail.is_empty_object === '1') continue;
+        if (!apiDetail.name) continue;
 
-        const optionExists = await prisma.option.findFirst({
+        const detailPrice = parseFloat(apiDetail.additional_price) || 0;
+
+        const existingOption = await prisma.option.findFirst({
           where: { itemId: menuItem.id, name: apiDetail.name },
         });
 
-        if (optionExists) {
+        if (existingOption) {
+          if (existingOption.price !== detailPrice) {
+            await prisma.option.update({
+              where: { id: existingOption.id },
+              data: { price: detailPrice },
+            });
+          }
           optionsFound++;
         } else {
           await prisma.option.create({
             data: {
               itemId: menuItem.id,
               name: apiDetail.name,
-              price: parseFloat(apiDetail.additional_price) || 0,
+              price: detailPrice,
             },
           });
           optionsCreated++;
         }
       }
     }
+
+    // ── Options: import addons ────────────────────────────────────────────
+
+    const addons = product.addon?.filter(
+      (a) => a.id && a.id !== '' && !isEmpty(a)
+    ) || [];
+
+    for (const addon of addons) {
+      if (!addon.name) continue;
+
+      const addonPrice = parseFloat(addon.price) || 0;
+
+      const existingOption = await prisma.option.findFirst({
+        where: { itemId: menuItem.id, name: addon.name },
+      });
+
+      if (existingOption) {
+        if (existingOption.price !== addonPrice) {
+          await prisma.option.update({
+            where: { id: existingOption.id },
+            data: { price: addonPrice },
+          });
+        }
+        optionsFound++;
+      } else {
+        await prisma.option.create({
+          data: {
+            itemId: menuItem.id,
+            name: addon.name,
+            price: addonPrice,
+          },
+        });
+        optionsCreated++;
+      }
+    }
   }
 
   // 4. Output summary
-  const uniqueCategories = new Set(products.map((p) => p.category.name)).size;
+  const uniqueCategories = new Set(
+    products
+      .filter((p) => p.is_available === '1')
+      .map((p) => p.category.name)
+  ).size;
 
-  console.log('\n✅ Import complete!');
-  console.log(`Imported ${products.length} products across ${uniqueCategories} categories`);
+  console.log('\n=== Import Complete ===');
+  console.log(`Total products fetched: ${products.length}`);
+  console.log(`Skipped (unavailable):   ${skipped}`);
+  console.log(`Unique categories:       ${uniqueCategories}`);
   console.log(`  Categories: ${categoriesCreated} created, ${categoriesFound} existing`);
-  console.log(`  Menu items: ${itemsCreated} created, ${itemsFound} existing`);
-  console.log(`  Options: ${optionsCreated} created, ${optionsFound} existing`);
+  console.log(`  Menu items: ${itemsCreated} created, ${itemsFound} updated`);
+  console.log(`  Options:    ${optionsCreated} created, ${optionsFound} existing`);
 }
 
 main()
