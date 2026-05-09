@@ -81,18 +81,23 @@ function unwrapToolArgs(parsed: unknown): unknown {
   if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
     const obj = parsed as Record<string, unknown>;
 
-    // DeepSeek sometimes nests real args as a JSON string inside a schema keyword
+    // DeepSeek sometimes nests real args inside schema keywords like properties/required/items
     for (const key of ['properties', 'required', 'items']) {
-      if (typeof obj[key] === 'string' && obj[key] !== '') {
+      const value = obj[key];
+      // String → parse as JSON
+      if (typeof value === 'string' && value !== '') {
         try {
-          const inner = JSON.parse(obj[key] as string);
-          // Only use the unwrapped value if it's actually an object with content
-          if (inner && typeof inner === 'object' && Object.keys(inner).length > 0) {
+          const inner = JSON.parse(value);
+          if (inner && typeof inner === 'object' && Object.keys(inner as object).length > 0) {
             return inner;
           }
         } catch {
-          // Not valid JSON, continue checking other keys
+          // Not valid JSON, continue
         }
+      }
+      // Already an object with content → use directly
+      if (value && typeof value === 'object' && !Array.isArray(value) && Object.keys(value as object).length > 0) {
+        return value;
       }
     }
   }
