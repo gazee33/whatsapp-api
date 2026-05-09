@@ -80,11 +80,19 @@ function normalizeToolArgs<T>(args: unknown): T {
 function unwrapToolArgs(parsed: unknown): unknown {
   if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
     const obj = parsed as Record<string, unknown>;
-    if (typeof obj.properties === 'string') {
-      try {
-        return JSON.parse(obj.properties);
-      } catch {
-        console.error('[unwrapToolArgs] Failed to parse properties string:', obj.properties);
+
+    // DeepSeek sometimes nests real args as a JSON string inside a schema keyword
+    for (const key of ['properties', 'required', 'items']) {
+      if (typeof obj[key] === 'string' && obj[key] !== '') {
+        try {
+          const inner = JSON.parse(obj[key] as string);
+          // Only use the unwrapped value if it's actually an object with content
+          if (inner && typeof inner === 'object' && Object.keys(inner).length > 0) {
+            return inner;
+          }
+        } catch {
+          // Not valid JSON, continue checking other keys
+        }
       }
     }
   }
