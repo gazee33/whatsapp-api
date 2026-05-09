@@ -3,3 +3,4 @@
 *.db-journal
 node_modules/
 dist/
+uploads/

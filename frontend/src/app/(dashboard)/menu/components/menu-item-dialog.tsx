@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import {
   Dialog,
   DialogContent,
@@ -18,10 +18,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Plus, Trash2 } from "lucide-react";
+import { Plus, Trash2, Upload, X } from "lucide-react";
 import { useMenuStore } from "@/stores/menu-store";
-import { tenantClient } from "@/lib/api-client";
 import { useLanguage } from "@/i18n/language-context";
+import { resolveImageUrl } from "@/lib/utils";
+import { API_BASE } from "@/lib/config";
 import type { MenuItem, MenuCategory } from "@/lib/types";
 
 interface MenuItemDialogProps {
@@ -41,12 +42,17 @@ export function MenuItemDialog({
 }: MenuItemDialogProps) {
   const isEditing = !!item;
   const { t } = useLanguage();
-  const { categories, updateItem, createOption, updateOption, deleteOption, fetchMenu } = useMenuStore();
+  const { categories, updateItem, createItem, createOption, updateOption, deleteOption, fetchMenu } = useMenuStore();
+
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [name, setName] = useState(item?.name ?? "");
   const [nameAr, setNameAr] = useState(item?.nameAr ?? "");
   const [description, setDescription] = useState(item?.description ?? "");
-  const [image, setImage] = useState(item?.image ?? "");
+  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const existingImageUrl = item?.image ?? null;
+  const [imageRemoved, setImageRemoved] = useState(false);
   const [price, setPrice] = useState(item ? String(item.price) : "");
   const [selectedCategoryId, setSelectedCategoryId] = useState(item?.categoryId ?? categoryId ?? "");
   const [available, setAvailable] = useState(item?.available ?? true);
@@ -65,6 +71,36 @@ export function MenuItemDialog({
 
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    return () => {
+      if (imagePreview) URL.revokeObjectURL(imagePreview);
+    };
+  }, [imagePreview]);
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (file.size > 5 * 1024 * 1024) {
+      setErrors({ image: t("menu.image_too_large") });
+      return;
+    }
+
+    if (imagePreview) URL.revokeObjectURL(imagePreview);
+    setImageFile(file);
+    setImageRemoved(false);
+    setImagePreview(URL.createObjectURL(file));
+  };
+
+  const handleRemoveImage = () => {
+    setImageFile(null);
+    setImageRemoved(true);
+    if (imagePreview) {
+      URL.revokeObjectURL(imagePreview);
+      setImagePreview(null);
+    }
+  };
 
   const validate = (): boolean => {
     const errs: Record<string, string> = {};
@@ -100,18 +136,22 @@ export function MenuItemDialog({
     if (!validate()) return;
     setLoading(true);
     try {
-      const itemData = {
-        name: name.trim(),
-        nameAr: nameAr.trim() || undefined,
-        description: description.trim() || undefined,
-        image: image.trim() || undefined,
-        price: Number(price),
-        categoryId: selectedCategoryId,
-        available,
-      };
+      const formData = new FormData();
+      formData.append('name', name.trim());
+      if (nameAr.trim()) formData.append('nameAr', nameAr.trim());
+      if (description.trim()) formData.append('description', description.trim());
+      formData.append('price', String(Number(price)));
+      formData.append('categoryId', selectedCategoryId);
+      formData.append('available', String(available));
+      if (imageFile) {
+        formData.append('image', imageFile);
+      }
+      if (imageRemoved) {
+        formData.append('clearImage', 'true');
+      }
 
       if (isEditing && item) {
-        await updateItem(item.id, itemData);
+        await updateItem(item.id, formData);
 
         // Diff options: delete removed, update modified, create new
         const localIds = new Set(options.filter(o => o.id).map(o => o.id!));
@@ -150,9 +190,8 @@ export function MenuItemDialog({
         onOpenChange(false);
         onSuccess?.();
       } else {
-        // Create mode: use tenantClient directly to get the new item ID
-        const response = await tenantClient.post("/menu/items", itemData);
-        const newItemId = response.data.id;
+        const newItem = await createItem(formData);
+        const newItemId = newItem.id;
 
         // Create options
         const optionErrors: string[] = [];
@@ -233,14 +272,47 @@ export function MenuItemDialog({
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="item-image">{t("menu.image_url_label")}</Label>
-            <Input
-              id="item-image"
-              value={image}
-              onChange={(e) => setImage(e.target.value)}
-              placeholder={t("menu.image_url_placeholder")}
+            <Label>{t("menu.image_upload_label")}</Label>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/jpeg,image/png,image/gif,image/webp"
+              onChange={handleFileChange}
+              className="hidden"
               disabled={loading}
             />
+            {(imagePreview || (existingImageUrl && !imageRemoved)) ? (
+              <div className="relative w-24 h-24 rounded-lg overflow-hidden border">
+                <img
+                  src={imagePreview || resolveImageUrl(existingImageUrl!, API_BASE)}
+                  alt={name || "Preview"}
+                  className="w-full h-full object-cover"
+                />
+                <button
+                  type="button"
+                  onClick={handleRemoveImage}
+                  disabled={loading}
+                  className="absolute top-0 right-0 p-1 bg-destructive text-destructive-foreground rounded-bl-lg"
+                >
+                  <X className="h-3 w-3" />
+                </button>
+              </div>
+            ) : null}
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => fileInputRef.current?.click()}
+              disabled={loading}
+            >
+              <Upload className="h-4 w-4 me-1" />
+              {imagePreview || (existingImageUrl && !imageRemoved)
+                ? t("menu.change_image")
+                : t("menu.upload_image")}
+            </Button>
+            {errors.image && (
+              <p className="text-sm text-destructive">{errors.image}</p>
+            )}
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">

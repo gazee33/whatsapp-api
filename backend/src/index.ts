@@ -33,6 +33,7 @@ import { businessContext } from './middleware/business-context.js';
 import { platformContext } from './middleware/platform-context.js';
 import { apiReference } from '@scalar/express-api-reference';
 import path from 'path';
+import fs from 'fs';
 import { fileURLToPath } from 'url';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -153,6 +154,16 @@ app.use('/api/docs', (apiReference as any)({
   spec: { url: '/api/openapi.yaml' },
   theme: 'purple',
 }));
+
+// Serve uploaded files
+const uploadsDir = path.resolve(__dirname, '..', 'uploads');
+if (!fs.existsSync(uploadsDir)) {
+  fs.mkdirSync(uploadsDir, { recursive: true });
+}
+app.use('/uploads', express.static(uploadsDir));
+app.use('/uploads', (_req, res) => {
+  res.status(404).json({ error: 'File not found' });
+});
 
 // Error handling middleware
 app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {

@@ -59,6 +59,11 @@ export function getInitials(name: string): string {
     .slice(0, 2);
 }
 
+export function resolveImageUrl(image: string, baseApiUrl: string): string {
+  if (image.startsWith('http://') || image.startsWith('https://')) return image;
+  return `${baseApiUrl.replace(/\/api$/, '')}${image}`;
+}
+
 export const ORDER_STATUS_CONFIG: Record<
   string,
   { label: string; color: string; bgColor: string }

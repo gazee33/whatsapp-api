@@ -17,6 +17,8 @@ import { useMenuStore } from "@/stores/menu-store";
 import { useLanguage } from "@/i18n/language-context";
 import { formatCurrency } from "@/lib/utils";
 import { cn } from "@/lib/utils";
+import { resolveImageUrl } from "@/lib/utils";
+import { API_BASE } from "@/lib/config";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -282,7 +284,7 @@ export default function MenuPage() {
                                       <div className="flex items-center gap-2">
                                         {item.image && (
                                           <img
-                                            src={item.image}
+                                            src={resolveImageUrl(item.image, API_BASE)}
                                             alt={item.name}
                                             className="w-16 h-16 rounded-lg object-cover flex-shrink-0"
                                           />
@@ -417,7 +419,7 @@ export default function MenuPage() {
                         <div className="flex items-center gap-2">
                           {item.image && (
                             <img
-                              src={item.image}
+                              src={resolveImageUrl(item.image, API_BASE)}
                               alt={item.name}
                               className="w-16 h-16 rounded-lg object-cover flex-shrink-0"
                             />

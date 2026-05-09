@@ -1,5 +1,37 @@
 import { Router, Request, Response } from 'express';
+import multer from 'multer';
+import path from 'path';
+import { fileURLToPath } from 'url';
 import { prisma } from '../lib/prisma.js';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+const uploadsDir = path.resolve(__dirname, '..', '..', 'uploads');
+
+const storage = multer.diskStorage({
+  destination: uploadsDir,
+  filename: (_req, file, cb) => {
+    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1e9);
+    const ext = path.extname(file.originalname);
+    cb(null, uniqueSuffix + ext);
+  },
+});
+
+const fileFilter = (_req: Request, file: Express.Multer.File, cb: multer.FileFilterCallback) => {
+  const allowed = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+  if (allowed.includes(file.mimetype)) {
+    cb(null, true);
+  } else {
+    cb(new Error('Only JPEG, PNG, GIF, and WebP images are allowed'));
+  }
+};
+
+const upload = multer({
+  storage,
+  fileFilter,
+  limits: { fileSize: 5 * 1024 * 1024 },
+});
+
 const router = Router();
 
 // GET /api/menu - List all categories with items
@@ -108,11 +140,18 @@ router.put('/categories/:id', async (req: Request, res: Response) => {
 });
 
 // POST /api/menu/items - Create menu item
-router.post('/items', async (req: Request, res: Response) => {
+router.post('/items', upload.single('image'), async (req: Request, res: Response) => {
   try {
     const businessId = (req as any).business.id;
-    const { name, nameAr, description, price, categoryId, available, image } = req.body;
+    const { name, nameAr, description, price, categoryId, available } = req.body;
     
+    if (!name || !name.trim()) {
+      return res.status(400).json({ error: 'Name is required' });
+    }
+    if (!categoryId) {
+      return res.status(400).json({ error: 'Category is required' });
+    }
+
     // Validate price
     if (price === undefined || isNaN(Number(price)) || Number(price) < 0) {
       return res.status(400).json({ error: 'Invalid price: must be a non-negative number' });
@@ -134,8 +173,8 @@ router.post('/items', async (req: Request, res: Response) => {
         description,
         price: parseFloat(price),
         categoryId: categoryId as string,
-        available: available !== undefined ? available : true,
-        image: image || null,
+        available: available !== undefined ? available === 'true' || available === true : true,
+        image: req.file ? '/uploads/' + req.file.filename : null,
       }
     });
     
@@ -147,12 +186,19 @@ router.post('/items', async (req: Request, res: Response) => {
 });
 
 // PUT /api/menu/items/:id - Update menu item
-router.put('/items/:id', async (req: Request, res: Response) => {
+router.put('/items/:id', upload.single('image'), async (req: Request, res: Response) => {
   try {
     const businessId = (req as any).business.id;
     const id = req.params.id as string;
-    const { name, nameAr, description, price, categoryId, available, image } = req.body;
+    const { name, nameAr, description, price, categoryId, available, clearImage } = req.body;
     
+    if (name !== undefined && !name.trim()) {
+      return res.status(400).json({ error: 'Name cannot be empty' });
+    }
+    if (categoryId !== undefined && !categoryId.trim()) {
+      return res.status(400).json({ error: 'Category cannot be empty' });
+    }
+
     // Validate price if provided
     if (price !== undefined && (isNaN(Number(price)) || Number(price) < 0)) {
       return res.status(400).json({ error: 'Invalid price: must be a non-negative number' });
@@ -166,7 +212,7 @@ router.put('/items/:id', async (req: Request, res: Response) => {
       }
     });
     
-if (!existing) {
+    if (!existing) {
       return res.status(404).json({ error: 'Menu item not found' });
     }
     
@@ -188,8 +234,12 @@ if (!existing) {
         description,
         price: price !== undefined ? parseFloat(price) : undefined,
         categoryId: categoryId as string | undefined,
-        available,
-        image,
+        available: available !== undefined ? available === 'true' || available === true : undefined,
+        image: req.file
+          ? '/uploads/' + req.file.filename
+          : clearImage === 'true'
+            ? null
+            : undefined,
       }
     });
 
@@ -354,6 +404,19 @@ router.delete('/options/:id', async (req: Request, res: Response) => {
   } catch (error) {
     console.error('Delete option error:', error);
     res.status(500).json({ error: 'Failed to delete option' });
+  }
+});
+
+// Multer file upload error handler
+router.use((err: any, _req: Request, res: Response, _next: any) => {
+  if (err instanceof multer.MulterError) {
+    if (err.code === 'LIMIT_FILE_SIZE') {
+      return res.status(400).json({ error: 'File too large. Maximum size is 5MB.' });
+    }
+    return res.status(400).json({ error: `Upload error: ${err.message}` });
+  }
+  if (err) {
+    return res.status(400).json({ error: err.message });
   }
 });
 

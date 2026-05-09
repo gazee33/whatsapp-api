@@ -1,6 +1,6 @@
 import { create } from "zustand";
 import { tenantClient } from "@/lib/api-client";
-import type { MenuCategory, MenuItem, MenuCategoryPayload, MenuItemPayload, OptionPayload } from "@/lib/types";
+import type { MenuCategory, MenuItem, MenuCategoryPayload, OptionPayload } from "@/lib/types";
 
 interface MenuState {
   categories: MenuCategory[];
@@ -14,8 +14,8 @@ interface MenuState {
   createCategory: (data: MenuCategoryPayload) => Promise<MenuCategory>;
   updateCategory: (id: string, data: Partial<MenuCategoryPayload>) => Promise<void>;
 
-  createItem: (data: MenuItemPayload) => Promise<MenuItem>;
-  updateItem: (id: string, data: Partial<MenuItemPayload>) => Promise<void>;
+  createItem: (formData: FormData) => Promise<MenuItem>;
+  updateItem: (id: string, formData: FormData) => Promise<void>;
   deleteItem: (id: string) => Promise<void>;
   toggleItemAvailable: (id: string) => Promise<void>;
 
@@ -64,14 +64,14 @@ export const useMenuStore = create<MenuState>((set, get) => ({
     }));
   },
 
-  createItem: async (data) => {
-    const res = await tenantClient.post("/menu/items", data);
+  createItem: async (formData: FormData) => {
+    const res = await tenantClient.post("/menu/items", formData);
     await get().fetchMenu();
     return res.data;
   },
 
-  updateItem: async (id, data) => {
-    const res = await tenantClient.put(`/menu/items/${id}`, data);
+  updateItem: async (id, formData: FormData) => {
+    const res = await tenantClient.put(`/menu/items/${id}`, formData);
     await get().fetchMenu();
     return res.data;
   },
