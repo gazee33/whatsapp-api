@@ -41,7 +41,7 @@ export function MenuItemDialog({
 }: MenuItemDialogProps) {
   const isEditing = !!item;
   const { t } = useLanguage();
-  const { categories, updateItem, createOption, fetchMenu } = useMenuStore();
+  const { categories, updateItem, createOption, updateOption, deleteOption, fetchMenu } = useMenuStore();
 
   const [name, setName] = useState(item?.name ?? "");
   const [nameAr, setNameAr] = useState(item?.nameAr ?? "");
@@ -51,10 +51,11 @@ export function MenuItemDialog({
   const [selectedCategoryId, setSelectedCategoryId] = useState(item?.categoryId ?? categoryId ?? "");
   const [available, setAvailable] = useState(item?.available ?? true);
 
-  // Options state for create mode
-  const [options, setOptions] = useState<{ name: string; price: number }[]>(() => {
+  // Options state — id is present for existing options, undefined for new ones
+  const [options, setOptions] = useState<{ id?: string; name: string; price: number }[]>(() => {
     if (item?.options && item.options.length > 0) {
       return item.options.map(o => ({
+        id: o.id,
         name: o.name,
         price: o.price,
       }));
@@ -84,7 +85,7 @@ export function MenuItemDialog({
     setOptions(options.filter((_, i) => i !== index));
   };
 
-  const updateOption = (index: number, field: "name" | "price", value: string | number) => {
+  const updateLocalOption = (index: number, field: "name" | "price", value: string | number) => {
     const updated = [...options];
     if (field === "price") {
       updated[index].price = Number(value) || 0;
@@ -111,6 +112,41 @@ export function MenuItemDialog({
 
       if (isEditing && item) {
         await updateItem(item.id, itemData);
+
+        // Diff options: delete removed, update modified, create new
+        const localIds = new Set(options.filter(o => o.id).map(o => o.id!));
+        const optionErrors: string[] = [];
+
+        // Delete options that were in the item but are no longer in local state
+        for (const opt of item.options ?? []) {
+          if (!localIds.has(opt.id)) {
+            try {
+              await deleteOption(opt.id);
+            } catch {
+              optionErrors.push(`Failed to remove "${opt.name}" option`);
+            }
+          }
+        }
+
+        // Create or update each local option
+        for (const opt of options) {
+          if (!opt.name.trim()) continue;
+          try {
+            if (opt.id) {
+              await updateOption(opt.id, { name: opt.name.trim(), price: opt.price });
+            } else {
+              await createOption(item.id, { name: opt.name.trim(), price: opt.price });
+            }
+          } catch {
+            optionErrors.push(`Failed to save "${opt.name}" option`);
+          }
+        }
+
+        if (optionErrors.length > 0) {
+          setErrors({ form: optionErrors.join('. ') });
+          setLoading(false);
+          return;
+        }
         onOpenChange(false);
         onSuccess?.();
       } else {
@@ -258,70 +294,52 @@ export function MenuItemDialog({
             <Label htmlFor="item-available">{t("menu.available_checkbox")}</Label>
           </div>
 
-          {/* Options Section - Create Mode */}
-          {!isEditing && (
-            <div className="space-y-3">
-              <div className="flex items-center justify-between">
-                <Label>{t("menu.options")}</Label>
+          {/* Options Section — Editable in both create and edit mode */}
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <Label>{t("menu.options")}</Label>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={addOption}
+                disabled={loading}
+              >
+                <Plus className="h-4 w-4 me-1" />
+                {t("menu.add")}
+              </Button>
+            </div>
+            {options.map((opt, index) => (
+              <div key={index} className="flex items-center gap-2">
+                <Input
+                  placeholder={t("menu.option_name_placeholder")}
+                  value={opt.name}
+                    onChange={(e) => updateLocalOption(index, "name", e.target.value)}
+                  disabled={loading}
+                  className="flex-1"
+                />
+                <Input
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  placeholder={t("menu.price_placeholder")}
+                  value={opt.price}
+                    onChange={(e) => updateLocalOption(index, "price", e.target.value)}
+                  disabled={loading}
+                  className="w-24"
+                />
                 <Button
                   type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={addOption}
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => removeOption(index)}
                   disabled={loading}
                 >
-                  <Plus className="h-4 w-4 me-1" />
-                  {t("menu.add")}
+                  <Trash2 className="h-4 w-4" />
                 </Button>
               </div>
-              {options.map((opt, index) => (
-                <div key={index} className="flex items-center gap-2">
-                  <Input
-                    placeholder={t("menu.option_name_placeholder")}
-                    value={opt.name}
-                    onChange={(e) => updateOption(index, "name", e.target.value)}
-                    disabled={loading}
-                    className="flex-1"
-                  />
-                  <Input
-                    type="number"
-                    step="0.01"
-                    min="0"
-                    placeholder={t("menu.price_placeholder")}
-                    value={opt.price}
-                    onChange={(e) => updateOption(index, "price", e.target.value)}
-                    disabled={loading}
-                    className="w-24"
-                  />
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => removeOption(index)}
-                    disabled={loading}
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
-                </div>
-              ))}
-            </div>
-          )}
-
-          {/* Options Section - Edit Mode (Read-only) */}
-          {isEditing && item?.options && item.options.length > 0 && (
-            <div className="space-y-2">
-              <Label>{t("menu.options")}</Label>
-              <div className="text-sm text-muted-foreground space-y-1">
-                {item.options.map((opt, i) => (
-                  <span key={opt.id}>
-                    {opt.name}
-                    {opt.price > 0 && ` (+${opt.price.toFixed(2)} SAR)`}
-                    {i < item.options!.length - 1 ? ", " : ""}
-                  </span>
-                ))}
-              </div>
-            </div>
-          )}
+            ))}
+          </div>
 
           {errors.form && (
             <p className="text-sm text-destructive">{errors.form}</p>
