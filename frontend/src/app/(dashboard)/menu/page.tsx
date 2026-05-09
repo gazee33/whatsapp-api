@@ -278,31 +278,40 @@ export default function MenuPage() {
                                       onClick={() => handleEditItem(item)}
                                     >
                                       <div className="flex items-center gap-2">
-                                        <span
-                                          className={cn(
-                                            "font-medium text-sm",
-                                            !item.available &&
-                                              "line-through text-muted-foreground"
-                                          )}
-                                        >
-                                          {item.name}
-                                        </span>
-                                        {item.nameAr && (
+                                        {item.image && (
+                                          <img
+                                            src={item.image}
+                                            alt={item.name}
+                                            className="w-16 h-16 rounded-lg object-cover flex-shrink-0"
+                                          />
+                                        )}
+                                        <div className="min-w-0">
                                           <span
-                                            className="text-xs text-muted-foreground"
-                                            dir="rtl"
+                                            className={cn(
+                                              "font-medium text-sm",
+                                              !item.available &&
+                                                "line-through text-muted-foreground"
+                                            )}
                                           >
-                                            {item.nameAr}
+                                            {item.name}
                                           </span>
-                                        )}
-                                        {!item.available && (
-                                          <Badge
-                                            variant="destructive"
-                                            className="text-[10px] px-1.5 py-0"
-                                          >
-                                            Off
-                                          </Badge>
-                                        )}
+                                          {item.nameAr && (
+                                            <span
+                                              className="text-xs text-muted-foreground"
+                                              dir="rtl"
+                                            >
+                                              {item.nameAr}
+                                            </span>
+                                          )}
+                                          {!item.available && (
+                                            <Badge
+                                              variant="destructive"
+                                              className="text-[10px] px-1.5 py-0"
+                                            >
+                                              Off
+                                            </Badge>
+                                          )}
+                                        </div>
                                       </div>
                                       <div className="flex items-center gap-1 mt-0.5">
                                         <DollarSign className="h-3 w-3 text-muted-foreground" />
@@ -310,6 +319,21 @@ export default function MenuPage() {
                                           {formatCurrency(item.price)}
                                         </span>
                                       </div>
+                                      {item.customizationHeaders && item.customizationHeaders.length > 0 && (
+                                        <div className="mt-1 text-xs text-muted-foreground">
+                                          {item.customizationHeaders
+                                            .map((header) => {
+                                              const options = header.details
+                                                ?.map(
+                                                  (detail) =>
+                                                    `${detail.name}: ${formatCurrency(detail.price)}`
+                                                )
+                                                .join(", ");
+                                              return `${header.name} (${options})`;
+                                            })
+                                            .join(" | ")}
+                                        </div>
+                                      )}
                                     </button>
 
                                     <div className="flex items-center gap-1 shrink-0">
@@ -393,31 +417,40 @@ export default function MenuPage() {
                     >
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2">
-                          <span
-                            className={cn(
-                              "font-medium text-sm",
-                              !item.available &&
-                                "line-through text-muted-foreground"
-                            )}
-                          >
-                            {item.name}
-                          </span>
-                          {item.nameAr && (
+                          {item.image && (
+                            <img
+                              src={item.image}
+                              alt={item.name}
+                              className="w-16 h-16 rounded-lg object-cover flex-shrink-0"
+                            />
+                          )}
+                          <div className="min-w-0">
                             <span
-                              className="text-xs text-muted-foreground"
-                              dir="rtl"
+                              className={cn(
+                                "font-medium text-sm",
+                                !item.available &&
+                                  "line-through text-muted-foreground"
+                              )}
                             >
-                              {item.nameAr}
+                              {item.name}
                             </span>
-                          )}
-                          {!item.available && (
-                            <Badge
-                              variant="destructive"
-                              className="text-[10px] px-1.5 py-0"
-                            >
-                              Off
-                            </Badge>
-                          )}
+                            {item.nameAr && (
+                              <span
+                                className="text-xs text-muted-foreground"
+                                dir="rtl"
+                              >
+                                {item.nameAr}
+                              </span>
+                            )}
+                            {!item.available && (
+                              <Badge
+                                variant="destructive"
+                                className="text-[10px] px-1.5 py-0"
+                              >
+                                Off
+                              </Badge>
+                            )}
+                          </div>
                         </div>
                         <div className="flex items-center gap-3 mt-0.5">
                           <div className="flex items-center gap-1">
@@ -432,6 +465,21 @@ export default function MenuPage() {
                             </Badge>
                           )}
                         </div>
+                        {item.customizationHeaders && item.customizationHeaders.length > 0 && (
+                          <div className="mt-1 text-xs text-muted-foreground">
+                            {item.customizationHeaders
+                              .map((header) => {
+                                const options = header.details
+                                  ?.map(
+                                    (detail) =>
+                                      `${detail.name}: ${formatCurrency(detail.price)}`
+                                  )
+                                  .join(", ");
+                                return `${header.name} (${options})`;
+                              })
+                              .join(" | ")}
+                          </div>
+                        )}
                       </div>
                       <Edit className="h-4 w-4 text-muted-foreground shrink-0 ml-3" />
                     </div>

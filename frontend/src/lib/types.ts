@@ -129,6 +129,16 @@ export interface MenuItemPayload {
   available?: boolean;
 }
 
+export interface CustomizationHeaderPayload {
+  name: string;
+  nameAr?: string;
+  details: Array<{
+    name: string;
+    nameAr?: string;
+    price: number;
+  }>;
+}
+
 // ── Orders ──
 export interface Order {
   id: string;

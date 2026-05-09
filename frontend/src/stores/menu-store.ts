@@ -1,6 +1,6 @@
 import { create } from "zustand";
 import { tenantClient } from "@/lib/api-client";
-import type { MenuCategory, MenuItem, MenuCategoryPayload, MenuItemPayload } from "@/lib/types";
+import type { MenuCategory, MenuItem, MenuCategoryPayload, MenuItemPayload, CustomizationHeaderPayload } from "@/lib/types";
 
 interface MenuState {
   categories: MenuCategory[];
@@ -18,6 +18,10 @@ interface MenuState {
   updateItem: (id: string, data: Partial<MenuItemPayload>) => Promise<void>;
   deleteItem: (id: string) => Promise<void>;
   toggleItemAvailable: (id: string) => Promise<void>;
+
+  createCustomization: (itemId: string, data: CustomizationHeaderPayload) => Promise<void>;
+  updateCustomization: (detailId: string, data: { name?: string; nameAr?: string; price?: number }) => Promise<void>;
+  deleteCustomization: (detailId: string) => Promise<void>;
 }
 
 export const useMenuStore = create<MenuState>((set, get) => ({
@@ -85,5 +89,44 @@ export const useMenuStore = create<MenuState>((set, get) => ({
         items: cat.items?.map((item) => (item.id === id ? res.data : item)),
       })),
     }));
+  },
+
+  createCustomization: async (itemId, data) => {
+    set({ isLoading: true });
+    try {
+      await tenantClient.post(`/menu/items/${itemId}/customization`, data);
+      await get().fetchMenu();
+    } catch (error: unknown) {
+      console.error('Failed to create customization:', error);
+      throw error;
+    } finally {
+      set({ isLoading: false });
+    }
+  },
+
+  updateCustomization: async (detailId, data) => {
+    set({ isLoading: true });
+    try {
+      await tenantClient.put(`/menu/customization/${detailId}`, data);
+      await get().fetchMenu();
+    } catch (error: unknown) {
+      console.error('Failed to update customization:', error);
+      throw error;
+    } finally {
+      set({ isLoading: false });
+    }
+  },
+
+  deleteCustomization: async (detailId) => {
+    set({ isLoading: true });
+    try {
+      await tenantClient.delete(`/menu/customization/${detailId}`);
+      await get().fetchMenu();
+    } catch (error: unknown) {
+      console.error('Failed to delete customization:', error);
+      throw error;
+    } finally {
+      set({ isLoading: false });
+    }
   },
 }));

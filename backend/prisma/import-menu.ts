@@ -2,7 +2,9 @@ import { PrismaClient } from '@prisma/client';
 
 const prisma = new PrismaClient();
 
-const API_URL = 'http://alsultanonline.com/backend3/admin/index.php/rest/products/get?limit=20&offset=0&api_key=U92g9TtSJBKwzg92yBSq';
+const IMPORT_API_URL = process.env.IMPORT_API_URL || 'http://alsultanonline.com/backend3/admin/index.php/rest/products/get';
+const IMPORT_API_KEY = process.env.IMPORT_API_KEY || '';
+const API_URL = `${IMPORT_API_URL}?limit=20&offset=0&api_key=${IMPORT_API_KEY}`;
 const DEMO_API_KEY = 'demo-api-key-123';
 
 // ─── Types for the API response ────────────────────────────────────────────────

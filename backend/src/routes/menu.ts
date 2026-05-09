@@ -11,8 +11,15 @@ router.get('/', async (req: Request, res: Response) => {
       where: { businessId },
       include: {
         items: {
-          orderBy: { name: 'asc' }
-        }
+          include: {
+            customizationHeaders: {
+              include: {
+                details: true,
+              },
+            },
+          },
+          orderBy: { name: 'asc' },
+        },
       },
       orderBy: { sortOrder: 'asc' }
     });
@@ -108,7 +115,7 @@ router.put('/categories/:id', async (req: Request, res: Response) => {
 router.post('/items', async (req: Request, res: Response) => {
   try {
     const businessId = (req as any).business.id;
-    const { name, nameAr, description, price, categoryId, available } = req.body;
+    const { name, nameAr, description, price, categoryId, available, image } = req.body;
     
     // Validate price
     if (price === undefined || isNaN(Number(price)) || Number(price) < 0) {
@@ -131,7 +138,8 @@ router.post('/items', async (req: Request, res: Response) => {
         description,
         price: parseFloat(price),
         categoryId: categoryId as string,
-        available: available !== undefined ? available : true
+        available: available !== undefined ? available : true,
+        image: image || null,
       }
     });
     
@@ -147,7 +155,7 @@ router.put('/items/:id', async (req: Request, res: Response) => {
   try {
     const businessId = (req as any).business.id;
     const id = req.params.id as string;
-    const { name, nameAr, description, price, categoryId, available } = req.body;
+    const { name, nameAr, description, price, categoryId, available, image } = req.body;
     
     // Validate price if provided
     if (price !== undefined && (isNaN(Number(price)) || Number(price) < 0)) {
@@ -184,7 +192,8 @@ if (!existing) {
         description,
         price: price !== undefined ? parseFloat(price) : undefined,
         categoryId: categoryId as string | undefined,
-        available
+        available,
+        image,
       }
     });
 
@@ -249,6 +258,120 @@ router.patch('/items/:id/toggle', async (req: Request, res: Response) => {
   } catch (error) {
     console.error('Toggle item error:', error);
     res.status(500).json({ error: 'Failed to toggle item availability' });
+  }
+});
+
+// POST /api/menu/items/:id/customization - Add customization header with details
+router.post('/items/:id/customization', async (req: Request, res: Response) => {
+  try {
+    const businessId = (req as any).business.id;
+    const id = req.params.id as string;
+    const { name, nameAr, details } = req.body;
+
+    if (!name) {
+      return res.status(400).json({ error: 'Header name is required' });
+    }
+
+    // Verify item belongs to this business
+    const item = await prisma.menuItem.findFirst({
+      where: { id, category: { businessId } },
+    });
+
+    if (!item) {
+      return res.status(404).json({ error: 'Menu item not found' });
+    }
+
+    // Create header with details in a transaction
+    const header = await prisma.customizationHeader.create({
+      data: {
+        menuItemId: id,
+        name,
+        nameAr: nameAr || null,
+        details: {
+          create: Array.isArray(details) ? details.map((d: any) => ({
+            name: d.name,
+            nameAr: d.nameAr || null,
+            price: parseFloat(d.price) || 0,
+          })) : [],
+        },
+      },
+      include: { details: true },
+    });
+
+    res.status(201).json(header);
+  } catch (error) {
+    console.error('Create customization error:', error);
+    res.status(500).json({ error: 'Failed to create customization' });
+  }
+});
+
+// PUT /api/menu/customization/:id - Update customization detail
+router.put('/customization/:id', async (req: Request, res: Response) => {
+  try {
+    const businessId = (req as any).business.id;
+    const id = req.params.id as string;
+    const { name, nameAr, price } = req.body;
+
+    // Verify detail belongs to business through the chain
+    const detail = await prisma.customizationDetail.findFirst({
+      where: {
+        id,
+        header: {
+          menuItem: {
+            category: { businessId },
+          },
+        },
+      },
+    });
+
+    if (!detail) {
+      return res.status(404).json({ error: 'Customization detail not found' });
+    }
+
+    const updated = await prisma.customizationDetail.update({
+      where: { id },
+      data: {
+        name: name !== undefined ? name : undefined,
+        nameAr: nameAr !== undefined ? nameAr : undefined,
+        price: price !== undefined ? parseFloat(price) : undefined,
+      },
+    });
+
+    res.json(updated);
+  } catch (error) {
+    console.error('Update customization detail error:', error);
+    res.status(500).json({ error: 'Failed to update customization detail' });
+  }
+});
+
+// DELETE /api/menu/customization/:id - Delete customization detail
+router.delete('/customization/:id', async (req: Request, res: Response) => {
+  try {
+    const businessId = (req as any).business.id;
+    const id = req.params.id as string;
+
+    // Verify detail belongs to business through the chain
+    const detail = await prisma.customizationDetail.findFirst({
+      where: {
+        id,
+        header: {
+          menuItem: {
+            category: { businessId },
+          },
+        },
+      },
+    });
+
+    if (!detail) {
+      return res.status(404).json({ error: 'Customization detail not found' });
+    }
+
+    await prisma.customizationDetail.delete({ where: { id } });
+
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Delete customization detail error:', error);
+    res.status(500).json({ error: 'Failed to delete customization detail' });
   }
 });
 
