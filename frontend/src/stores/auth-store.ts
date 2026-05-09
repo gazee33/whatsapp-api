@@ -3,6 +3,7 @@ import { persist } from "zustand/middleware";
 import axios from "axios";
 import type { User } from "@/lib/types";
 import { API_BASE } from "@/lib/config";
+import { completeOnboardingStep } from "@/config/navigation";
 
 interface AuthState {
   apiKey: string | null;
@@ -88,6 +89,7 @@ export const useAuthStore = create<AuthState>()(
               isAuthenticated: true,
               isLoading: false,
             });
+            completeOnboardingStep("register");
             return res.data.user;
           } catch {
             set({ isLoading: false });

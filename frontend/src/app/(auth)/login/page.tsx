@@ -39,14 +39,14 @@ export default function LoginPage() {
   return (
     <form onSubmit={handleSubmit} className="space-y-5">
       <div className="space-y-1.5">
-        <h2 className="text-xl font-semibold text-foreground">{t("login.welcome_back")}</h2>
-        <p className="text-sm text-muted-foreground">
+        <h2 className="text-xl font-semibold text-slate-800">{t("login.welcome_back")}</h2>
+        <p className="text-sm text-slate-500">
           {t("login.sign_in_subtitle")}
         </p>
       </div>
 
       {error && (
-        <div className="rounded-lg bg-destructive/10 px-4 py-3 text-sm text-destructive">
+        <div className="rounded-lg bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700">
           {error}
         </div>
       )}
@@ -91,7 +91,7 @@ export default function LoginPage() {
           <button
             type="button"
             onClick={() => setShowPassword(!showPassword)}
-            className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+            className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors"
             tabIndex={-1}
           >
             {showPassword ? (
@@ -103,25 +103,29 @@ export default function LoginPage() {
         </div>
       </div>
 
-      <Button type="submit" className="w-full" loading={isLoading}>
+      <Button
+        type="submit"
+        className="w-full bg-gradient-to-r from-[#6366F1] to-[#4F46E5] hover:from-[#4F46E5] hover:to-[#4338CA] text-white shadow-lg shadow-indigo-500/25 transition-all hover:shadow-xl hover:shadow-indigo-500/30 hover:-translate-y-0.5"
+        loading={isLoading}
+      >
         <LogIn className="h-4 w-4" />
         {t("login.sign_in")}
       </Button>
 
       <div className="space-y-2 text-center text-sm">
-        <p className="text-muted-foreground">
+        <p className="text-slate-500">
           {t("login.no_account")}{" "}
           <Link
             href="/register"
-            className="font-medium text-primary hover:text-primary/90 transition-colors"
+            className="font-medium text-indigo-600 hover:text-indigo-700 transition-colors"
           >
             {t("login.create_account")}
           </Link>
         </p>
-        <p className="text-muted-foreground">
+        <p className="text-slate-500">
           <Link
             href="/platform-login"
-            className="font-medium text-primary/70 hover:text-primary transition-colors"
+            className="font-medium text-indigo-500 hover:text-indigo-600 transition-colors"
           >
             {t("login.platform_login")}
           </Link>

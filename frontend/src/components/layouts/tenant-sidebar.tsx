@@ -13,7 +13,7 @@ import {
   Shield,
   ChevronLeft,
   ChevronRight,
-  Store,
+  Sparkles,
   X,
   Terminal,
   Radio,
@@ -89,11 +89,11 @@ export function TenantSidebar({ open, onClose }: TenantSidebarProps) {
         {/* Mobile close button */}
         <div className="flex h-16 items-center gap-3 border-b border-sidebar-border px-4 lg:hidden">
           <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary">
-            <Store className="h-5 w-5 text-primary-foreground" />
+            <Sparkles className="h-5 w-5 text-primary-foreground" />
           </div>
           <div className="min-w-0 flex-1">
             <p className="truncate text-sm font-semibold text-sidebar-foreground">
-              {business?.name || "Restaurant"}
+              {business?.name || "Nadil AI"}
             </p>
           </div>
           <button
@@ -107,12 +107,12 @@ export function TenantSidebar({ open, onClose }: TenantSidebarProps) {
         {/* Brand (desktop) */}
         <div className="hidden h-16 items-center gap-3 border-b border-sidebar-border px-4 lg:flex">
           <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary">
-            <Store className="h-5 w-5 text-primary-foreground" />
+            <Sparkles className="h-5 w-5 text-primary-foreground" />
           </div>
           {!collapsed && (
             <div className="min-w-0 flex-1">
               <p className="truncate text-sm font-semibold text-sidebar-foreground">
-                {business?.name || "Restaurant"}
+                {business?.name || "Nadil AI"}
               </p>
               <p className="truncate text-xs text-muted-foreground">
                 {t("sidebar.dashboard")}

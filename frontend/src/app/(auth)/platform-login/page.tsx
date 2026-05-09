@@ -39,16 +39,16 @@ export default function PlatformLoginPage() {
         <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-xl bg-amber-500/10 ring-1 ring-amber-500/20">
           <Shield className="h-5 w-5 text-amber-500" />
         </div>
-        <h2 className="text-xl font-semibold text-foreground">
+        <h2 className="text-xl font-semibold text-slate-800">
           {t("platform_login.title")}
         </h2>
-        <p className="text-sm text-muted-foreground">
+        <p className="text-sm text-slate-500">
           {t("platform_login.subtitle")}
         </p>
       </div>
 
       {error && (
-        <div className="rounded-lg bg-destructive/10 px-4 py-3 text-sm text-destructive">
+        <div className="rounded-lg bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700">
           {error}
         </div>
       )}
@@ -82,7 +82,7 @@ export default function PlatformLoginPage() {
           <button
             type="button"
             onClick={() => setShowPassword(!showPassword)}
-            className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+            className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors"
             tabIndex={-1}
           >
             {showPassword ? (
@@ -94,15 +94,19 @@ export default function PlatformLoginPage() {
         </div>
       </div>
 
-      <Button type="submit" className="w-full" loading={isLoading}>
+      <Button
+        type="submit"
+        className="w-full bg-gradient-to-r from-[#6366F1] to-[#4F46E5] hover:from-[#4F46E5] hover:to-[#4338CA] text-white shadow-lg shadow-indigo-500/25 transition-all hover:shadow-xl hover:shadow-indigo-500/30 hover:-translate-y-0.5"
+        loading={isLoading}
+      >
         <LogIn className="h-4 w-4" />
         {t("platform_login.sign_in")}
       </Button>
 
-      <p className="text-center text-sm text-muted-foreground">
+      <p className="text-center text-sm text-slate-500">
         <Link
           href="/login"
-          className="font-medium text-primary/70 hover:text-primary transition-colors"
+          className="font-medium text-indigo-500 hover:text-indigo-600 transition-colors"
         >
           {t("platform_login.back_restaurant")}
         </Link>

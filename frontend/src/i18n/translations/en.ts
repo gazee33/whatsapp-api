@@ -486,6 +486,11 @@ export const en: Record<string, string> = {
   "platform_analytics.col_orders": "Orders",
   "platform_analytics.no_order_data": "No order data for this period.",
 
+  // ---- Onboarding Steps ----
+  "onboarding.step_1": "Sign up",
+  "onboarding.step_2": "Add your menu",
+  "onboarding.step_3": "Go live",
+
   // ---- Error Messages ----
   "error.load_failed": "Failed to fetch data",
   "error.save_failed": "Failed to save",

@@ -19,6 +19,7 @@ import { useConversationStore } from "@/stores/conversation-store";
 import { useBusinessStore } from "@/stores/business-store";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { OnboardingProgressCard } from "@/components/onboarding/onboarding-progress-card";
 import { StatusBadge } from "@/components/shared/status-badge";
 import { EmptyState } from "@/components/shared/empty-state";
 import { StatsSkeleton, CardSkeleton } from "@/components/shared/skeletons";
@@ -182,6 +183,9 @@ export default function DashboardPage() {
           </button>
         </div>
       )}
+
+      {/* Onboarding Progress */}
+      <OnboardingProgressCard />
 
       {/* Stat Cards */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">

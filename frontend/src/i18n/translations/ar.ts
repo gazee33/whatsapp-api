@@ -486,6 +486,11 @@ export const ar: Record<string, string> = {
   "platform_analytics.col_orders": "الطلبات",
   "platform_analytics.no_order_data": "لا توجد بيانات طلبات لهذه الفترة.",
 
+  // ---- Onboarding Steps ----
+  "onboarding.step_1": "إنشاء حساب",
+  "onboarding.step_2": "أضف قائمتك",
+  "onboarding.step_3": "انطلق مباشرة",
+
   // ---- Error Messages ----
   "error.load_failed": "فشل جلب البيانات",
   "error.save_failed": "فشل الحفظ",
