@@ -7,7 +7,7 @@ export interface OrderItemInput {
   name: string;
   quantity: number;
   notes?: string;
-  customizationDetailName?: string; // NEW - the selected variant/detail name
+  optionName?: string;
 }
 
 export interface SubmitOrderParams {
@@ -58,21 +58,15 @@ function stripParenthetical(s: string): string {
     .trim();
 }
 
-interface MenuItemWithCustomizations {
+interface MenuItemWithOptions {
   id: string;
   name: string;
   nameAr: string | null;
   price: number;
-  customizationHeaders?: Array<{
+  options?: Array<{
     id: string;
     name: string;
-    nameAr: string | null;
-    details: Array<{
-      id: string;
-      name: string;
-      nameAr: string | null;
-      price: number;
-    }>;
+    price: number;
   }>;
 }
 
@@ -99,54 +93,41 @@ function findBestMatch(
   return undefined;
 }
 
-// Find a customization detail by name using fuzzy matching
-function findCustomizationDetail(
-  detailName: string,
-  headers: MenuItemWithCustomizations['customizationHeaders']
-): { id: string; name: string; nameAr: string | null; price: number } | undefined {
-  if (!headers || headers.length === 0) return undefined;
+// Find an option by name using fuzzy matching
+function findOption(
+  optionName: string,
+  options: MenuItemWithOptions['options']
+): { id: string; name: string; price: number } | undefined {
+  if (!options || options.length === 0) return undefined;
 
-  const cleanedDetailName = stripParenthetical(detailName);
+  const cleanedOptionName = stripParenthetical(optionName);
 
-  // First try exact match on name or nameAr
-  for (const header of headers) {
-    for (const detail of header.details) {
-      if (detail.name === cleanedDetailName || detail.name === detailName) {
-        return detail;
-      }
-      if (detail.nameAr === cleanedDetailName || detail.nameAr === detailName) {
-        return detail;
-      }
+  // First try exact match on name
+  for (const opt of options) {
+    if (opt.name === cleanedOptionName || opt.name === optionName) {
+      return opt;
     }
   }
 
   // Then try fuzzy match
-  for (const header of headers) {
-    for (const detail of header.details) {
-      if (fuzzyMatch(cleanedDetailName, detail.name)) return detail;
-      if (fuzzyMatch(detailName, detail.name)) return detail;
-      if (detail.nameAr && fuzzyMatch(cleanedDetailName, detail.nameAr)) return detail;
-      if (detail.nameAr && fuzzyMatch(detailName, detail.nameAr)) return detail;
-    }
+  for (const opt of options) {
+    if (fuzzyMatch(cleanedOptionName, opt.name)) return opt;
+    if (fuzzyMatch(optionName, opt.name)) return opt;
   }
 
   return undefined;
 }
 
-// Get available customization options as a formatted string
-function getAvailableCustomizations(
-  headers: MenuItemWithCustomizations['customizationHeaders']
+// Get available options as a formatted string
+function getAvailableOptions(
+  options: MenuItemWithOptions['options']
 ): string {
-  if (!headers || headers.length === 0) return '';
+  if (!options || options.length === 0) return '';
 
-  const options: string[] = [];
-  for (const header of headers) {
-    for (const detail of header.details) {
-      const priceStr = detail.price > 0 ? ` (+${detail.price.toFixed(2)})` : '';
-      options.push(`${header.name}: ${detail.name}${priceStr}`);
-    }
-  }
-  return options.join(', ');
+  return options.map((opt) => {
+    const priceStr = opt.price > 0 ? ` (+${opt.price.toFixed(2)})` : '';
+    return `${opt.name}${priceStr}`;
+  }).join(', ');
 }
 
 export async function handleSubmitOrder(
@@ -162,7 +143,7 @@ export async function handleSubmitOrder(
       return 'No items provided for the order.';
     }
 
-    // Get all available menu items for matching, including customization headers and details
+    // Get all available menu items for matching, including options
     const menuItems = await prisma.menuItem.findMany({
       where: {
         category: {
@@ -171,23 +152,18 @@ export async function handleSubmitOrder(
         available: true,
       },
       include: {
-        customizationHeaders: {
-          include: {
-            details: true,
-          },
-        },
+        options: true,
       },
     });
 
     // Match items to menu
     const matchedItems: Array<{
-      menuItem: MenuItemWithCustomizations;
+      menuItem: MenuItemWithOptions;
       quantity: number;
       notes?: string;
-      customizationDetail?: {
+      option?: {
         id: string;
         name: string;
-        nameAr: string | null;
         price: number;
       };
     }> = [];
@@ -196,48 +172,48 @@ export async function handleSubmitOrder(
 
     for (const item of items) {
       // First find the best menu item match
-      const baseMenuItems = menuItems.map(({ customizationHeaders, ...mi }) => mi);
+      const baseMenuItems = menuItems.map(({ options, ...mi }) => mi);
       const matched = findBestMatch(item.name, baseMenuItems);
 
       if (matched) {
-        // Find the full menu item with customizations
+        // Find the full menu item with options
         const fullMenuItem = menuItems.find((mi) => mi.id === matched.id);
         if (!fullMenuItem) {
           unmatched.push(item.name);
           continue;
         }
 
-        // If customization detail name is provided, try to match it
-        let customizationDetail: { id: string; name: string; nameAr: string | null; price: number } | undefined;
+        // If option name is provided, try to match it
+        let option: { id: string; name: string; price: number } | undefined;
 
-        if (item.customizationDetailName) {
-          // Check if menu item has customization options
-          if (!fullMenuItem.customizationHeaders || fullMenuItem.customizationHeaders.length === 0) {
-            console.error('[SubmitOrder] Customization requested for item with no options', { businessId, customerId, itemName: item.name, detailName: item.customizationDetailName });
-            return `Item '${item.name}' does not have customization options. Please remove the customization '${item.customizationDetailName}' and try again.`;
+        if (item.optionName) {
+          // Check if menu item has options
+          if (!fullMenuItem.options || fullMenuItem.options.length === 0) {
+            console.error('[SubmitOrder] Option requested for item with no options', { businessId, customerId, itemName: item.name, optionName: item.optionName });
+            return `Item '${item.name}' does not have options. Please remove the option '${item.optionName}' and try again.`;
           }
 
-          customizationDetail = findCustomizationDetail(
-            item.customizationDetailName,
-            fullMenuItem.customizationHeaders
+          option = findOption(
+            item.optionName,
+            fullMenuItem.options
           );
 
-          if (!customizationDetail) {
-            const availableOptions = getAvailableCustomizations(fullMenuItem.customizationHeaders);
-            console.error('[SubmitOrder] Customization option not found', { businessId, customerId, itemName: item.name, detailName: item.customizationDetailName, availableOptions });
-            return `Could not find customization option '${item.customizationDetailName}' for item '${item.name}'. Available options: ${availableOptions}`;
+          if (!option) {
+            const availableOptions = getAvailableOptions(fullMenuItem.options);
+            console.error('[SubmitOrder] Option not found', { businessId, customerId, itemName: item.name, optionName: item.optionName, availableOptions });
+            return `Could not find option '${item.optionName}' for item '${item.name}'. Available options: ${availableOptions}`;
           }
-        } else if (fullMenuItem.customizationHeaders && fullMenuItem.customizationHeaders.length > 0) {
-          const availableOptions = getAvailableCustomizations(fullMenuItem.customizationHeaders);
-          console.error('[SubmitOrder] Customization required but not provided', { businessId, customerId, itemName: item.name, availableOptions });
-          return `Please specify a customization option for '${item.name}'. Available options: ${availableOptions}`;
+        } else if (fullMenuItem.options && fullMenuItem.options.length > 0) {
+          const availableOptions = getAvailableOptions(fullMenuItem.options);
+          console.error('[SubmitOrder] Option required but not provided', { businessId, customerId, itemName: item.name, availableOptions });
+          return `Please specify an option for '${item.name}'. Available options: ${availableOptions}`;
         }
 
         matchedItems.push({
           menuItem: fullMenuItem,
           quantity: item.quantity,
           notes: item.notes,
-          customizationDetail,
+          option,
         });
       } else {
         unmatched.push(item.name);
@@ -254,9 +230,9 @@ export async function handleSubmitOrder(
       return 'No valid items found to order.';
     }
 
-    // Calculate total price (menu item price + customization detail price, if any)
+    // Calculate total price (menu item price + option price, if any)
     const totalPrice = matchedItems.reduce((sum, item) => {
-      const itemPrice = item.menuItem.price + (item.customizationDetail?.price || 0);
+      const itemPrice = item.menuItem.price + (item.option?.price || 0);
       return sum + itemPrice * item.quantity;
     }, 0);
 
@@ -282,7 +258,7 @@ export async function handleSubmitOrder(
           data: {
             orderId: order.id,
             menuItemId: item.menuItem.id,
-            customizationDetailId: item.customizationDetail?.id || null,
+            optionId: item.option?.id || null,
             quantity: item.quantity,
             notes: item.notes,
           },
@@ -297,11 +273,11 @@ export async function handleSubmitOrder(
       where: { orderId: order.id },
       include: {
         menuItem: true,
-        customizationDetail: true,
+        option: true,
       },
     });
 
-    // Emit Socket.io event with customization info
+    // Emit Socket.io event with option info
     emitToBusinessRoom(businessId, 'new-order', {
       orderId: order.id,
       referenceId: order.referenceId,
@@ -310,27 +286,25 @@ export async function handleSubmitOrder(
         name: oi.menuItem.name,
         quantity: oi.quantity,
         price: oi.menuItem.price,
-        customizationDetailName: oi.customizationDetail?.name || null,
-        customizationDetailPrice: oi.customizationDetail?.price || 0,
+        optionName: oi.option?.name || null,
+        optionPrice: oi.option?.price || 0,
         notes: oi.notes,
       })),
       totalPrice: order.totalPrice,
       createdAt: order.createdAt,
     });
 
-    // Format confirmation with customization details
+    // Format confirmation with option details
     const lines = [`Order ${order.referenceId} confirmed:`, ''];
     for (const oi of orderItems) {
-      const itemPrice = oi.menuItem.price + (oi.customizationDetail?.price || 0);
+      const itemPrice = oi.menuItem.price + (oi.option?.price || 0);
       const subtotal = itemPrice * oi.quantity;
 
-      if (oi.customizationDetail) {
-        // Show customization in format: "- 2x Shawarma Chicken (Size: Large) (60.00)"
+      if (oi.option) {
         lines.push(
-          `- ${oi.quantity}x ${oi.menuItem.name} (${oi.customizationDetail.name}) (${subtotal.toFixed(2)})`
+          `- ${oi.quantity}x ${oi.menuItem.name} (${oi.option.name}) (${subtotal.toFixed(2)})`
         );
       } else {
-        // Original format: "- 2x Coca Cola (10.00)"
         lines.push(
           `- ${oi.quantity}x ${oi.menuItem.name} (${subtotal.toFixed(2)})`
         );

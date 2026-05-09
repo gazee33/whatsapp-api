@@ -14,9 +14,8 @@ const prisma = new PrismaClient({
 export async function resetDatabase(): Promise<void> {
   await prisma.$transaction([
     prisma.orderItem.deleteMany(),
-    prisma.customizationDetail.deleteMany(),
-    prisma.customizationHeader.deleteMany(),
     prisma.order.deleteMany(),
+    prisma.option.deleteMany(),
     prisma.complaint.deleteMany(),
     prisma.message.deleteMany(),
     prisma.customer.deleteMany(),
@@ -117,30 +116,15 @@ export async function createTestMenuItem(
   });
 }
 
-// Create test customization header
-export async function createTestCustomizationHeader(
+// Create test option
+export async function createTestOption(
   menuItemId: string,
-  data?: Partial<{ name: string; nameAr: string }>
+  data?: Partial<{ name: string; price: number }>
 ): Promise<any> {
-  return prisma.customizationHeader.create({
+  return prisma.option.create({
     data: {
-      menuItemId,
-      name: data?.name || 'Size',
-      nameAr: data?.nameAr || 'الحجم',
-    },
-  });
-}
-
-// Create test customization detail
-export async function createTestCustomizationDetail(
-  headerId: string,
-  data?: Partial<{ name: string; nameAr: string; price: number }>
-): Promise<any> {
-  return prisma.customizationDetail.create({
-    data: {
-      headerId,
+      itemId: menuItemId,
       name: data?.name || 'Large',
-      nameAr: data?.nameAr || 'كبير',
       price: data?.price || 0,
     },
   });
@@ -171,7 +155,7 @@ export async function createTestOrder(
 export async function createTestOrderItem(
   orderId: string,
   menuItemId: string,
-  data?: Partial<{ quantity: number; notes: string; customizationDetailId: string }>
+  data?: Partial<{ quantity: number; notes: string; optionId: string }>
 ): Promise<any> {
   return prisma.orderItem.create({
     data: {
@@ -179,7 +163,7 @@ export async function createTestOrderItem(
       menuItemId,
       quantity: data?.quantity || 1,
       notes: data?.notes || '',
-      customizationDetailId: data?.customizationDetailId || null,
+      optionId: data?.optionId || null,
     },
   });
 }
@@ -248,24 +232,17 @@ export async function createTestFixture() {
     price: 5.00,
   });
 
-  // Create customization for shawarma chicken
-  const sizeHeader = await createTestCustomizationHeader(shawarmaChicken.id, {
-    name: 'Size',
-    nameAr: 'الحجم',
-  });
-  const sizeLarge = await createTestCustomizationDetail(sizeHeader.id, {
+  // Create options for shawarma chicken
+  const largeOption = await createTestOption(shawarmaChicken.id, {
     name: 'Large',
-    nameAr: 'كبير',
     price: 5.00,
   });
-  const sizeMedium = await createTestCustomizationDetail(sizeHeader.id, {
+  const mediumOption = await createTestOption(shawarmaChicken.id, {
     name: 'Medium',
-    nameAr: 'وسط',
     price: 0,
   });
-  const sizeSmall = await createTestCustomizationDetail(sizeHeader.id, {
+  const smallOption = await createTestOption(shawarmaChicken.id, {
     name: 'Small',
-    nameAr: 'صغير',
     price: 0,
   });
   
@@ -277,7 +254,7 @@ export async function createTestFixture() {
     customer,
     categories: { appetizers, mainDishes, drinks },
     menuItems: { shawarmaChicken, shawarmaMeat, fries, cola },
-    customization: { sizeHeader, sizeLarge, sizeMedium, sizeSmall },
+    options: { largeOption, mediumOption, smallOption },
     settings,
   };
 }

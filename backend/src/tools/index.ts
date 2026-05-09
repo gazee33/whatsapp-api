@@ -15,19 +15,19 @@ export const tools: ToolDefinition[] = [
   },
   {
     name: 'submit_order',
-    description: 'Create a new order with items. Use when customer confirms they want to order. Extract items from conversation history — include name (use exact menu names from query_menu results) and quantity for each item. If the item has customization options (shown after "Options:" in query_menu results), you MUST include customizationDetailName. If the item has NO customization options, do NOT include customizationDetailName.',
+    description: 'Create a new order with items. Use when customer confirms they want to order. Extract items from conversation history — include name (use exact menu names from query_menu results) and quantity for each item. If the item has options (shown after "Options:" in query_menu results), you MUST include optionName. If the item has NO options, do NOT include optionName.',
     parameters: {
       type: 'object',
       properties: {
         items: {
           type: 'array',
-          description: 'List of items to order. Each item must include name and quantity. If the item has customization options (shown in menu results), you MUST include customizationDetailName.',
+          description: 'List of items to order. Each item must include name and quantity. If the item has options (shown in menu results), you MUST include optionName.',
           items: {
             type: 'object',
             properties: {
               name: { type: 'string', description: 'Name of the menu item (exact match from query_menu)' },
               quantity: { type: 'number', description: 'How many of this item' },
-              customizationDetailName: { type: 'string', description: 'The selected customization option name (e.g. "Large", "3 سيخ"). REQUIRED if item has customization options, otherwise omit.' },
+              optionName: { type: 'string', description: 'The selected option name (e.g. "Large", "3 سيخ"). REQUIRED if item has options, otherwise omit.' },
               notes: { type: 'string', description: 'Special instructions (optional)' }
             },
             required: ['name', 'quantity']

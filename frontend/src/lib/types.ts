@@ -74,21 +74,11 @@ export interface LoginPayload {
 }
 
 // ── Menu ──
-export interface CustomizationHeader {
+export interface Option {
   id: string;
-  menuItemId: string;
+  itemId: string;
   name: string;
-  nameAr?: string | null;
-  details?: CustomizationDetail[];
-}
-
-export interface CustomizationDetail {
-  id: string;
-  headerId: string;
-  name: string;
-  nameAr?: string | null;
   price: number;
-  header?: CustomizationHeader;
 }
 
 export interface MenuCategory {
@@ -110,7 +100,7 @@ export interface MenuItem {
   available: boolean;
   categoryId: string;
   category?: MenuCategory;
-  customizationHeaders?: CustomizationHeader[];
+  options?: Option[];
 }
 
 export interface MenuCategoryPayload {
@@ -129,14 +119,9 @@ export interface MenuItemPayload {
   available?: boolean;
 }
 
-export interface CustomizationHeaderPayload {
+export interface OptionPayload {
   name: string;
-  nameAr?: string;
-  details: Array<{
-    name: string;
-    nameAr?: string;
-    price: number;
-  }>;
+  price: number;
 }
 
 // ── Orders ──

@@ -321,19 +321,15 @@ export default function MenuPage() {
                                           {formatCurrency(item.price)}
                                         </span>
                                       </div>
-                                      {item.customizationHeaders && item.customizationHeaders.length > 0 && (
+                                      {item.options && item.options.length > 0 && (
                                         <div className="mt-1 text-xs text-muted-foreground">
-                                          {item.customizationHeaders
-                                            .map((header) => {
-                                              const options = header.details
-                                                ?.map(
-                                                  (detail) =>
-                                                    `${detail.name}: ${formatCurrency(detail.price)}`
-                                                )
-                                                .join(", ");
-                                              return `${header.name} (${options})`;
-                                            })
-                                            .join(" | ")}
+                                          {item.options
+                                            .map((opt) =>
+                                              opt.price > 0
+                                                ? `${opt.name} (+${formatCurrency(opt.price)})`
+                                                : opt.name
+                                            )
+                                            .join(", ")}
                                         </div>
                                       )}
                                     </button>
@@ -467,19 +463,15 @@ export default function MenuPage() {
                             </Badge>
                           )}
                         </div>
-                        {item.customizationHeaders && item.customizationHeaders.length > 0 && (
+                        {item.options && item.options.length > 0 && (
                           <div className="mt-1 text-xs text-muted-foreground">
-                            {item.customizationHeaders
-                              .map((header) => {
-                                const options = header.details
-                                  ?.map(
-                                    (detail) =>
-                                      `${detail.name}: ${formatCurrency(detail.price)}`
-                                  )
-                                  .join(", ");
-                                return `${header.name} (${options})`;
-                              })
-                              .join(" | ")}
+                            {item.options
+                              .map((opt) =>
+                                opt.price > 0
+                                  ? `${opt.name} (+${formatCurrency(opt.price)})`
+                                  : opt.name
+                              )
+                              .join(", ")}
                           </div>
                         )}
                       </div>

@@ -41,7 +41,7 @@ export function MenuItemDialog({
 }: MenuItemDialogProps) {
   const isEditing = !!item;
   const { t } = useLanguage();
-  const { categories, updateItem, createCustomization, fetchMenu } = useMenuStore();
+  const { categories, updateItem, createOption, fetchMenu } = useMenuStore();
 
   const [name, setName] = useState(item?.name ?? "");
   const [nameAr, setNameAr] = useState(item?.nameAr ?? "");
@@ -51,22 +51,12 @@ export function MenuItemDialog({
   const [selectedCategoryId, setSelectedCategoryId] = useState(item?.categoryId ?? categoryId ?? "");
   const [available, setAvailable] = useState(item?.available ?? true);
 
-  // Customization state for create mode
-  const [customizations, setCustomizations] = useState<{
-    name: string;
-    nameAr?: string;
-    details: { name: string; nameAr?: string; price: number }[];
-  }[]>(() => {
-    if (item?.customizationHeaders && item.customizationHeaders.length > 0) {
-      // For edit mode with existing customizations - populate read-only
-      return item.customizationHeaders.map(h => ({
-        name: h.name,
-        nameAr: h.nameAr || undefined,
-        details: h.details?.map(d => ({
-          name: d.name,
-          nameAr: d.nameAr || undefined,
-          price: d.price,
-        })) || [],
+  // Options state for create mode
+  const [options, setOptions] = useState<{ name: string; price: number }[]>(() => {
+    if (item?.options && item.options.length > 0) {
+      return item.options.map(o => ({
+        name: o.name,
+        price: o.price,
       }));
     }
     return [];
@@ -86,44 +76,22 @@ export function MenuItemDialog({
     return Object.keys(errs).length === 0;
   };
 
-  // Customization helpers for create mode
-  const addCustomization = () => {
-    setCustomizations([
-      ...customizations,
-      { name: "", nameAr: "", details: [] }
-    ]);
+  const addOption = () => {
+    setOptions([...options, { name: "", price: 0 }]);
   };
 
-  const removeCustomization = (index: number) => {
-    setCustomizations(customizations.filter((_, i) => i !== index));
+  const removeOption = (index: number) => {
+    setOptions(options.filter((_, i) => i !== index));
   };
 
-  const updateCustomizationName = (index: number, field: "name" | "nameAr", value: string) => {
-    const updated = [...customizations];
-    updated[index][field] = value;
-    setCustomizations(updated);
-  };
-
-  const addDetail = (headerIndex: number) => {
-    const updated = [...customizations];
-    updated[headerIndex].details.push({ name: "", nameAr: "", price: 0 });
-    setCustomizations(updated);
-  };
-
-  const removeDetail = (headerIndex: number, detailIndex: number) => {
-    const updated = [...customizations];
-    updated[headerIndex].details.splice(detailIndex, 1);
-    setCustomizations(updated);
-  };
-
-  const updateDetail = (headerIndex: number, detailIndex: number, field: "name" | "nameAr" | "price", value: string | number) => {
-    const updated = [...customizations];
+  const updateOption = (index: number, field: "name" | "price", value: string | number) => {
+    const updated = [...options];
     if (field === "price") {
-      updated[headerIndex].details[detailIndex].price = Number(value) || 0;
+      updated[index].price = Number(value) || 0;
     } else {
-      updated[headerIndex].details[detailIndex][field] = value as "name" | "nameAr";
+      updated[index].name = value as string;
     }
-    setCustomizations(updated);
+    setOptions(updated);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -150,31 +118,25 @@ export function MenuItemDialog({
         const response = await tenantClient.post("/menu/items", itemData);
         const newItemId = response.data.id;
 
-        // Create customizations for headers with non-empty name and at least one detail
-        const customizationErrors: string[] = [];
-        for (const cust of customizations) {
-          const validDetails = cust.details.filter(d => d.name.trim());
-          if (cust.name.trim() && validDetails.length > 0) {
+        // Create options
+        const optionErrors: string[] = [];
+        for (const opt of options) {
+          if (opt.name.trim()) {
             try {
-              await createCustomization(newItemId, {
-                name: cust.name,
-                nameAr: cust.nameAr?.trim() || undefined,
-                details: validDetails.map(d => ({
-                  name: d.name,
-                  nameAr: d.nameAr?.trim() || undefined,
-                  price: d.price,
-                })),
+              await createOption(newItemId, {
+                name: opt.name.trim(),
+                price: opt.price,
               });
-            } catch (custError) {
-              console.error("Failed to create customization:", custError);
-              customizationErrors.push(`Failed to save "${cust.name}" options`);
+            } catch (optError) {
+              console.error("Failed to create option:", optError);
+              optionErrors.push(`Failed to save "${opt.name}" option`);
             }
           }
         }
 
         await fetchMenu();
-        if (customizationErrors.length > 0) {
-          setErrors({ form: customizationErrors.join('. ') });
+        if (optionErrors.length > 0) {
+          setErrors({ form: optionErrors.join('. ') });
           setLoading(false);
           return;
         }
@@ -296,124 +258,66 @@ export function MenuItemDialog({
             <Label htmlFor="item-available">{t("menu.available_checkbox")}</Label>
           </div>
 
-          {/* Customization Section - Create Mode */}
+          {/* Options Section - Create Mode */}
           {!isEditing && (
             <div className="space-y-3">
               <div className="flex items-center justify-between">
-                <Label>{t("menu.customization_options")}</Label>
+                <Label>{t("menu.options")}</Label>
                 <Button
                   type="button"
                   variant="outline"
                   size="sm"
-                  onClick={addCustomization}
+                  onClick={addOption}
                   disabled={loading}
                 >
                   <Plus className="h-4 w-4 me-1" />
                   {t("menu.add")}
                 </Button>
               </div>
-              {customizations.map((cust, headerIndex) => (
-                <div key={headerIndex} className="border rounded-lg p-3 space-y-2">
-                  <div className="flex items-center gap-2">
-                      <Input
-                        placeholder={t("menu.customization_placeholder")}
-                        value={cust.name}
-                        onChange={(e) => updateCustomizationName(headerIndex, "name", e.target.value)}
-                        disabled={loading}
-                        className="flex-1"
-                      />
-                      <Input
-                        placeholder="الحجم"
-                        value={cust.nameAr || ""}
-                        onChange={(e) => updateCustomizationName(headerIndex, "nameAr", e.target.value)}
-                        disabled={loading}
-                        className="flex-1"
-                        dir="rtl"
-                      />
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => removeCustomization(headerIndex)}
-                      disabled={loading}
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  </div>
-                  <div className="space-y-2 ps-4">
-                    {cust.details.map((detail, detailIndex) => (
-                      <div key={detailIndex} className="flex items-center gap-2">
-                        <Input
-                          placeholder={t("menu.option_name_placeholder")}
-                          value={detail.name}
-                          onChange={(e) => updateDetail(headerIndex, detailIndex, "name", e.target.value)}
-                          disabled={loading}
-                          className="flex-1"
-                        />
-                        <Input
-                          placeholder="العربية"
-                          value={detail.nameAr || ""}
-                          onChange={(e) => updateDetail(headerIndex, detailIndex, "nameAr", e.target.value)}
-                          disabled={loading}
-                          className="flex-1"
-                          dir="rtl"
-                        />
-                        <Input
-                          type="number"
-                          step="0.01"
-                          min="0"
-                          placeholder={t("menu.price_placeholder")}
-                          value={detail.price}
-                          onChange={(e) => updateDetail(headerIndex, detailIndex, "price", e.target.value)}
-                          disabled={loading}
-                          className="w-24"
-                        />
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => removeDetail(headerIndex, detailIndex)}
-                          disabled={loading}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    ))}
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      onClick={() => addDetail(headerIndex)}
-                      disabled={loading}
-                    >
-                      <Plus className="h-3 w-3 me-1" />
-                      {t("menu.add_option")}
-                    </Button>
-                  </div>
+              {options.map((opt, index) => (
+                <div key={index} className="flex items-center gap-2">
+                  <Input
+                    placeholder={t("menu.option_name_placeholder")}
+                    value={opt.name}
+                    onChange={(e) => updateOption(index, "name", e.target.value)}
+                    disabled={loading}
+                    className="flex-1"
+                  />
+                  <Input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    placeholder={t("menu.price_placeholder")}
+                    value={opt.price}
+                    onChange={(e) => updateOption(index, "price", e.target.value)}
+                    disabled={loading}
+                    className="w-24"
+                  />
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => removeOption(index)}
+                    disabled={loading}
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
                 </div>
               ))}
             </div>
           )}
 
-          {/* Customization Section - Edit Mode (Read-only) */}
-          {isEditing && item?.customizationHeaders && item.customizationHeaders.length > 0 && (
+          {/* Options Section - Edit Mode (Read-only) */}
+          {isEditing && item?.options && item.options.length > 0 && (
             <div className="space-y-2">
-              <Label>{t("menu.customization_options")}</Label>
+              <Label>{t("menu.options")}</Label>
               <div className="text-sm text-muted-foreground space-y-1">
-                {item.customizationHeaders.map((header) => (
-                  <div key={header.id}>
-                    <span className="font-medium">{header.name}</span>
-                    {header.nameAr && <span className="text-muted-foreground"> ({header.nameAr})</span>}
-                    {": "}
-                    {header.details?.map((d, i) => (
-                      <span key={d.id}>
-                        {d.name}
-                        {d.nameAr && ` (${d.nameAr})`}
-                        {d.price > 0 && ` (+${d.price.toFixed(2)} SAR)`}
-                        {i < (header.details?.length || 0) - 1 ? ", " : ""}
-                      </span>
-                    ))}
-                  </div>
+                {item.options.map((opt, i) => (
+                  <span key={opt.id}>
+                    {opt.name}
+                    {opt.price > 0 && ` (+${opt.price.toFixed(2)} SAR)`}
+                    {i < item.options!.length - 1 ? ", " : ""}
+                  </span>
                 ))}
               </div>
             </div>

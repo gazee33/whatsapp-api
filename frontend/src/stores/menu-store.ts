@@ -1,6 +1,6 @@
 import { create } from "zustand";
 import { tenantClient } from "@/lib/api-client";
-import type { MenuCategory, MenuItem, MenuCategoryPayload, MenuItemPayload, CustomizationHeaderPayload } from "@/lib/types";
+import type { MenuCategory, MenuItem, MenuCategoryPayload, MenuItemPayload, OptionPayload } from "@/lib/types";
 
 interface MenuState {
   categories: MenuCategory[];
@@ -19,9 +19,9 @@ interface MenuState {
   deleteItem: (id: string) => Promise<void>;
   toggleItemAvailable: (id: string) => Promise<void>;
 
-  createCustomization: (itemId: string, data: CustomizationHeaderPayload) => Promise<void>;
-  updateCustomization: (detailId: string, data: { name?: string; nameAr?: string; price?: number }) => Promise<void>;
-  deleteCustomization: (detailId: string) => Promise<void>;
+  createOption: (itemId: string, data: OptionPayload) => Promise<void>;
+  updateOption: (optionId: string, data: { name?: string; price?: number }) => Promise<void>;
+  deleteOption: (optionId: string) => Promise<void>;
 }
 
 export const useMenuStore = create<MenuState>((set, get) => ({
@@ -91,39 +91,39 @@ export const useMenuStore = create<MenuState>((set, get) => ({
     }));
   },
 
-  createCustomization: async (itemId, data) => {
+  createOption: async (itemId, data) => {
     set({ isLoading: true });
     try {
-      await tenantClient.post(`/menu/items/${itemId}/customization`, data);
+      await tenantClient.post(`/menu/items/${itemId}/options`, data);
       await get().fetchMenu();
     } catch (error: unknown) {
-      console.error('Failed to create customization:', error);
+      console.error('Failed to create option:', error);
       throw error;
     } finally {
       set({ isLoading: false });
     }
   },
 
-  updateCustomization: async (detailId, data) => {
+  updateOption: async (optionId, data) => {
     set({ isLoading: true });
     try {
-      await tenantClient.put(`/menu/customization/${detailId}`, data);
+      await tenantClient.put(`/menu/options/${optionId}`, data);
       await get().fetchMenu();
     } catch (error: unknown) {
-      console.error('Failed to update customization:', error);
+      console.error('Failed to update option:', error);
       throw error;
     } finally {
       set({ isLoading: false });
     }
   },
 
-  deleteCustomization: async (detailId) => {
+  deleteOption: async (optionId) => {
     set({ isLoading: true });
     try {
-      await tenantClient.delete(`/menu/customization/${detailId}`);
+      await tenantClient.delete(`/menu/options/${optionId}`);
       await get().fetchMenu();
     } catch (error: unknown) {
-      console.error('Failed to delete customization:', error);
+      console.error('Failed to delete option:', error);
       throw error;
     } finally {
       set({ isLoading: false });

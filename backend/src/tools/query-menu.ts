@@ -72,11 +72,7 @@ export async function handleQueryMenu(
     where,
     include: {
       category: true,
-      customizationHeaders: {
-        include: {
-          details: true,
-        },
-      },
+      options: true,
     },
     orderBy: {
       category: {
@@ -127,21 +123,13 @@ export async function handleQueryMenu(
       }
       lines.push(line);
 
-      // Add customization options if present
-      if (item.customizationHeaders && item.customizationHeaders.length > 0) {
-        const optionsParts: string[] = [];
-        for (const header of item.customizationHeaders) {
-          const detailParts: string[] = [];
-          if (header.details && header.details.length > 0) {
-            for (const detail of header.details) {
-              const detailPrice = detail.price;
-              const priceStr = detailPrice > 0 ? `+${detailPrice.toFixed(2)}` : detailPrice.toFixed(2);
-              detailParts.push(`${detail.name}: ${priceStr}`);
-            }
-          }
-          optionsParts.push(`${header.name} (${detailParts.join(', ')})`);
-        }
-        lines.push(`  🔹 OPTIONS — MUST ASK: ${optionsParts.join(', ')}`);
+      // Add options if present
+      if (item.options && item.options.length > 0) {
+        const optionParts = item.options.map((opt) => {
+          const priceStr = opt.price > 0 ? `+${opt.price.toFixed(2)}` : '0.00';
+          return `${opt.name} (${priceStr})`;
+        });
+        lines.push(`  🔹 Options: ${optionParts.join(', ')}`);
       }
     }
   }

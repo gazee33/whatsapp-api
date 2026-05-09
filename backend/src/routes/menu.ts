@@ -12,11 +12,7 @@ router.get('/', async (req: Request, res: Response) => {
       include: {
         items: {
           include: {
-            customizationHeaders: {
-              include: {
-                details: true,
-              },
-            },
+            options: true,
           },
           orderBy: { name: 'asc' },
         },
@@ -261,15 +257,15 @@ router.patch('/items/:id/toggle', async (req: Request, res: Response) => {
   }
 });
 
-// POST /api/menu/items/:id/customization - Add customization header with details
-router.post('/items/:id/customization', async (req: Request, res: Response) => {
+// POST /api/menu/items/:id/options - Add option to menu item
+router.post('/items/:id/options', async (req: Request, res: Response) => {
   try {
     const businessId = (req as any).business.id;
     const id = req.params.id as string;
-    const { name, nameAr, details } = req.body;
+    const { name, price } = req.body;
 
     if (!name) {
-      return res.status(400).json({ error: 'Header name is required' });
+      return res.status(400).json({ error: 'Option name is required' });
     }
 
     // Verify item belongs to this business
@@ -281,97 +277,83 @@ router.post('/items/:id/customization', async (req: Request, res: Response) => {
       return res.status(404).json({ error: 'Menu item not found' });
     }
 
-    // Create header with details in a transaction
-    const header = await prisma.customizationHeader.create({
+    const option = await prisma.option.create({
       data: {
-        menuItemId: id,
+        itemId: id,
         name,
-        nameAr: nameAr || null,
-        details: {
-          create: Array.isArray(details) ? details.map((d: any) => ({
-            name: d.name,
-            nameAr: d.nameAr || null,
-            price: parseFloat(d.price) || 0,
-          })) : [],
-        },
+        price: parseFloat(price) || 0,
       },
-      include: { details: true },
     });
 
-    res.status(201).json(header);
+    res.status(201).json(option);
   } catch (error) {
-    console.error('Create customization error:', error);
-    res.status(500).json({ error: 'Failed to create customization' });
+    console.error('Create option error:', error);
+    res.status(500).json({ error: 'Failed to create option' });
   }
 });
 
-// PUT /api/menu/customization/:id - Update customization detail
-router.put('/customization/:id', async (req: Request, res: Response) => {
+// PUT /api/menu/options/:id - Update option
+router.put('/options/:id', async (req: Request, res: Response) => {
   try {
     const businessId = (req as any).business.id;
     const id = req.params.id as string;
-    const { name, nameAr, price } = req.body;
+    const { name, price } = req.body;
 
-    // Verify detail belongs to business through the chain
-    const detail = await prisma.customizationDetail.findFirst({
+    // Verify option belongs to business through the chain
+    const option = await prisma.option.findFirst({
       where: {
         id,
-        header: {
-          menuItem: {
-            category: { businessId },
-          },
+        menuItem: {
+          category: { businessId },
         },
       },
     });
 
-    if (!detail) {
-      return res.status(404).json({ error: 'Customization detail not found' });
+    if (!option) {
+      return res.status(404).json({ error: 'Option not found' });
     }
 
-    const updated = await prisma.customizationDetail.update({
+    const updated = await prisma.option.update({
       where: { id },
       data: {
         name: name !== undefined ? name : undefined,
-        nameAr: nameAr !== undefined ? nameAr : undefined,
         price: price !== undefined ? parseFloat(price) : undefined,
       },
     });
 
     res.json(updated);
   } catch (error) {
-    console.error('Update customization detail error:', error);
-    res.status(500).json({ error: 'Failed to update customization detail' });
+    console.error('Update option error:', error);
+    res.status(500).json({ error: 'Failed to update option' });
   }
 });
 
-// DELETE /api/menu/customization/:id - Delete customization detail
-router.delete('/customization/:id', async (req: Request, res: Response) => {
+// DELETE /api/menu/options/:id - Delete option
+router.delete('/options/:id', async (req: Request, res: Response) => {
   try {
     const businessId = (req as any).business.id;
     const id = req.params.id as string;
 
-    // Verify detail belongs to business through the chain
-    const detail = await prisma.customizationDetail.findFirst({
+    // Verify option belongs to business through the chain
+    const option = await prisma.option.findFirst({
       where: {
         id,
-        header: {
-          menuItem: {
-            category: { businessId },
-          },
+        menuItem: {
+          category: { businessId },
         },
       },
     });
 
-    if (!detail) {
-      return res.status(404).json({ error: 'Customization detail not found' });
+    if (!option) {
+      return res.status(404).json({ error: 'Option not found' });
     }
 
-    await prisma.customizationDetail.delete({ where: { id } });
+    await prisma.option.delete({ where: { id } });
 
     res.json({ success: true });
   } catch (error) {
-    console.error('Delete customization detail error:', error);
-    res.status(500).json({ error: 'Failed to delete customization detail' });
+    console.error('Delete option error:', error);
+    res.status(500).json({ error: 'Failed to delete option' });
   }
 });
 

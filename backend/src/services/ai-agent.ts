@@ -34,8 +34,8 @@ interface CartItem {
   nameAr?: string | null;
   quantity: number;
   unitPrice: number;
-  customizationDetailName?: string;
-  customizationDetailPrice?: number;
+  optionName?: string;
+  optionPrice?: number;
   notes?: string;
 }
 
@@ -78,7 +78,7 @@ function normalizeToolArgs<T>(args: unknown): T {
 }
 
 function calculateCartTotal(items: CartItem[]): number {
-  return items.reduce((sum, item) => sum + (item.unitPrice + (item.customizationDetailPrice || 0)) * item.quantity, 0);
+  return items.reduce((sum, item) => sum + (item.unitPrice + (item.optionPrice || 0)) * item.quantity, 0);
 }
 
 function formatCartForPrompt(cart: CartState, currency: string): string {
@@ -87,10 +87,10 @@ function formatCartForPrompt(cart: CartState, currency: string): string {
   }
 
   const lines = cart.items.map((item, index) => {
-    const itemPrice = item.unitPrice + (item.customizationDetailPrice || 0);
+    const itemPrice = item.unitPrice + (item.optionPrice || 0);
     const lineTotal = itemPrice * item.quantity;
-    const customizationStr = item.customizationDetailName ? ` (${item.customizationDetailName})` : '';
-    return `${index + 1}. ${item.quantity}x ${item.name}${customizationStr} - ${lineTotal} ${currency}${item.notes ? ` - Notes: ${item.notes}` : ''}`;
+    const optionStr = item.optionName ? ` (${item.optionName})` : '';
+    return `${index + 1}. ${item.quantity}x ${item.name}${optionStr} - ${lineTotal} ${currency}${item.notes ? ` - Notes: ${item.notes}` : ''}`;
   });
 
   return `${lines.join('\n')}\nTotal: ${calculateCartTotal(cart.items)} ${currency}\nMode: ${cart.mode}\nConfirmation requested: ${cart.lastAssistantAskedForConfirmation ? 'yes' : 'no'}`;
@@ -179,8 +179,8 @@ function buildSystemPrompt(params: {
 You are the AI ordering assistant for ${context.restaurantName} (${context.openingTime}-${context.closingTime}, ${context.currency})${context.aiRules ? `\nRules: ${context.aiRules}` : ''}.
 
 Behavior:
-- **Important:** Dont use female pronouns or feminine form of words.
-- **Important:** dont ever use "تبي" instead use "تريد", "ترغب", "حاب", "تفضل", "ودك".
+- IMPORTANT: Dont use female pronouns or feminine form of words.
+- IMPORTANT: DO NOT SAY "تبي" INSTEAD SAY "تريد", "ترغب", "حاب", "تفضل", "ودك".
 - WhatsApp ordering assistant, be warm, casual, and friendly — like chatting with a restaurant worker on WhatsApp.
 - Use tools: query_menu for menu, submit_order for orders, check_order_status, file_complaint.
 - Dont be hurry to confirm and submit the order, we need customer to order as much as possible.
@@ -491,8 +491,8 @@ export class AIAgentService {
                              execution.result.toLowerCase().includes('failed') ||
                              execution.result.toLowerCase().includes('no items provided') ||
                              execution.result.toLowerCase().includes('no valid items') ||
-                             execution.result.toLowerCase().includes('does not have customization') ||
-                             execution.result.toLowerCase().includes('please specify a customization') ||
+                              execution.result.toLowerCase().includes('does not have options') ||
+                              execution.result.toLowerCase().includes('please specify an option') ||
                              execution.result.toLowerCase().includes('malformed') ||
                              execution.result.toLowerCase().includes('unknown tool') ||
                              execution.result.includes('لا يوجد') ||

@@ -23,7 +23,7 @@ export async function handleCheckStatus(
       },
       include: {
         items: {
-          include: { menuItem: true },
+          include: { menuItem: true, option: true },
         },
       },
     });
@@ -37,7 +37,7 @@ export async function handleCheckStatus(
       orderBy: { createdAt: 'desc' },
       include: {
         items: {
-          include: { menuItem: true },
+          include: { menuItem: true, option: true },
         },
       },
     });
@@ -67,8 +67,9 @@ export async function handleCheckStatus(
   ];
 
   for (const item of order.items) {
+    const optionStr = item.option ? ` (${item.option.name})` : '';
     lines.push(
-      `- ${item.quantity}x ${item.menuItem.name}`
+      `- ${item.quantity}x ${item.menuItem.name}${optionStr}`
     );
   }
 

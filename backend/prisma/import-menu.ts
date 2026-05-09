@@ -83,10 +83,8 @@ async function main() {
   let categoriesFound = 0;
   let itemsCreated = 0;
   let itemsFound = 0;
-  let headersCreated = 0;
-  let headersFound = 0;
-  let detailsCreated = 0;
-  let detailsFound = 0;
+  let optionsCreated = 0;
+  let optionsFound = 0;
 
   for (const product of products) {
     const categoryName = product.category.name;
@@ -137,7 +135,7 @@ async function main() {
       itemsCreated++;
     }
 
-    // ── CustomizationHeaders & Details ────────────────────────────────────
+    // ── Options ───────────────────────────────────────────────────────
 
     const headers = product.customized_header || [];
 
@@ -145,45 +143,27 @@ async function main() {
       // Skip empty sentinel objects
       if (apiHeader.is_empty_object === '1') continue;
 
-      let header = await prisma.customizationHeader.findFirst({
-        where: { menuItemId: menuItem.id, name: apiHeader.name },
-      });
-
-      if (header) {
-        headersFound++;
-      } else {
-        header = await prisma.customizationHeader.create({
-          data: {
-            menuItemId: menuItem.id,
-            name: apiHeader.name,
-            nameAr: apiHeader.name,
-          },
-        });
-        headersCreated++;
-      }
-
       const details = apiHeader.customized_detail || [];
 
       for (const apiDetail of details) {
         // Skip empty sentinel objects
         if (apiDetail.is_empty_object === '1') continue;
 
-        const detailExists = await prisma.customizationDetail.findFirst({
-          where: { headerId: header.id, name: apiDetail.name },
+        const optionExists = await prisma.option.findFirst({
+          where: { itemId: menuItem.id, name: apiDetail.name },
         });
 
-        if (detailExists) {
-          detailsFound++;
+        if (optionExists) {
+          optionsFound++;
         } else {
-          await prisma.customizationDetail.create({
+          await prisma.option.create({
             data: {
-              headerId: header.id,
+              itemId: menuItem.id,
               name: apiDetail.name,
-              nameAr: apiDetail.name,
               price: parseFloat(apiDetail.additional_price) || 0,
             },
           });
-          detailsCreated++;
+          optionsCreated++;
         }
       }
     }
@@ -196,8 +176,7 @@ async function main() {
   console.log(`Imported ${products.length} products across ${uniqueCategories} categories`);
   console.log(`  Categories: ${categoriesCreated} created, ${categoriesFound} existing`);
   console.log(`  Menu items: ${itemsCreated} created, ${itemsFound} existing`);
-  console.log(`  Customization headers: ${headersCreated} created, ${headersFound} existing`);
-  console.log(`  Customization details: ${detailsCreated} created, ${detailsFound} existing`);
+  console.log(`  Options: ${optionsCreated} created, ${optionsFound} existing`);
 }
 
 main()

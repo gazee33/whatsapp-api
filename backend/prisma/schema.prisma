@@ -274,42 +274,30 @@ model MenuCategory {
 }
 
 model MenuItem {
-  id                    String                @id @default(cuid())
-  name                  String
-  nameAr                String?
-  description           String?
-  price                 Float
-  image                 String?
-  available             Boolean               @default(true)
-  categoryId            String
-  category              MenuCategory          @relation(fields: [categoryId], references: [id], onDelete: Cascade)
-  orderItems            OrderItem[]
-  customizationHeaders  CustomizationHeader[]
+  id          String       @id @default(cuid())
+  name        String
+  nameAr      String?
+  description String?
+  price       Float
+  image       String?
+  available   Boolean      @default(true)
+  categoryId  String
+  category    MenuCategory @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  orderItems  OrderItem[]
+  options     Option[]
 
   @@map("MenuItem")
 }
 
-model CustomizationHeader {
-  id         String               @id @default(cuid())
-  menuItemId String
-  menuItem   MenuItem             @relation(fields: [menuItemId], references: [id], onDelete: Cascade)
+model Option {
+  id         String      @id @default(cuid())
+  itemId     String
+  menuItem   MenuItem    @relation(fields: [itemId], references: [id], onDelete: Cascade)
   name       String
-  nameAr     String?
-  details    CustomizationDetail[]
-
-  @@map("CustomizationHeader")
-}
-
-model CustomizationDetail {
-  id         String               @id @default(cuid())
-  headerId   String
-  header     CustomizationHeader   @relation(fields: [headerId], references: [id], onDelete: Cascade)
-  name       String
-  nameAr     String?
-  price      Float                @default(0)
+  price      Float       @default(0)
   orderItems OrderItem[]
 
-  @@map("CustomizationDetail")
+  @@map("Option")
 }
 
 model Order {
@@ -334,15 +322,15 @@ model Order {
 }
 
 model OrderItem {
-  id                     String               @id @default(cuid())
-  orderId                String
-  order                  Order                @relation(fields: [orderId], references: [id], onDelete: Cascade)
-  menuItemId             String
-  menuItem              MenuItem             @relation(fields: [menuItemId], references: [id], onDelete: Cascade)
-  customizationDetailId  String?
-  customizationDetail    CustomizationDetail? @relation(fields: [customizationDetailId], references: [id], onDelete: SetNull)
-  quantity               Int
-  notes                  String?
+  id         String   @id @default(cuid())
+  orderId    String
+  order      Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  menuItemId String
+  menuItem   MenuItem @relation(fields: [menuItemId], references: [id], onDelete: Cascade)
+  optionId   String?
+  option     Option?  @relation(fields: [optionId], references: [id], onDelete: SetNull)
+  quantity   Int
+  notes      String?
 
   @@map("OrderItem")
 }
