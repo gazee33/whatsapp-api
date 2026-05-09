@@ -11,9 +11,10 @@ import { LogIn, Eye, EyeOff } from "lucide-react";
 
 export default function RegisterPage() {
   const router = useRouter();
-  const { apiKey, setApiKey, register, isLoading } = useAuthStore();
+  const { businessRegister, isLoading } = useAuthStore();
   const { t } = useLanguage();
 
+  const [businessName, setBusinessName] = useState("");
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -24,13 +25,13 @@ export default function RegisterPage() {
     e.preventDefault();
     setError(null);
 
-    if (!apiKey) {
-      setError(t("login.api_key_required"));
+    if (!businessName) {
+      setError(t("register.business_name_required"));
       return;
     }
 
     try {
-      await register(email, password, name || undefined);
+      await businessRegister(businessName, email, password, name || undefined);
       router.push("/onboarding?step=menu");
     } catch (err) {
       setError(err instanceof Error ? err.message : t("register.registration_failed"));
@@ -55,13 +56,14 @@ export default function RegisterPage() {
       )}
 
       <div className="space-y-2">
-        <Label htmlFor="apiKey">{t("login.api_key_label")}</Label>
+        <Label htmlFor="businessName">{t("register.business_name_label")}</Label>
         <Input
-          id="apiKey"
-          type="password"
-          placeholder={t("login.api_key_placeholder")}
-          value={apiKey ?? ""}
-          onChange={(e) => setApiKey(e.target.value)}
+          id="businessName"
+          type="text"
+          placeholder={t("register.business_name_placeholder")}
+          value={businessName}
+          onChange={(e) => setBusinessName(e.target.value)}
+          required
         />
       </div>
 

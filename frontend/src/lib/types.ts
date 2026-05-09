@@ -68,6 +68,21 @@ export interface RegisterPayload {
   name?: string;
 }
 
+export interface BusinessRegisterPayload {
+  businessName: string;
+  email: string;
+  password: string;
+  name?: string;
+}
+
+export interface BusinessRegisterResponse extends AuthResponse {
+  business: {
+    id: string;
+    name: string;
+    apiKey: string;
+  };
+}
+
 export interface LoginPayload {
   email: string;
   password: string;

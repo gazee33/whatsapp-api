@@ -83,6 +83,9 @@ export const en: Record<string, string> = {
   "register.create_account": "Create Account",
   "register.have_account": "Already have an account?",
   "register.sign_in": "Sign in",
+  "register.business_name_label": "Business Name",
+  "register.business_name_placeholder": "My Restaurant",
+  "register.business_name_required": "Business name is required",
 
   // ---- Auth: Platform Login ----
   "platform_login.title": "Platform Admin",

@@ -83,6 +83,9 @@ export const ar: Record<string, string> = {
   "register.create_account": "إنشاء حساب",
   "register.have_account": "لديك حساب بالفعل؟",
   "register.sign_in": "تسجيل الدخول",
+  "register.business_name_label": "اسم المطعم",
+  "register.business_name_placeholder": "مطعمي",
+  "register.business_name_required": "اسم المطعم مطلوب",
 
   // ---- Auth: Platform Login ----
   "platform_login.title": "مشرف المنصة",

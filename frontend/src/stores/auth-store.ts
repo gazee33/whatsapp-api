@@ -21,6 +21,7 @@ interface AuthState {
   setApiKey: (key: string) => void;
   login: (email: string, password: string) => Promise<User>;
   register: (email: string, password: string, name?: string) => Promise<User>;
+  businessRegister: (businessName: string, email: string, password: string, name?: string) => Promise<User>;
   refreshToken: () => Promise<string | null>;
   logout: () => Promise<void>;
   fetchMe: () => Promise<User>;
@@ -94,6 +95,27 @@ export const useAuthStore = create<AuthState>()(
           } catch {
             set({ isLoading: false });
             throw new Error("Registration failed");
+          }
+        },
+
+        businessRegister: async (businessName: string, email: string, password: string, name?: string) => {
+          set({ isLoading: true });
+          try {
+            const res = await axios.post(`${API_BASE}/auth/business-register`, { businessName, email, password, name }, {
+              withCredentials: true,
+            });
+            set({
+              apiKey: res.data.business.apiKey,
+              accessToken: res.data.accessToken,
+              user: res.data.user,
+              isAuthenticated: true,
+              isLoading: false,
+            });
+            completeOnboardingStep("register");
+            return res.data.user;
+          } catch {
+            set({ isLoading: false });
+            throw new Error("Business registration failed");
           }
         },
 

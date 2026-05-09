@@ -5,7 +5,7 @@ import { prisma } from '../lib/prisma.js';
 import { auth } from '../middleware/auth.js';
 import * as authService from '../services/auth-service.js';
 import { validatePassword, getAuthCookieOptions, generateTokenPair, verifyPassword } from '../lib/auth.js';
-import type { AuthRequest, RegisterInput } from '../types/iam.js';
+import type { AuthRequest, RegisterInput, BusinessRegisterInput } from '../types/iam.js';
 
 const router = Router();
 
@@ -64,6 +64,42 @@ router.post('/register', async (req: any, res: Response): Promise<void> => {
     });
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Registration failed';
+    res.status(400).json({ error: message });
+  }
+});
+
+router.post('/business-register', authLimiter, async (req: any, res: Response): Promise<void> => {
+  try {
+    const { businessName, email, password, name } = req.body;
+
+    if (!businessName || !email || !password) {
+      res.status(400).json({ error: 'Missing required fields: businessName, email, password' });
+      return;
+    }
+
+    const passwordValidation = validatePassword(password);
+    if (!passwordValidation.valid) {
+      res.status(400).json({ error: 'Invalid password', details: passwordValidation.errors });
+      return;
+    }
+
+    const result = await authService.registerBusiness({ businessName, email, password, name });
+
+    res.cookie('refreshToken', result.tokens.refreshToken, getAuthCookieOptions());
+
+    res.status(201).json({
+      accessToken: result.tokens.accessToken,
+      expiresIn: result.tokens.expiresIn,
+      user: {
+        id: result.user.id,
+        email: result.user.email,
+        name: result.user.name,
+        businessId: result.user.businessId,
+      },
+      business: result.business,
+    });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Business registration failed';
     res.status(400).json({ error: message });
   }
 });
