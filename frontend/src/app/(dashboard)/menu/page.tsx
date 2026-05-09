@@ -1,5 +1,7 @@
 "use client";
 
+/* eslint-disable @next/next/no-img-element */
+
 import { useEffect, useState, useCallback, useRef } from "react";
 import {
   Plus,
@@ -103,7 +105,7 @@ export default function MenuPage() {
   };
 
   const handleDeleteItem = async (item: MenuItem) => {
-    if (!confirm(`${t("menu.off_badge")} "${item.name}"?`)) return;
+    if (!confirm(t("menu.delete_item_confirm").replace("{name}", item.name))) return;
     await deleteItem(item.id);
   };
 
@@ -153,9 +155,9 @@ export default function MenuPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">Menu</h1>
+          <h1 className="text-2xl font-bold tracking-tight">{t("menu.title")}</h1>
           <p className="text-sm text-muted-foreground">
-            Manage your restaurant menu categories and items.
+            {t("menu.subtitle")}
           </p>
         </div>
       </div>
@@ -164,12 +166,12 @@ export default function MenuPage() {
         <div className="flex items-center justify-between">
           <TabsList>
             <TabsTrigger value="categories">
-              <Tag className="mr-2 h-4 w-4" />
-              Categories
+              <Tag className="me-2 h-4 w-4" />
+              {t("menu.tab_categories")}
             </TabsTrigger>
             <TabsTrigger value="search">
-              <Search className="mr-2 h-4 w-4" />
-              Search
+              <Search className="me-2 h-4 w-4" />
+              {t("menu.tab_search")}
             </TabsTrigger>
           </TabsList>
         </div>
@@ -178,12 +180,12 @@ export default function MenuPage() {
           {categories.length === 0 ? (
             <EmptyState
               icon={Tag}
-              title="No categories yet"
-              description="Create your first menu category to start organizing your items."
+              title={t("menu.no_categories")}
+              description={t("menu.no_categories_desc")}
               action={
                 <Button onClick={handleAddCategory}>
-                  <Plus className="mr-2 h-4 w-4" />
-                  Add Category
+                  <Plus className="me-2 h-4 w-4" />
+                  {t("menu.add_category")}
                 </Button>
               }
             />
@@ -192,11 +194,11 @@ export default function MenuPage() {
               <div className="flex items-center justify-between">
                 <p className="text-sm text-muted-foreground">
                   {categories.length}{" "}
-                  {categories.length === 1 ? "category" : "categories"}
+                  {categories.length === 1 ? t("menu.category_count") : t("menu.categories_count")}
                 </p>
                 <Button onClick={handleAddCategory} size="sm">
-                  <Plus className="mr-2 h-4 w-4" />
-                  Add Category
+                  <Plus className="me-2 h-4 w-4" />
+                  {t("menu.add_category")}
                 </Button>
               </div>
 
@@ -232,7 +234,7 @@ export default function MenuPage() {
                         </div>
                         <div className="flex items-center gap-3">
                           <Badge variant="secondary">
-                            {itemCount} {itemCount === 1 ? "item" : "items"}
+                            {itemCount} {itemCount === 1 ? t("menu.item_count") : t("menu.items_count")}
                           </Badge>
                           <Button
                             variant="ghost"
@@ -253,15 +255,15 @@ export default function MenuPage() {
                           {(!category.items || category.items.length === 0) ? (
                             <div className="p-6 text-center">
                               <p className="text-sm text-muted-foreground mb-3">
-                                No items in this category yet.
+                                {t("menu.no_category_items")}
                               </p>
                               <Button
                                 variant="outline"
                                 size="sm"
                                 onClick={() => handleAddItem(category.id)}
                               >
-                                <Plus className="mr-2 h-4 w-4" />
-                                Add First Item
+                                <Plus className="me-2 h-4 w-4" />
+                                {t("menu.add_first_item")}
                               </Button>
                             </div>
                           ) : (
@@ -274,7 +276,7 @@ export default function MenuPage() {
                                   >
                                     <button
                                       type="button"
-                                      className="flex-1 text-left min-w-0 mr-3"
+                                      className="flex-1 text-start min-w-0 me-3"
                                       onClick={() => handleEditItem(item)}
                                     >
                                       <div className="flex items-center gap-2">
@@ -308,7 +310,7 @@ export default function MenuPage() {
                                               variant="destructive"
                                               className="text-[10px] px-1.5 py-0"
                                             >
-                                              Off
+                                              {t("menu.off_badge")}
                                             </Badge>
                                           )}
                                         </div>
@@ -378,8 +380,8 @@ export default function MenuPage() {
                                   size="sm"
                                   onClick={() => handleAddItem(category.id)}
                                 >
-                                  <Plus className="mr-2 h-4 w-4" />
-                                  Add Item
+                                  <Plus className="me-2 h-4 w-4" />
+                                  {t("menu.add_item")}
                                 </Button>
                               </div>
                             </>
@@ -396,7 +398,7 @@ export default function MenuPage() {
         <TabsContent value="search" className="mt-4">
           <div className="space-y-4">
             <SearchInput
-              placeholder="Search menu items by name..."
+              placeholder={t("menu.search_placeholder")}
               value={searchQuery}
               onChange={handleSearchChange}
             />
@@ -404,8 +406,8 @@ export default function MenuPage() {
             {searchQuery.trim() && searchResults.length === 0 ? (
               <EmptyState
                 icon={Search}
-                title="No results found"
-                description={`No items matching "${searchQuery}" were found.`}
+                title={t("menu.no_results")}
+                description={t("menu.no_results_desc").replace("{query}", searchQuery)}
               />
             ) : searchResults.length > 0 ? (
               <div className="space-y-1">
@@ -447,7 +449,7 @@ export default function MenuPage() {
                                 variant="destructive"
                                 className="text-[10px] px-1.5 py-0"
                               >
-                                Off
+                                {t("menu.off_badge")}
                               </Badge>
                             )}
                           </div>
@@ -481,7 +483,7 @@ export default function MenuPage() {
                           </div>
                         )}
                       </div>
-                      <Edit className="h-4 w-4 text-muted-foreground shrink-0 ml-3" />
+                      <Edit className="h-4 w-4 text-muted-foreground shrink-0 ms-3" />
                     </div>
                   </Card>
                 ))}
@@ -489,8 +491,8 @@ export default function MenuPage() {
             ) : !searchQuery.trim() ? (
               <EmptyState
                 icon={Search}
-                title="Search the menu"
-                description="Type a name to find items across all categories."
+                title={t("menu.search_menu")}
+                description={t("menu.search_menu_desc")}
               />
             ) : null}
           </div>

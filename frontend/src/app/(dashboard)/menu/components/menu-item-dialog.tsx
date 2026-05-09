@@ -41,7 +41,7 @@ export function MenuItemDialog({
 }: MenuItemDialogProps) {
   const isEditing = !!item;
   const { t } = useLanguage();
-  const { categories, createItem, updateItem, createCustomization, fetchMenu } = useMenuStore();
+  const { categories, updateItem, createCustomization, fetchMenu } = useMenuStore();
 
   const [name, setName] = useState(item?.name ?? "");
   const [nameAr, setNameAr] = useState(item?.nameAr ?? "");
@@ -182,7 +182,7 @@ export function MenuItemDialog({
         onSuccess?.();
       }
     } catch {
-      setErrors({ form: t("menu.edit_item") });
+      setErrors({ form: t("error.save_failed") });
     } finally {
       setLoading(false);
     }
@@ -235,12 +235,12 @@ export function MenuItemDialog({
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="item-image">Image URL</Label>
+            <Label htmlFor="item-image">{t("menu.image_url_label")}</Label>
             <Input
               id="item-image"
               value={image}
               onChange={(e) => setImage(e.target.value)}
-              placeholder="https://example.com/image.jpg"
+              placeholder={t("menu.image_url_placeholder")}
               disabled={loading}
             />
           </div>
@@ -300,7 +300,7 @@ export function MenuItemDialog({
           {!isEditing && (
             <div className="space-y-3">
               <div className="flex items-center justify-between">
-                <Label>Customization Options</Label>
+                <Label>{t("menu.customization_options")}</Label>
                 <Button
                   type="button"
                   variant="outline"
@@ -308,28 +308,28 @@ export function MenuItemDialog({
                   onClick={addCustomization}
                   disabled={loading}
                 >
-                  <Plus className="h-4 w-4 mr-1" />
-                  Add
+                  <Plus className="h-4 w-4 me-1" />
+                  {t("menu.add")}
                 </Button>
               </div>
               {customizations.map((cust, headerIndex) => (
                 <div key={headerIndex} className="border rounded-lg p-3 space-y-2">
                   <div className="flex items-center gap-2">
-                    <Input
-                      placeholder="e.g. Size, Spice Level"
-                      value={cust.name}
-                      onChange={(e) => updateCustomizationName(headerIndex, "name", e.target.value)}
-                      disabled={loading}
-                      className="flex-1"
-                    />
-                    <Input
-                      placeholder="الحجم"
-                      value={cust.nameAr || ""}
-                      onChange={(e) => updateCustomizationName(headerIndex, "nameAr", e.target.value)}
-                      disabled={loading}
-                      className="flex-1"
-                      dir="rtl"
-                    />
+                      <Input
+                        placeholder={t("menu.customization_placeholder")}
+                        value={cust.name}
+                        onChange={(e) => updateCustomizationName(headerIndex, "name", e.target.value)}
+                        disabled={loading}
+                        className="flex-1"
+                      />
+                      <Input
+                        placeholder="الحجم"
+                        value={cust.nameAr || ""}
+                        onChange={(e) => updateCustomizationName(headerIndex, "nameAr", e.target.value)}
+                        disabled={loading}
+                        className="flex-1"
+                        dir="rtl"
+                      />
                     <Button
                       type="button"
                       variant="ghost"
@@ -340,11 +340,11 @@ export function MenuItemDialog({
                       <Trash2 className="h-4 w-4" />
                     </Button>
                   </div>
-                  <div className="space-y-2 pl-4">
+                  <div className="space-y-2 ps-4">
                     {cust.details.map((detail, detailIndex) => (
                       <div key={detailIndex} className="flex items-center gap-2">
                         <Input
-                          placeholder="Option name"
+                          placeholder={t("menu.option_name_placeholder")}
                           value={detail.name}
                           onChange={(e) => updateDetail(headerIndex, detailIndex, "name", e.target.value)}
                           disabled={loading}
@@ -362,7 +362,7 @@ export function MenuItemDialog({
                           type="number"
                           step="0.01"
                           min="0"
-                          placeholder="Price"
+                          placeholder={t("menu.price_placeholder")}
                           value={detail.price}
                           onChange={(e) => updateDetail(headerIndex, detailIndex, "price", e.target.value)}
                           disabled={loading}
@@ -386,8 +386,8 @@ export function MenuItemDialog({
                       onClick={() => addDetail(headerIndex)}
                       disabled={loading}
                     >
-                      <Plus className="h-3 w-3 mr-1" />
-                      Add Option
+                      <Plus className="h-3 w-3 me-1" />
+                      {t("menu.add_option")}
                     </Button>
                   </div>
                 </div>
@@ -398,7 +398,7 @@ export function MenuItemDialog({
           {/* Customization Section - Edit Mode (Read-only) */}
           {isEditing && item?.customizationHeaders && item.customizationHeaders.length > 0 && (
             <div className="space-y-2">
-              <Label>Customization Options</Label>
+              <Label>{t("menu.customization_options")}</Label>
               <div className="text-sm text-muted-foreground space-y-1">
                 {item.customizationHeaders.map((header) => (
                   <div key={header.id}>

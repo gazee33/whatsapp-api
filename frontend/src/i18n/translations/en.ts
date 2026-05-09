@@ -323,6 +323,14 @@ export const en: Record<string, string> = {
   "menu.category_required": "Category is required",
   "menu.price_required": "Price is required",
   "menu.price_min": "Price must be 0 or greater",
+  "menu.delete_item_confirm": "Delete \"{name}\"? This cannot be undone.",
+  "menu.image_url_label": "Image URL",
+  "menu.image_url_placeholder": "https://example.com/image.jpg",
+  "menu.customization_options": "Customization Options",
+  "menu.add": "Add",
+  "menu.customization_placeholder": "e.g. Size, Spice Level",
+  "menu.option_name_placeholder": "Option name",
+  "menu.add_option": "Add Option",
 
   // ---- Settings ----
   "settings.title": "Settings",

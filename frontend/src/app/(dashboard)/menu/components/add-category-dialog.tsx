@@ -41,7 +41,7 @@ export function AddCategoryDialog({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!name.trim()) {
-      setError("Name is required");
+      setError(t("menu.name_required"));
       return;
     }
     setError("");
@@ -63,7 +63,7 @@ export function AddCategoryDialog({
       onOpenChange(false);
       onSuccess?.();
     } catch {
-      setError("Failed to save category");
+      setError(t("error.save_failed"));
     } finally {
       setLoading(false);
     }
@@ -73,26 +73,24 @@ export function AddCategoryDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>{isEditing ? "Edit Category" : "Add Category"}</DialogTitle>
+          <DialogTitle>{isEditing ? t("menu.edit_category") : t("menu.add_category")}</DialogTitle>
           <DialogDescription>
-            {isEditing
-              ? "Update the category details below."
-              : "Create a new menu category."}
+            {isEditing ? t("menu.edit_category_desc") : t("menu.create_category_desc")}
           </DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="name">Name</Label>
+            <Label htmlFor="name">{t("menu.name_label")}</Label>
             <Input
               id="name"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              placeholder="e.g. Main Dishes"
+              placeholder={t("menu.name_placeholder")}
               disabled={loading}
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="nameAr">Arabic Name (optional)</Label>
+            <Label htmlFor="nameAr">{t("menu.name_ar_label")}</Label>
             <Input
               id="nameAr"
               value={nameAr}

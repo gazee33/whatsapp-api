@@ -323,6 +323,14 @@ export const ar: Record<string, string> = {
   "menu.category_required": "الفئة مطلوبة",
   "menu.price_required": "السعر مطلوب",
   "menu.price_min": "يجب أن يكون السعر 0 أو أكثر",
+  "menu.delete_item_confirm": "حذف \"{name}\"؟ لا يمكن التراجع عن هذا الإجراء.",
+  "menu.image_url_label": "رابط الصورة",
+  "menu.image_url_placeholder": "https://example.com/image.jpg",
+  "menu.customization_options": "خيارات التخصيص",
+  "menu.add": "إضافة",
+  "menu.customization_placeholder": "مثال: الحجم، مستوى الحرارة",
+  "menu.option_name_placeholder": "اسم الخيار",
+  "menu.add_option": "إضافة خيار",
 
   // ---- Settings ----
   "settings.title": "الإعدادات",
