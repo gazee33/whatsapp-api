@@ -68,40 +68,13 @@ function emptyCartState(): CartState {
 function normalizeToolArgs<T>(args: unknown): T {
   if (typeof args === 'string') {
     try {
-      return unwrapToolArgs(JSON.parse(args)) as T;
+      return JSON.parse(args) as T;
     } catch (err) {
       console.error('[normalizeToolArgs] Failed to parse tool arguments:', args);
       throw new Error(`Invalid tool arguments format: ${(args as string).substring(0, 200)}`);
     }
   }
-  return unwrapToolArgs(args ?? {}) as T;
-}
-
-function unwrapToolArgs(parsed: unknown): unknown {
-  if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
-    const obj = parsed as Record<string, unknown>;
-
-    // DeepSeek sometimes nests real args inside schema keywords like properties/required/items
-    for (const key of ['properties', 'required', 'items']) {
-      const value = obj[key];
-      // String → parse as JSON
-      if (typeof value === 'string' && value !== '') {
-        try {
-          const inner = JSON.parse(value);
-          if (inner && typeof inner === 'object' && Object.keys(inner as object).length > 0) {
-            return inner;
-          }
-        } catch {
-          // Not valid JSON, continue
-        }
-      }
-      // Already an object with content → use directly
-      if (value && typeof value === 'object' && !Array.isArray(value) && Object.keys(value as object).length > 0) {
-        return value;
-      }
-    }
-  }
-  return parsed;
+  return (args ?? {}) as T;
 }
 
 function calculateCartTotal(items: CartItem[]): number {

@@ -36,11 +36,7 @@ export class OpenAIProvider implements LLMProvider {
             function: {
               name: tool.name,
               description: tool.description,
-              parameters: {
-                type: 'object',
-                properties: this.buildParameterProperties(tool.parameters),
-                required: this.getRequiredParams(tool.parameters),
-              },
+              parameters: this.buildToolParameters(tool.parameters),
             },
           }))
         : undefined;
@@ -144,6 +140,22 @@ export class OpenAIProvider implements LLMProvider {
     }
 
     return result;
+  }
+
+  private buildToolParameters(
+    params: Record<string, any>
+  ): Record<string, any> {
+    // If params already has 'properties' at the top level, it's a complete JSON Schema — pass through
+    if (params.properties && typeof params.properties === 'object') {
+      return params;
+    }
+
+    // Legacy flat format: { query: { type: 'string', description: '...' }, ... }
+    return {
+      type: 'object',
+      properties: this.buildParameterProperties(params),
+      required: this.getRequiredParams(params),
+    };
   }
 
   private buildParameterProperties(
