@@ -139,6 +139,36 @@ export interface OptionPayload {
   price: number;
 }
 
+// ── Menu Scan (Extracted from image) ──
+export interface ExtractedItemOption {
+  name: string;
+  price: number;
+}
+
+export interface ExtractedMenuItem {
+  name: string;
+  nameAr?: string | null;
+  description?: string | null;
+  price: number;
+  options: ExtractedItemOption[];
+}
+
+export interface ExtractedCategory {
+  name: string;
+  nameAr?: string | null;
+  items: ExtractedMenuItem[];
+}
+
+export interface ExtractedMenu {
+  categories: ExtractedCategory[];
+}
+
+export interface BulkCreateResult {
+  categoriesCreated: number;
+  itemsCreated: number;
+  optionsCreated: number;
+}
+
 // ── Orders ──
 export interface Order {
   id: string;

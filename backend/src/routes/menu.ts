@@ -3,6 +3,7 @@ import multer from 'multer';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { prisma } from '../lib/prisma.js';
+import { analyzeMenuImage } from '../services/menu-vision.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -28,6 +29,12 @@ const fileFilter = (_req: Request, file: Express.Multer.File, cb: multer.FileFil
 
 const upload = multer({
   storage,
+  fileFilter,
+  limits: { fileSize: 5 * 1024 * 1024 },
+});
+
+const memoryUpload = multer({
+  storage: multer.memoryStorage(),
   fileFilter,
   limits: { fileSize: 5 * 1024 * 1024 },
 });
@@ -86,6 +93,102 @@ router.get('/search', async (req: Request, res: Response) => {
   } catch (error) {
     console.error('Search menu error:', error);
     res.status(500).json({ error: 'Failed to search menu' });
+  }
+});
+
+// POST /api/menu/scan - Analyze menu image with AI vision
+router.post('/scan', memoryUpload.single('image'), async (req: Request, res: Response) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ error: 'Image file is required' });
+    }
+
+    const menu = await analyzeMenuImage(req.file.buffer, req.file.mimetype);
+    res.json(menu);
+  } catch (error) {
+    console.error('Menu scan error:', error);
+    res.status(500).json({ error: 'Failed to analyze menu image' });
+  }
+});
+
+// POST /api/menu/bulk - Create full menu structure in one transaction
+router.post('/bulk', async (req: Request, res: Response) => {
+  try {
+    const businessId = (req as any).business.id;
+    const { categories } = req.body;
+
+    if (!Array.isArray(categories)) {
+      return res.status(400).json({ error: 'categories must be an array' });
+    }
+
+    let categoriesCreated = 0;
+    let itemsCreated = 0;
+    let optionsCreated = 0;
+
+    for (const cat of categories) {
+      if (!cat.name || !cat.name.trim()) {
+        return res.status(400).json({ error: 'Category name is required' });
+      }
+    }
+
+    await prisma.$transaction(async (tx) => {
+      for (const cat of categories) {
+        const category = await tx.menuCategory.create({
+          data: {
+            businessId,
+            name: cat.name,
+            nameAr: cat.nameAr,
+          },
+        });
+        categoriesCreated++;
+
+        if (Array.isArray(cat.items)) {
+          for (const item of cat.items) {
+            if (!item.name || !item.name.trim()) {
+              throw new Error(`Item name required in category "${cat.name}"`);
+            }
+            const price = Number(item.price);
+            if (isNaN(price) || price < 0) {
+              throw new Error(`Invalid price for item "${item.name}" in category "${cat.name}"`);
+            }
+
+            const menuItem = await tx.menuItem.create({
+              data: {
+                name: item.name,
+                nameAr: item.nameAr,
+                description: item.description,
+                price,
+                categoryId: category.id,
+              },
+            });
+            itemsCreated++;
+
+            if (Array.isArray(item.options)) {
+              for (const opt of item.options) {
+                await tx.option.create({
+                  data: {
+                    name: opt.name || 'Option',
+                    price: Number(opt.price) || 0,
+                    itemId: menuItem.id,
+                  },
+                });
+                optionsCreated++;
+              }
+            }
+          }
+        }
+      }
+    });
+
+    res.status(201).json({
+      success: true,
+      categoriesCreated,
+      itemsCreated,
+      optionsCreated,
+    });
+  } catch (error) {
+    console.error('Menu bulk create error:', error);
+    res.status(500).json({ error: 'Failed to create menu structure' });
   }
 });
 

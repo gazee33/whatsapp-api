@@ -131,6 +131,14 @@ export class OpenAIProvider implements LLMProvider {
             },
           })),
         });
+      } else if (msg.imageData && msg.role === 'user') {
+        result.push({
+          role: 'user',
+          content: [
+            { type: 'text', text: msg.content },
+            { type: 'image_url', image_url: { url: `data:${msg.imageData.mimeType};base64,${msg.imageData.data}` } },
+          ],
+        });
       } else {
         result.push({
           role: msg.role,

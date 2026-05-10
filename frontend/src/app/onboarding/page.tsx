@@ -10,10 +10,15 @@ import {
   Check,
   Info,
   ArrowRight,
+  Camera,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { OnboardingStepper } from "@/components/onboarding/onboarding-stepper";
 import { InlineSimulator } from "@/components/onboarding/inline-simulator";
+import { MenuScanUpload } from "@/components/onboarding/menu-scan-upload";
+import { MenuScanPreview } from "@/components/onboarding/menu-scan-preview";
+import type { ExtractedMenu } from "@/lib/types";
+import { useMenuStore } from "@/stores/menu-store";
 
 type StepKey = "register" | "menu" | "simulate" | "whatsapp";
 
@@ -84,10 +89,24 @@ function StepContent({
   step,
   onComplete,
   onSkip,
+  scanMode,
+  setScanMode,
+  extractedData,
+  setExtractedData,
+  onSaveMenu,
+  saving,
+  saveError,
 }: {
   step: StepKey;
   onComplete: (step: StepKey) => void;
   onSkip: (step: StepKey) => void;
+  scanMode: "idle" | "upload" | "preview";
+  setScanMode: (mode: "idle" | "upload" | "preview") => void;
+  extractedData: ExtractedMenu | null;
+  setExtractedData: (data: ExtractedMenu | null) => void;
+  onSaveMenu: (menu: ExtractedMenu) => void;
+  saving: boolean;
+  saveError: string | null;
 }) {
   const router = useRouter();
 
@@ -118,6 +137,31 @@ function StepContent({
       );
 
     case "menu":
+      if (scanMode === "upload") {
+        return (
+          <MenuScanUpload
+            onAnalyzed={(data) => {
+              setExtractedData(data);
+              setScanMode("preview");
+            }}
+            onCancel={() => setScanMode("idle")}
+          />
+        );
+      }
+
+      if (scanMode === "preview" && extractedData) {
+        return (
+          <MenuScanPreview
+            data={extractedData}
+            onSave={onSaveMenu}
+            onCancel={() => setScanMode("idle")}
+            onBack={() => setScanMode("upload")}
+            saving={saving}
+            error={saveError}
+          />
+        );
+      }
+
       return (
         <div className="space-y-6">
           <div className="text-center space-y-3">
@@ -140,8 +184,16 @@ function StepContent({
 
           <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
             <Button
-              onClick={() => router.push("/menu")}
+              onClick={() => setScanMode("upload")}
               className="w-full sm:w-auto bg-indigo-500 hover:bg-indigo-600 text-white"
+            >
+              <Camera className="w-4 h-4" />
+              Scan Menu from Photo
+            </Button>
+            <Button
+              variant="outline"
+              onClick={() => router.push("/menu")}
+              className="w-full sm:w-auto"
             >
               Go to Menu
               <ArrowRight className="w-4 h-4" />
@@ -284,6 +336,10 @@ function OnboardingPageContent() {
   const [completedSteps, setCompletedSteps] =
     useState<Record<StepKey, boolean>>(getInitialCompleted);
   const [mounted, setMounted] = useState(false);
+  const [scanMode, setScanMode] = useState<"idle" | "upload" | "preview">("idle");
+  const [extractedData, setExtractedData] = useState<ExtractedMenu | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
 
   useEffect(() => {
     ensureRegisterInStorage();
@@ -342,6 +398,26 @@ function OnboardingPageContent() {
     [advanceStep]
   );
 
+  const handleSaveMenu = useCallback(
+    async (menu: ExtractedMenu) => {
+      setSaving(true);
+      setSaveError(null);
+      try {
+        await useMenuStore.getState().bulkCreateMenu({
+          categories: menu.categories,
+        });
+        setScanMode("idle");
+        setExtractedData(null);
+        handleComplete("menu");
+      } catch {
+        setSaveError("Failed to save menu. Please try again.");
+      } finally {
+        setSaving(false);
+      }
+    },
+    [handleComplete]
+  );
+
   const handleStepClick = useCallback(
     (step: string) => {
       router.push(`/onboarding?step=${step}`);
@@ -373,6 +449,13 @@ function OnboardingPageContent() {
           step={currentStep}
           onComplete={handleComplete}
           onSkip={handleSkip}
+          scanMode={scanMode}
+          setScanMode={setScanMode}
+          extractedData={extractedData}
+          setExtractedData={setExtractedData}
+          onSaveMenu={handleSaveMenu}
+          saving={saving}
+          saveError={saveError}
         />
       </div>
     </div>

@@ -1,6 +1,6 @@
 import { create } from "zustand";
 import { tenantClient } from "@/lib/api-client";
-import type { MenuCategory, MenuItem, MenuCategoryPayload, OptionPayload } from "@/lib/types";
+import type { MenuCategory, MenuItem, MenuCategoryPayload, OptionPayload, ExtractedCategory, BulkCreateResult } from "@/lib/types";
 
 interface MenuState {
   categories: MenuCategory[];
@@ -22,6 +22,8 @@ interface MenuState {
   createOption: (itemId: string, data: OptionPayload) => Promise<void>;
   updateOption: (optionId: string, data: { name?: string; price?: number }) => Promise<void>;
   deleteOption: (optionId: string) => Promise<void>;
+
+  bulkCreateMenu: (data: { categories: ExtractedCategory[] }) => Promise<BulkCreateResult>;
 }
 
 export const useMenuStore = create<MenuState>((set, get) => ({
@@ -128,5 +130,11 @@ export const useMenuStore = create<MenuState>((set, get) => ({
     } finally {
       set({ isLoading: false });
     }
+  },
+
+  bulkCreateMenu: async (data) => {
+    const res = await tenantClient.post("/menu/bulk", data);
+    await get().fetchMenu();
+    return res.data as BulkCreateResult;
   },
 }));

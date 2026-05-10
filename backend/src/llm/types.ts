@@ -2,6 +2,7 @@ export interface ChatMessage {
   role: 'system' | 'user' | 'assistant' | 'tool';
   content: string;
   toolCallId?: string;
+  imageData?: { data: string; mimeType: string };
 }
 
 export interface ToolDefinition {
