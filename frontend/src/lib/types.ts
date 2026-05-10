@@ -226,6 +226,25 @@ export interface ConversationDetail {
   sessions: Record<string, Message[]>;
 }
 
+// ── Delivery Zone ──
+export interface DeliveryZone {
+  id: string;
+  businessId: string;
+  name: string;
+  description: string | null;
+  deliveryFee: number;
+  minimumOrder: number | null;
+  isActive: boolean;
+}
+
+export interface DeliveryZonePayload {
+  name: string;
+  description?: string;
+  deliveryFee: number;
+  minimumOrder?: number | null;
+  isActive?: boolean;
+}
+
 // ── Settings ──
 export interface RestaurantSettings {
   id: string;
@@ -236,6 +255,17 @@ export interface RestaurantSettings {
   welcomeMsg: string;
   aiRules: string;
   currency: string;
+  address: string | null;
+  latitude: number | null;
+  longitude: number | null;
+  phoneNumber: string | null;
+  deliveryEnabled: boolean;
+  dineInEnabled: boolean;
+  pickupEnabled: boolean;
+  estimatedPrepTimeMinutes: number | null;
+  paymentMethods: string;
+  isTemporarilyClosed: boolean;
+  defaultLanguage: string;
 }
 
 export interface RestaurantSettingsPayload {
@@ -245,6 +275,17 @@ export interface RestaurantSettingsPayload {
   welcomeMsg?: string;
   aiRules?: string;
   currency?: string;
+  address?: string | null;
+  latitude?: number | null;
+  longitude?: number | null;
+  phoneNumber?: string | null;
+  deliveryEnabled?: boolean;
+  dineInEnabled?: boolean;
+  pickupEnabled?: boolean;
+  estimatedPrepTimeMinutes?: number | null;
+  paymentMethods?: string;
+  isTemporarilyClosed?: boolean;
+  defaultLanguage?: string;
 }
 
 // ── IAM: Roles & Permissions ──

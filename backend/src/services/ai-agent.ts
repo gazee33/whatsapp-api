@@ -8,6 +8,9 @@ import { handleQueryMenu } from '../tools/query-menu.js';
 import { handleSubmitOrder } from '../tools/submit-order.js';
 import { handleCheckStatus } from '../tools/check-status.js';
 import { handleFileComplaint } from '../tools/file-complaint.js';
+import { handleQueryZones } from '../tools/query-zones.js';
+import { handleCheckRestaurantInfo } from '../tools/check-restaurant-info.js';
+import { handleSetDeliveryAddress } from '../tools/set-delivery-address.js';
 import { logDebugEntry } from './debug.js';
 import { logError } from './error-log.js';
 import { DebugStep } from '../debug/types.js';
@@ -15,6 +18,9 @@ import type { QueryMenuParams } from '../tools/query-menu.js';
 import type { SubmitOrderParams } from '../tools/submit-order.js';
 import type { CheckStatusParams } from '../tools/check-status.js';
 import type { FileComplaintParams } from '../tools/file-complaint.js';
+import type { QueryZonesParams } from '../tools/query-zones.js';
+import type { CheckRestaurantInfoParams } from '../tools/check-restaurant-info.js';
+import type { SetDeliveryAddressParams } from '../tools/set-delivery-address.js';
 import type { LLMProvider } from '../llm/types.js';
 import type { Business, Customer } from '@prisma/client';
 
@@ -26,7 +32,7 @@ const CACHE_TTL_MS = 600000; // 10 minutes
 const systemPromptCache = new Map<string, { template: string; expires: number }>();
 
 type SupportedLanguage = 'ar' | 'en';
-type AgentMode = 'browsing' | 'cart_review' | 'awaiting_confirmation' | 'order_submitted';
+type AgentMode = 'browsing' | 'order_type_selection' | 'zone_selection' | 'address_entry' | 'cart_review' | 'awaiting_confirmation' | 'order_submitted';
 
 interface CartItem {
   menuItemId?: string;
@@ -39,9 +45,21 @@ interface CartItem {
   notes?: string;
 }
 
+interface DeliveryInfo {
+  zoneId: string;
+  zoneName: string;
+  address: string;
+  notes?: string;
+  fee: number;
+  minimumOrder?: number;
+  contactPhone?: string;
+}
+
 interface CartState {
   mode: AgentMode;
   items: CartItem[];
+  orderType?: 'delivery' | 'dine_in' | 'pickup';
+  deliveryInfo?: DeliveryInfo;
   lastAssistantAskedForConfirmation?: boolean;
   updatedAt: string;
 }
@@ -93,7 +111,20 @@ function formatCartForPrompt(cart: CartState, currency: string): string {
     return `${index + 1}. ${item.quantity}x ${item.name}${optionStr} - ${lineTotal} ${currency}${item.notes ? ` - Notes: ${item.notes}` : ''}`;
   });
 
-  return `${lines.join('\n')}\nTotal: ${calculateCartTotal(cart.items)} ${currency}\nMode: ${cart.mode}\nConfirmation requested: ${cart.lastAssistantAskedForConfirmation ? 'yes' : 'no'}`;
+  const sections: string[] = [lines.join('\n')];
+
+  if (cart.deliveryInfo) {
+    sections.push(
+      `\nDelivery info:\n  Zone: ${cart.deliveryInfo.zoneName}\n  Address: ${cart.deliveryInfo.address}${cart.deliveryInfo.notes ? `\n  Notes: ${cart.deliveryInfo.notes}` : ''}${cart.deliveryInfo.contactPhone ? `\n  Contact: ${cart.deliveryInfo.contactPhone}` : ''}\n  Fee: ${cart.deliveryInfo.fee} ${currency}${cart.deliveryInfo.minimumOrder ? ` (min: ${cart.deliveryInfo.minimumOrder} ${currency})` : ''}`
+    );
+  }
+
+  sections.push(`Total: ${calculateCartTotal(cart.items)} ${currency}`);
+  sections.push(`Mode: ${cart.mode}`);
+  if (cart.orderType) sections.push(`Order type: ${cart.orderType}`);
+  sections.push(`Confirmation requested: ${cart.lastAssistantAskedForConfirmation ? 'yes' : 'no'}`);
+
+  return sections.join('\n');
 }
 
 async function getCartState(customerId: string): Promise<CartState> {
@@ -108,6 +139,8 @@ async function getCartState(customerId: string): Promise<CartState> {
     return {
       mode: parsed.mode ?? 'browsing',
       items: Array.isArray(parsed.items) ? parsed.items : [],
+      orderType: parsed.orderType,
+      deliveryInfo: parsed.deliveryInfo,
       lastAssistantAskedForConfirmation: Boolean(parsed.lastAssistantAskedForConfirmation),
       updatedAt: parsed.updatedAt ?? new Date().toISOString(),
     };
@@ -128,17 +161,34 @@ async function saveCartState(customerId: string, state: CartState): Promise<void
   });
 }
 
-async function getRestaurantContext(businessId: string): Promise<{
+interface RestaurantContext {
   restaurantName: string;
   currency: string;
   openingTime: string;
   closingTime: string;
   aiRules: string;
-}> {
+  address: string | null;
+  phoneNumber: string | null;
+  deliveryEnabled: boolean;
+  dineInEnabled: boolean;
+  pickupEnabled: boolean;
+  estimatedPrepTimeMinutes: number | null;
+  paymentMethods: string[];
+  isTemporarilyClosed: boolean;
+}
+
+async function getRestaurantContext(businessId: string): Promise<RestaurantContext> {
   const [settings, business] = await Promise.all([
     prisma.restaurantSettings.findUnique({ where: { businessId } }),
     prisma.business.findUnique({ where: { id: businessId } }),
   ]);
+
+  let paymentMethods: string[] = ['cash', 'card'];
+  if (settings?.paymentMethods) {
+    try {
+      paymentMethods = JSON.parse(settings.paymentMethods);
+    } catch {}
+  }
 
   return {
     restaurantName: settings?.name || business?.name || 'the restaurant',
@@ -146,6 +196,14 @@ async function getRestaurantContext(businessId: string): Promise<{
     openingTime: settings?.openingTime || '09:00',
     closingTime: settings?.closingTime || '23:00',
     aiRules: settings?.aiRules || '',
+    address: settings?.address || null,
+    phoneNumber: settings?.phoneNumber || null,
+    deliveryEnabled: settings?.deliveryEnabled ?? false,
+    dineInEnabled: settings?.dineInEnabled ?? true,
+    pickupEnabled: settings?.pickupEnabled ?? true,
+    estimatedPrepTimeMinutes: settings?.estimatedPrepTimeMinutes || null,
+    paymentMethods,
+    isTemporarilyClosed: settings?.isTemporarilyClosed ?? false,
   };
 }
 
@@ -174,32 +232,74 @@ function buildSystemPrompt(params: {
       ? 'Respond only in Arabic, preferably Saudi casual Arabic.'
       : 'Respond only in English.';
 
+    // Build order types string
+    const orderTypes: string[] = [];
+    if (context.deliveryEnabled) orderTypes.push('delivery');
+    if (context.dineInEnabled) orderTypes.push('dine-in');
+    if (context.pickupEnabled) orderTypes.push('pickup');
+    const orderTypeStr = orderTypes.length > 0 ? `Order types: ${orderTypes.join(', ')}` : '';
+
+    // Build location string
+    const locationStr = context.address
+      ? `📍 ${context.address}${context.phoneNumber ? ` ☎️ ${context.phoneNumber}` : ''}`
+      : '';
+
+    // Build payment string
+    const paymentStr = `💳 ${context.paymentMethods.join(', ')}`;
+
+    // Hours string
+    const hoursStr = context.isTemporarilyClosed
+      ? '🕐 TEMPORARILY CLOSED'
+      : `🕐 ${context.openingTime}-${context.closingTime}`;
+
+    // Prep time string
+    const prepStr = context.estimatedPrepTimeMinutes
+      ? `⏱️ Prep time: ~${context.estimatedPrepTimeMinutes} min`
+      : '';
+
     template = `${langInstr}
 
-You are the AI ordering assistant for ${context.restaurantName} (${context.openingTime}-${context.closingTime}, ${context.currency})${context.aiRules ? `\nRules: ${context.aiRules}` : ''}.
+You are the AI ordering assistant for ${context.restaurantName}.
+${hoursStr} | ${context.currency} | ${paymentStr}
+${orderTypeStr}
+${locationStr}
+${prepStr}
+${context.aiRules ? `\nRules: ${context.aiRules}` : ''}
 
 Behavior:
-- IMPORTANT: Dont use female pronouns or feminine form of words.
-- IMPORTANT: DO NOT SAY "تبي" INSTEAD SAY "تريد", "ترغب", "حاب", "تفضل", "ودك".
 - WhatsApp ordering assistant, be warm, casual, and friendly — like chatting with a restaurant worker on WhatsApp.
-- Use tools: query_menu for menu, submit_order for orders, check_order_status, file_complaint.
 - Dont be hurry to confirm and submit the order, we need customer to order as much as possible.
-- If unsure about confirmation, ask instead of submitting.
-- When customer confirms ,call submit_order with items extracted from the conversation.
-- Extract items from conversation history 
+
+ORDER FLOW:
+1. First, ask if they want delivery, dine-in, or pickup (based on available types: ${orderTypeStr}).
+2. If delivery: call query_zones to show available zones → customer picks → call set_delivery_address with zone name + address.
+3. Browse menu with query_menu, add items to cart.
+4. When customer confirms, call submit_order with all info (orderType, deliveryAddress if delivery).
+5. If customer asks about restaurant info (address, hours, payment), use check_restaurant_info.
+
+Key rules:
+- Extract items from conversation history.
 - Use the EXACT item name as returned by query_menu (e.g. "مشويات مشكلة", "بيبسي").
 - If customer says yes/ok/تمام to a non-confirmation question (like "want to see more?"), do NOT submit an order.
 - If customer changes/removes/adds/hesitates/says not yet, keep unsubmitted.
 - After successful submit, don't submit again until new order.
 - if item has options, you MUST ask the customer which option they want before adding to cart.
-Tools: query_menu (search menu), submit_order (place order with items from conversation when customer confirmed the order ), check_order_status, file_complaint
+- Before calling submit_order: ensure orderType is set. If delivery, ensure deliveryAddress is provided.
+
+Extra context (use for natural conversation):
+- If customer says "where are you?" → use check_restaurant_info(topic:address) [do NOT make up an address]
+- If customer says "are you open?" → use check_restaurant_info(topic:hours)
+- If customer says "what payments?" → use check_restaurant_info(topic:payment)
+- If customer says "do you deliver?" → use check_restaurant_info(topic:delivery) or query_zones
+
+Tools: query_menu, query_zones, check_restaurant_info, set_delivery_address, submit_order, check_order_status, file_complaint
 `;
 
     // Cache the template
-    //systemPromptCache.set(cacheKey, {
-      //template,
-      //expires: Date.now() + CACHE_TTL_MS,
-    //});
+    systemPromptCache.set(cacheKey, {
+      template,
+      expires: Date.now() + CACHE_TTL_MS,
+    });
   }
 
   // Inject current cart state
@@ -270,6 +370,24 @@ async function executeTool(params: {
     case 'file_complaint': {
       const toolParams = normalizeToolArgs<FileComplaintParams>(toolCall.arguments);
       const result = await handleFileComplaint(businessId, customerId, toolParams);
+      return { result };
+    }
+
+    case 'query_zones': {
+      const toolParams = normalizeToolArgs<QueryZonesParams>(toolCall.arguments);
+      const result = await handleQueryZones(businessId, toolParams);
+      return { result };
+    }
+
+    case 'check_restaurant_info': {
+      const toolParams = normalizeToolArgs<CheckRestaurantInfoParams>(toolCall.arguments);
+      const result = await handleCheckRestaurantInfo(businessId, toolParams);
+      return { result };
+    }
+
+    case 'set_delivery_address': {
+      const toolParams = normalizeToolArgs<SetDeliveryAddressParams>(toolCall.arguments);
+      const result = await handleSetDeliveryAddress(businessId, customerId, toolParams);
       return { result };
     }
 

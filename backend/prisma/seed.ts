@@ -391,10 +391,46 @@ async function main() {
       closingTime: '23:00',
       welcomeMsg: '',
       currency: 'SAR',
+      address: 'King Fahd Road, Al-Malaz, Riyadh 12831',
+      latitude: 24.6748,
+      longitude: 46.6918,
+      phoneNumber: '+966500000000',
+      deliveryEnabled: true,
+      dineInEnabled: true,
+      pickupEnabled: true,
+      estimatedPrepTimeMinutes: 20,
+      paymentMethods: '["cash","card","apple_pay"]',
+      isTemporarilyClosed: false,
+      defaultLanguage: 'ar',
     },
   })
 
   console.log('Created restaurant settings')
+
+  // Create delivery zones
+  const zones = [
+    { name: 'Al-Malaz', description: 'Within Al-Malaz district', deliveryFee: 5, minimumOrder: 20 },
+    { name: 'Al-Rawdah', description: 'Al-Rawdah district', deliveryFee: 8, minimumOrder: 25 },
+    { name: 'Downtown', description: 'Riyadh city center', deliveryFee: 10, minimumOrder: 30 },
+    { name: 'Al-Nakheel', description: 'Al-Nakheel district', deliveryFee: 12, minimumOrder: 35 },
+  ]
+
+  for (const zone of zones) {
+    await prisma.deliveryZone.upsert({
+      where: { businessId_name: { businessId: business.id, name: zone.name } },
+      update: {},
+      create: {
+        businessId: business.id,
+        name: zone.name,
+        description: zone.description,
+        deliveryFee: zone.deliveryFee,
+        minimumOrder: zone.minimumOrder,
+        isActive: true,
+      },
+    })
+  }
+
+  console.log(`Created delivery zones: ${zones.length}`)
 
   console.log('\n✅ Full seed completed successfully!')
 }

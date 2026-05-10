@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useBusinessStore } from "@/stores/business-store";
+import { tenantClient } from "@/lib/api-client";
 import { useLanguage } from "@/i18n/language-context";
 import { Button } from "@/components/ui/button";
 import { Input, Label } from "@/components/ui/input";
@@ -20,22 +21,37 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
+import { Switch } from "@/components/ui/switch";
 import { SkeletonBlock, FormSkeleton } from "@/components/shared/skeletons";
 import { toast } from "sonner";
 import {
   Store,
   Clock,
+  MapPin,
+  Phone,
   MessageSquare,
   Sparkles,
   DollarSign,
   Save,
+  Truck,
+  Package,
+  Utensils,
+  Settings2,
+  Plus,
+  Trash2,
 } from "lucide-react";
+import type { DeliveryZone } from "@/lib/types";
 
 const CURRENCIES = [
   { value: "SAR", label: "SAR - Saudi Riyal" },
   { value: "USD", label: "USD - US Dollar" },
   { value: "EUR", label: "EUR - Euro" },
   { value: "AED", label: "AED - UAE Dirham" },
+];
+
+const LANGUAGES = [
+  { value: "en", labelKey: "settings.english" },
+  { value: "ar", labelKey: "settings.arabic" },
 ];
 
 export default function SettingsPage() {
@@ -49,14 +65,39 @@ export default function SettingsPage() {
   const [welcomeMsg, setWelcomeMsg] = useState("");
   const [aiRules, setAiRules] = useState("");
   const [currency, setCurrency] = useState("SAR");
+
+  const [address, setAddress] = useState("");
+  const [latitude, setLatitude] = useState("");
+  const [longitude, setLongitude] = useState("");
+  const [phoneNumber, setPhoneNumber] = useState("");
+
+  const [deliveryEnabled, setDeliveryEnabled] = useState(false);
+  const [dineInEnabled, setDineInEnabled] = useState(true);
+  const [pickupEnabled, setPickupEnabled] = useState(true);
+
+  const [estimatedPrepTimeMinutes, setEstimatedPrepTimeMinutes] = useState("");
+  const [paymentMethodsStr, setPaymentMethodsStr] = useState("");
+  const [isTemporarilyClosed, setIsTemporarilyClosed] = useState(false);
+  const [defaultLanguage, setDefaultLanguage] = useState("en");
+
+  const [zones, setZones] = useState<DeliveryZone[]>([]);
   const [saving, setSaving] = useState(false);
   const [loaded, setLoaded] = useState(false);
 
+  const loadZones = useCallback(async () => {
+    try {
+      const res = await tenantClient.get("/zones");
+      setZones(res.data);
+    } catch {
+      // ignore
+    }
+  }, []);
+
   useEffect(() => {
     fetchSettings().then(() => setLoaded(true));
-  }, [fetchSettings]);
+    loadZones();
+  }, [fetchSettings, loadZones]);
 
-  /* eslint-disable react-hooks/set-state-in-effect */
   useEffect(() => {
     if (settings) {
       setName(settings.name || "");
@@ -65,13 +106,36 @@ export default function SettingsPage() {
       setWelcomeMsg(settings.welcomeMsg || "");
       setAiRules(settings.aiRules || "");
       setCurrency(settings.currency || "SAR");
+      setAddress(settings.address || "");
+      setLatitude(settings.latitude != null ? String(settings.latitude) : "");
+      setLongitude(settings.longitude != null ? String(settings.longitude) : "");
+      setPhoneNumber(settings.phoneNumber || "");
+      setDeliveryEnabled(settings.deliveryEnabled ?? false);
+      setDineInEnabled(settings.dineInEnabled ?? true);
+      setPickupEnabled(settings.pickupEnabled ?? true);
+      setEstimatedPrepTimeMinutes(
+        settings.estimatedPrepTimeMinutes != null
+          ? String(settings.estimatedPrepTimeMinutes)
+          : ""
+      );
+      try {
+        const methods = JSON.parse(settings.paymentMethods || '["cash","card"]');
+        setPaymentMethodsStr(Array.isArray(methods) ? methods.join(", ") : "cash, card");
+      } catch {
+        setPaymentMethodsStr("cash, card");
+      }
+      setIsTemporarilyClosed(settings.isTemporarilyClosed ?? false);
+      setDefaultLanguage(settings.defaultLanguage || "en");
     }
   }, [settings]);
-  /* eslint-enable react-hooks/set-state-in-effect */
 
   const handleSave = async () => {
     setSaving(true);
     try {
+      const paymentMethodsArr = paymentMethodsStr
+        .split(",")
+        .map((s) => s.trim())
+        .filter(Boolean);
       await updateSettings({
         name,
         openingTime,
@@ -79,12 +143,72 @@ export default function SettingsPage() {
         welcomeMsg,
         aiRules,
         currency,
+        address: address || null,
+        latitude: latitude ? parseFloat(latitude) : null,
+        longitude: longitude ? parseFloat(longitude) : null,
+        phoneNumber: phoneNumber || null,
+        deliveryEnabled,
+        dineInEnabled,
+        pickupEnabled,
+        estimatedPrepTimeMinutes: estimatedPrepTimeMinutes
+          ? parseInt(estimatedPrepTimeMinutes, 10)
+          : null,
+        paymentMethods: JSON.stringify(paymentMethodsArr),
+        isTemporarilyClosed,
+        defaultLanguage,
       });
       toast.success(t("settings.saved"));
     } catch {
       toast.error(t("settings.save_failed"));
     } finally {
       setSaving(false);
+    }
+  };
+
+  const addZone = async () => {
+    try {
+      const res = await tenantClient.post("/zones", {
+        name: "",
+        description: "",
+        deliveryFee: 0,
+        minimumOrder: null,
+      });
+      setZones((prev) => [...prev, res.data]);
+    } catch (err: any) {
+      toast.error(err?.response?.data?.error || "Failed to add zone");
+    }
+  };
+
+  const updateZone = async (index: number, field: string, value: any) => {
+    const zone = zones[index];
+    const updated = { ...zone, [field]: value };
+    const newZones = [...zones];
+    newZones[index] = updated;
+    setZones(newZones);
+
+    if (zone.id) {
+      try {
+        await tenantClient.put(`/zones/${zone.id}`, {
+          name: updated.name,
+          description: updated.description,
+          deliveryFee: updated.deliveryFee,
+          minimumOrder: updated.minimumOrder,
+          isActive: updated.isActive,
+        });
+      } catch {
+        newZones[index] = zone;
+        setZones([...newZones]);
+      }
+    }
+  };
+
+  const deleteZone = async (index: number) => {
+    const zone = zones[index];
+    try {
+      await tenantClient.delete(`/zones/${zone.id}`);
+      setZones((prev) => prev.filter((_, i) => i !== index));
+    } catch {
+      toast.error("Failed to delete zone");
     }
   };
 
@@ -187,6 +311,266 @@ export default function SettingsPage() {
                   ))}
                 </SelectContent>
               </Select>
+            </div>
+
+            <Separator />
+
+            <div className="space-y-2">
+              <Label htmlFor="address" className="flex items-center gap-1.5">
+                <MapPin className="h-3.5 w-3.5 text-muted-foreground" />
+                {t("settings.address")}
+              </Label>
+              <Input
+                id="address"
+                placeholder={t("settings.address_placeholder")}
+                value={address}
+                onChange={(e) => setAddress(e.target.value)}
+              />
+              <p className="text-xs text-muted-foreground">{t("settings.address_desc")}</p>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="latitude">{t("settings.latitude")}</Label>
+                <Input
+                  id="latitude"
+                  type="number"
+                  step="any"
+                  value={latitude}
+                  onChange={(e) => setLatitude(e.target.value)}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="longitude">{t("settings.longitude")}</Label>
+                <Input
+                  id="longitude"
+                  type="number"
+                  step="any"
+                  value={longitude}
+                  onChange={(e) => setLongitude(e.target.value)}
+                />
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="phoneNumber" className="flex items-center gap-1.5">
+                <Phone className="h-3.5 w-3.5 text-muted-foreground" />
+                {t("settings.phone_number")}
+              </Label>
+              <Input
+                id="phoneNumber"
+                type="tel"
+                placeholder={t("settings.phone_number_placeholder")}
+                value={phoneNumber}
+                onChange={(e) => setPhoneNumber(e.target.value)}
+              />
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-base">
+              <Package className="h-4 w-4" />
+              {t("settings.order_types")}
+            </CardTitle>
+            <CardDescription>
+              {t("settings.order_types_desc")}
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="flex items-center justify-between rounded-lg border p-3">
+              <div className="flex items-center gap-3">
+                <Truck className="h-4 w-4 text-muted-foreground" />
+                <div>
+                  <Label>{t("settings.delivery")}</Label>
+                </div>
+              </div>
+              <Switch
+                checked={deliveryEnabled}
+                onCheckedChange={setDeliveryEnabled}
+              />
+            </div>
+            <div className="flex items-center justify-between rounded-lg border p-3">
+              <div className="flex items-center gap-3">
+                <Utensils className="h-4 w-4 text-muted-foreground" />
+                <div>
+                  <Label>{t("settings.dine_in")}</Label>
+                </div>
+              </div>
+              <Switch
+                checked={dineInEnabled}
+                onCheckedChange={setDineInEnabled}
+              />
+            </div>
+            <div className="flex items-center justify-between rounded-lg border p-3">
+              <div className="flex items-center gap-3">
+                <Store className="h-4 w-4 text-muted-foreground" />
+                <div>
+                  <Label>{t("settings.pickup")}</Label>
+                </div>
+              </div>
+              <Switch
+                checked={pickupEnabled}
+                onCheckedChange={setPickupEnabled}
+              />
+            </div>
+          </CardContent>
+        </Card>
+
+        {deliveryEnabled && (
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-base">
+                <Truck className="h-4 w-4" />
+                {t("settings.delivery_zones")}
+              </CardTitle>
+              <CardDescription>
+                {t("settings.delivery_config_desc")}
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {zones.length === 0 && (
+                <p className="text-sm text-muted-foreground">{t("settings.no_zones")}</p>
+              )}
+              {zones.map((zone, index) => (
+                <div key={zone.id} className="flex items-start gap-2 rounded-lg border p-3">
+                  <div className="flex-1 space-y-2">
+                    <div className="grid grid-cols-2 gap-2">
+                      <div className="space-y-1">
+                        <Label className="text-xs">{t("settings.zone_name")}</Label>
+                        <Input
+                          value={zone.name}
+                          onChange={(e) => updateZone(index, "name", e.target.value)}
+                          placeholder={t("settings.zone_name_placeholder")}
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <Label className="text-xs">{t("settings.zone_fee")}</Label>
+                        <Input
+                          type="number"
+                          step="0.01"
+                          min="0"
+                          value={zone.deliveryFee}
+                          onChange={(e) =>
+                            updateZone(index, "deliveryFee", parseFloat(e.target.value) || 0)
+                          }
+                        />
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-2">
+                      <div className="space-y-1">
+                        <Label className="text-xs">{t("settings.zone_description")}</Label>
+                        <Input
+                          value={zone.description || ""}
+                          onChange={(e) => updateZone(index, "description", e.target.value)}
+                          placeholder={t("settings.zone_description_placeholder")}
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <Label className="text-xs">{t("settings.zone_minimum")}</Label>
+                        <Input
+                          type="number"
+                          step="0.01"
+                          min="0"
+                          value={zone.minimumOrder ?? ""}
+                          onChange={(e) =>
+                            updateZone(
+                              index,
+                              "minimumOrder",
+                              e.target.value ? parseFloat(e.target.value) : null
+                            )
+                          }
+                        />
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Switch
+                        checked={zone.isActive}
+                        onCheckedChange={(v) => updateZone(index, "isActive", v)}
+                      />
+                      <span className="text-xs text-muted-foreground">{t("settings.zone_active")}</span>
+                    </div>
+                  </div>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="mt-1 shrink-0 text-destructive"
+                    onClick={() => deleteZone(index)}
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </div>
+              ))}
+              <Button variant="outline" size="sm" onClick={addZone}>
+                <Plus className="h-4 w-4" />
+                {t("settings.add_zone")}
+              </Button>
+            </CardContent>
+          </Card>
+        )}
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-base">
+              <Settings2 className="h-4 w-4" />
+              {t("settings.operations")}
+            </CardTitle>
+            <CardDescription>
+              {t("settings.operations_desc")}
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="prepTime">{t("settings.prep_time")}</Label>
+                <Input
+                  id="prepTime"
+                  type="number"
+                  min="1"
+                  placeholder={t("settings.prep_time_placeholder")}
+                  value={estimatedPrepTimeMinutes}
+                  onChange={(e) => setEstimatedPrepTimeMinutes(e.target.value)}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="defaultLanguage">{t("settings.default_language")}</Label>
+                <Select value={defaultLanguage} onValueChange={setDefaultLanguage}>
+                  <SelectTrigger id="defaultLanguage">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {LANGUAGES.map((l) => (
+                      <SelectItem key={l.value} value={l.value}>
+                        {t(l.labelKey)}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="paymentMethods">{t("settings.payment_methods")}</Label>
+              <Input
+                id="paymentMethods"
+                placeholder={t("settings.payment_methods_placeholder")}
+                value={paymentMethodsStr}
+                onChange={(e) => setPaymentMethodsStr(e.target.value)}
+              />
+            </div>
+
+            <div className="flex items-center justify-between rounded-lg border p-3">
+              <div className="space-y-0.5">
+                <Label>{t("settings.temporarily_closed")}</Label>
+                <p className="text-xs text-muted-foreground">
+                  {t("settings.temporarily_closed_desc")}
+                </p>
+              </div>
+              <Switch
+                checked={isTemporarilyClosed}
+                onCheckedChange={setIsTemporarilyClosed}
+              />
             </div>
           </CardContent>
         </Card>

@@ -37,17 +37,23 @@ router.get('/', async (req: Request, res: Response) => {
 router.put('/', async (req: Request, res: Response) => {
   try {
     const businessId = (req as any).business.id;
-    const { name, openingTime, closingTime, welcomeMsg, aiRules, currency } = req.body;
+    const {
+      name, openingTime, closingTime, welcomeMsg, aiRules, currency,
+      address, latitude, longitude, phoneNumber,
+      deliveryEnabled, dineInEnabled, pickupEnabled,
+      estimatedPrepTimeMinutes, paymentMethods, isTemporarilyClosed, defaultLanguage,
+    } = req.body;
     
     const settings = await prisma.restaurantSettings.upsert({
       where: { businessId },
       update: {
-        name,
-        openingTime,
-        closingTime,
-        welcomeMsg,
-        aiRules,
-        currency
+        name, openingTime, closingTime, welcomeMsg, aiRules, currency,
+        address, latitude, longitude, phoneNumber,
+        deliveryEnabled, dineInEnabled, pickupEnabled,
+        estimatedPrepTimeMinutes: estimatedPrepTimeMinutes != null ? Number(estimatedPrepTimeMinutes) : undefined,
+        paymentMethods,
+        isTemporarilyClosed,
+        defaultLanguage,
       },
       create: {
         businessId,
@@ -56,7 +62,15 @@ router.put('/', async (req: Request, res: Response) => {
         closingTime: closingTime || '23:00',
         welcomeMsg: welcomeMsg || 'Welcome! How can I help you today?',
         aiRules: aiRules || '',
-        currency: currency || 'SAR'
+        currency: currency || 'SAR',
+        address, latitude, longitude, phoneNumber,
+        deliveryEnabled: deliveryEnabled ?? false,
+        dineInEnabled: dineInEnabled ?? true,
+        pickupEnabled: pickupEnabled ?? true,
+        estimatedPrepTimeMinutes: estimatedPrepTimeMinutes != null ? Number(estimatedPrepTimeMinutes) : undefined,
+        paymentMethods: paymentMethods || '["cash","card"]',
+        isTemporarilyClosed: isTemporarilyClosed ?? false,
+        defaultLanguage: defaultLanguage || 'en',
       }
     });
     

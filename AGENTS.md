@@ -63,6 +63,36 @@ npm run test:coverage # with coverage
 - Webhook route (`/api/webhook`) — **no auth required**, rate limited (30 req/min)
 - All dashboard routes require `x-api-key` header matching a Business record
 
+### Delivery Zones
+
+`GET/POST /api/zones` — CRUD delivery zones with per-zone fees and minimum orders.
+`PUT/DELETE /api/zones/:id` — Update or delete a specific zone.
+
+### Restaurant Settings Fields (expanded)
+
+All stored on `RestaurantSettings` (1:1 with Business):
+
+| Field | Type | Purpose |
+|-------|------|---------|
+| `address` | `String?` | Physical address — used in `check_restaurant_info` tool |
+| `latitude/longitude` | `Float?` | Map coordinates for maps link |
+| `phoneNumber` | `String?` | Public contact number |
+| `deliveryEnabled/dineInEnabled/pickupEnabled` | `Boolean` | Order type toggles — controls AI agent's flow |
+| `estimatedPrepTimeMinutes` | `Int?` | Shown to customers as ~N min |
+| `paymentMethods` | `String` (JSON) | `["cash","card","apple_pay"]` |
+| `isTemporarilyClosed` | `Boolean` | Overrides hours |
+| `defaultLanguage` | `String` | `"ar"` or `"en"` |
+
+### New AI Agent Tools
+
+| Tool | Trigger | What it does |
+|------|---------|-------------|
+| `query_zones` | "Do you deliver?" | Lists active zones with fees + minimums |
+| `check_restaurant_info` | "Where are you?", "Are you open?", "What payments?" | Returns address, hours, payment, delivery zones |
+| `set_delivery_address` | After zone selection in delivery flow | Saves zone + address to cart state |
+
+The AI agent now uses a **structured conversation flow**: asks order type first → for delivery: shows zones → captures address → menu → submit.
+
 ## Demo Credentials
 
 | Role                  | Auth Method                             | Credentials                                |

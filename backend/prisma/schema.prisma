@@ -30,6 +30,7 @@ model Business {
   roles       Role[]
   auditLogs   AuditLog[]
   dualhookConnections DualhookConnection[]
+  deliveryZones DeliveryZone[]
 
   @@map("Business")
 }
@@ -300,19 +301,42 @@ model Option {
   @@map("Option")
 }
 
+model DeliveryZone {
+  id                       String    @id @default(cuid())
+  businessId               String
+  business                 Business  @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  name                     String
+  description              String?
+  deliveryFee              Float     @default(0)
+  minimumOrder             Float?
+  orders                   Order[]
+  isActive                 Boolean   @default(true)
+  createdAt                DateTime  @default(now())
+
+  @@unique([businessId, name])
+  @@index([businessId])
+  @@map("DeliveryZone")
+}
+
 model Order {
-  id          String      @id @default(cuid())
-  referenceId String      @unique
-  businessId  String
-  business    Business    @relation(fields: [businessId], references: [id], onDelete: Cascade)
-  customerId  String
-  customer    Customer    @relation(fields: [customerId], references: [id], onDelete: Cascade)
-  status      String      @default("pending")
-  totalPrice  Float
-  notes       String?
-  items       OrderItem[]
-  createdAt   DateTime    @default(now())
-  updatedAt   DateTime    @updatedAt
+  id              String      @id @default(cuid())
+  referenceId     String      @unique
+  businessId      String
+  business        Business    @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  customerId      String
+  customer        Customer    @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  status          String      @default("pending")
+  totalPrice      Float
+  notes           String?
+  orderType       String?
+  deliveryAddress String?
+  deliveryNotes   String?
+  deliveryZoneId  String?
+  deliveryZone    DeliveryZone? @relation(fields: [deliveryZoneId], references: [id], onDelete: SetNull)
+  contactPhone    String?
+  items           OrderItem[]
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
 
   @@index([businessId])
   @@index([customerId])
@@ -358,6 +382,23 @@ model RestaurantSettings {
   welcomeMsg  String  @default("Welcome! How can I help you today?")
   aiRules     String  @default("")
   currency    String  @default("SAR")
+
+  // Location
+  address      String?
+  latitude     Float?
+  longitude    Float?
+  phoneNumber  String?
+
+  // Order types
+  deliveryEnabled Boolean @default(false)
+  dineInEnabled    Boolean @default(true)
+  pickupEnabled    Boolean @default(true)
+
+  // Operations
+  estimatedPrepTimeMinutes Int?
+  paymentMethods           String  @default("[\"cash\",\"card\"]")
+  isTemporarilyClosed      Boolean @default(false)
+  defaultLanguage          String  @default("en")
 
   @@map("RestaurantSettings")
 }

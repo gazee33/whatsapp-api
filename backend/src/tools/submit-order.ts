@@ -13,6 +13,11 @@ export interface OrderItemInput {
 export interface SubmitOrderParams {
   items: OrderItemInput[];
   orderNotes?: string;
+  orderType?: 'delivery' | 'dine_in' | 'pickup';
+  deliveryAddress?: string;
+  deliveryNotes?: string;
+  deliveryZoneId?: string;
+  contactPhone?: string;
 }
 
 // Arabic-aware normalization for fuzzy matching
@@ -135,7 +140,7 @@ export async function handleSubmitOrder(
   customerId: string,
   params: SubmitOrderParams
 ): Promise<string> {
-  const { items, orderNotes } = params;
+  const { items, orderNotes, orderType, deliveryAddress, deliveryNotes, deliveryZoneId, contactPhone } = params;
 
   try {
     if (!items || items.length === 0) {
@@ -249,6 +254,11 @@ export async function handleSubmitOrder(
           notes: orderNotes,
           status: 'pending',
           referenceId,
+          orderType: orderType || null,
+          deliveryAddress: deliveryAddress || null,
+          deliveryNotes: deliveryNotes || null,
+          deliveryZoneId: deliveryZoneId || null,
+          contactPhone: contactPhone || null,
         },
       });
 
@@ -312,6 +322,19 @@ export async function handleSubmitOrder(
     }
     lines.push('');
     lines.push(`Total: ${totalPrice.toFixed(2)}`);
+
+    if (order.orderType) {
+      const typeLabels: Record<string, string> = {
+        delivery: 'Delivery',
+        dine_in: 'Dine-in',
+        pickup: 'Pickup',
+      };
+      lines.push(`Type: ${typeLabels[order.orderType] || order.orderType}`);
+      if (order.orderType === 'delivery' && order.deliveryAddress) {
+        lines.push(`📍 Deliver to: ${order.deliveryAddress}`);
+      }
+    }
+
     lines.push('');
     lines.push('Your order has been received and is being prepared!');
 

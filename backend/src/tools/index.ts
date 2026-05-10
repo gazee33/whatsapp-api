@@ -14,6 +14,46 @@ export const tools: ToolDefinition[] = [
     }
   },
   {
+    name: 'query_zones',
+    description: 'List all available delivery zones with fees and minimum orders. Use when customer wants delivery and asks "do you deliver to my area?" or "what are the delivery zones?".',
+    parameters: {
+      type: 'object',
+      properties: {
+        query: { type: 'string', description: 'Zone name filter (optional)' }
+      },
+      required: []
+    }
+  },
+  {
+    name: 'check_restaurant_info',
+    description: 'Get restaurant information like address, hours, payment methods, delivery zones. Use when customer asks "where are you?", "are you open?", "what payments do you accept?".',
+    parameters: {
+      type: 'object',
+      properties: {
+        topic: {
+          type: 'string',
+          enum: ['address', 'hours', 'payment', 'delivery', 'all'],
+          description: 'Topic to look up (optional, returns all if omitted)'
+        }
+      },
+      required: []
+    }
+  },
+  {
+    name: 'set_delivery_address',
+    description: 'Save the customer delivery address and selected zone for a delivery order. Use AFTER query_zones — when the customer has chosen a zone and provided their full address.',
+    parameters: {
+      type: 'object',
+      properties: {
+        zoneName: { type: 'string', description: 'The delivery zone name the customer chose (e.g. "Al-Malaz")' },
+        address: { type: 'string', description: 'The full delivery address (street, building, apartment)' },
+        notes: { type: 'string', description: 'Delivery instructions like gate code, landmark (optional)' },
+        contactPhone: { type: 'string', description: 'Phone number for delivery driver (optional)' }
+      },
+      required: ['zoneName', 'address']
+    }
+  },
+  {
     name: 'submit_order',
     description: 'Create a new order with items. Use when customer confirms they want to order. Extract items from conversation history — include name (use exact menu names from query_menu results) and quantity for each item. If the item has options (shown after "Options:" in query_menu results), you MUST include optionName. If the item has NO options, do NOT include optionName.',
     parameters: {
@@ -33,9 +73,14 @@ export const tools: ToolDefinition[] = [
             required: ['name', 'quantity']
           }
         },
-        orderNotes: { type: 'string', description: 'Order notes (optional)' }
+        orderNotes: { type: 'string', description: 'Order notes (optional)' },
+        orderType: { type: 'string', enum: ['delivery', 'dine_in', 'pickup'], description: 'Order type: delivery, dine_in, or pickup. REQUIRED.' },
+        deliveryAddress: { type: 'string', description: 'Full delivery address. REQUIRED if orderType is delivery.' },
+        deliveryNotes: { type: 'string', description: 'Delivery instructions like gate code (optional)' },
+        deliveryZoneId: { type: 'string', description: 'Delivery zone ID from set_delivery_address result (optional)' },
+        contactPhone: { type: 'string', description: 'Contact number for delivery driver (optional)' }
       },
-      required: ['items']
+      required: ['items', 'orderType']
     }
   },
   {
