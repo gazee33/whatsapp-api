@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { Sparkles, Send } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useLanguage } from "@/i18n/language-context";
 
 interface Message {
   id: string;
@@ -52,6 +53,7 @@ function generateBotResponse(userText: string): string {
 }
 
 export function InlineSimulator() {
+  const { t } = useLanguage();
   const [messages, setMessages] = useState<Message[]>([
     {
       id: "welcome",
@@ -121,7 +123,7 @@ export function InlineSimulator() {
           <h4 className="font-semibold text-white text-sm">Nadil AI</h4>
           <div className="flex items-center gap-1">
             <span className="w-1.5 h-1.5 rounded-full bg-[#25D366]" />
-            <span className="text-xs text-emerald-300">Online</span>
+            <span className="text-xs text-emerald-300">{t("onboarding_wizard.online")}</span>
           </div>
         </div>
       </div>
@@ -187,7 +189,7 @@ export function InlineSimulator() {
           value={inputValue}
           onChange={(e) => setInputValue(e.target.value)}
           onKeyDown={handleKeyDown}
-          placeholder="Type a message..."
+          placeholder={t("simulator.placeholder")}
           className="flex-1 bg-white border border-slate-200 rounded-full px-4 py-2 text-sm outline-none focus:border-[#25D366] focus:ring-1 focus:ring-[#25D366]/30 transition-colors"
         />
         <button

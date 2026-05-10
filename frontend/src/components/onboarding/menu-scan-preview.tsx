@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import type { ExtractedMenu, ExtractedMenuItem, ExtractedItemOption } from "@/lib/types";
+import { useLanguage } from "@/i18n/language-context";
 
 interface MenuScanPreviewProps {
   data: ExtractedMenu;
@@ -30,6 +31,7 @@ export function MenuScanPreview({
   saving = false,
   error = null,
 }: MenuScanPreviewProps) {
+  const { t } = useLanguage();
   const [menu, setMenu] = useState<ExtractedMenu>(data);
   const [expandedCategories, setExpandedCategories] = useState<
     Record<number, boolean>
@@ -125,7 +127,7 @@ export function MenuScanPreview({
   const addCategory = () => {
     setMenu((prev) => ({
       ...prev,
-      categories: [...prev.categories, { name: "New Category", items: [] }],
+      categories: [...prev.categories, { name: t("onboarding_wizard.new_category"), items: [] }],
     }));
   };
 
@@ -143,10 +145,10 @@ export function MenuScanPreview({
           <Edit3 className="h-8 w-8 text-indigo-500" />
         </div>
         <h2 className="text-2xl font-bold text-[#1E1B4B] font-[family-name:var(--font-playfair)]">
-          Review Extracted Menu
+          {t("onboarding_wizard.review_menu")}
         </h2>
         <p className="text-slate-500 max-w-md mx-auto">
-          Review and edit the extracted items before saving.
+          {t("onboarding_wizard.review_menu_desc")}
         </p>
       </div>
 
@@ -154,9 +156,9 @@ export function MenuScanPreview({
         <span className="font-semibold text-indigo-600">
           {menu.categories.length}
         </span>{" "}
-        categories,{" "}
+        {t("onboarding_wizard.categories_label")},{" "}
         <span className="font-semibold text-indigo-600">{totalItems}</span>{" "}
-        items found
+        {t("onboarding_wizard.items_found")}
       </div>
 
       {menu.categories.map((category, catIndex) => {
@@ -205,7 +207,7 @@ export function MenuScanPreview({
               <div className="border-t border-slate-100 p-4 space-y-3">
                 {category.items.length === 0 && (
                   <p className="text-sm text-slate-400 text-center py-2">
-                    No items in this category.
+                    {t("onboarding_wizard.no_items_category")}
                   </p>
                 )}
                 {category.items.map((item, itemIndex) => (
@@ -223,7 +225,7 @@ export function MenuScanPreview({
                             })
                           }
                           className="w-full text-sm font-medium text-slate-800 bg-white border border-slate-200 rounded-md px-3 py-1.5 outline-none focus:ring-2 focus:ring-indigo-200 focus:border-indigo-300"
-                          placeholder="Item name"
+                          placeholder={t("onboarding_wizard.item_name_placeholder")}
                         />
                         <input
                           value={item.description ?? ""}
@@ -233,7 +235,7 @@ export function MenuScanPreview({
                             })
                           }
                           className="w-full text-xs text-slate-500 bg-white border border-slate-200 rounded-md px-3 py-1.5 outline-none focus:ring-2 focus:ring-indigo-200 focus:border-indigo-300"
-                          placeholder="Description (optional)"
+                          placeholder={t("onboarding_wizard.description_placeholder")}
                         />
                       </div>
                       <div className="flex items-center gap-2 shrink-0">
@@ -266,7 +268,7 @@ export function MenuScanPreview({
                     {item.options.length > 0 && (
                       <div className="ml-2 pl-3 border-l-2 border-indigo-100 space-y-2">
                         <span className="text-xs font-medium text-slate-500">
-                          Options
+                          {t("menu.options")}
                         </span>
                         {item.options.map((option, optIndex) => (
                           <div
@@ -284,7 +286,7 @@ export function MenuScanPreview({
                                 )
                               }
                               className="flex-1 text-xs text-slate-600 bg-white border border-slate-200 rounded-md px-2 py-1 outline-none focus:ring-1 focus:ring-indigo-200"
-                              placeholder="Option name"
+                              placeholder={t("menu.option_name_placeholder")}
                             />
                             <div className="relative">
                               <span className="absolute left-1.5 top-1/2 -translate-y-1/2 text-xs text-slate-400">
@@ -327,7 +329,7 @@ export function MenuScanPreview({
                       className="flex items-center gap-1 text-xs text-indigo-600 hover:text-indigo-700 transition-colors cursor-pointer"
                     >
                       <Plus className="h-3 w-3" />
-                      Add Option
+                      {t("onboarding_wizard.add_option")}
                     </button>
                   </div>
                 ))}
@@ -342,7 +344,7 @@ export function MenuScanPreview({
         className="w-full flex items-center justify-center gap-2 p-4 border-2 border-dashed border-slate-300 rounded-xl text-slate-500 hover:text-indigo-600 hover:border-indigo-300 transition-colors cursor-pointer"
       >
         <Plus className="h-4 w-4" />
-        Add Category
+        {t("onboarding_wizard.add_category")}
       </button>
 
       <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-4 border-t border-slate-100">
@@ -351,14 +353,14 @@ export function MenuScanPreview({
             onClick={onCancel}
             className="text-sm text-slate-500 hover:text-slate-700 transition-colors cursor-pointer"
           >
-            Cancel
+            {t("common.cancel")}
           </button>
           <button
             onClick={onBack}
             className="flex items-center gap-1 text-sm text-slate-500 hover:text-slate-700 transition-colors cursor-pointer"
           >
             <ArrowLeft className="h-4 w-4" />
-            Back
+            {t("common.back")}
           </button>
         </div>
         <Button
@@ -367,7 +369,7 @@ export function MenuScanPreview({
           className="bg-indigo-500 hover:bg-indigo-600 text-white"
         >
           <Save className="h-4 w-4" />
-          Approve & Save Menu
+          {t("onboarding_wizard.approve_save")}
         </Button>
       </div>
 

@@ -5,6 +5,7 @@ import { Camera, Upload, Image } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { tenantClient } from "@/lib/api-client";
 import type { ExtractedMenu } from "@/lib/types";
+import { useLanguage } from "@/i18n/language-context";
 
 interface MenuScanUploadProps {
   onAnalyzed: (data: ExtractedMenu) => void;
@@ -15,6 +16,7 @@ const MAX_FILE_SIZE = 5 * 1024 * 1024;
 const ALLOWED_TYPES = ["image/jpeg", "image/png", "image/gif", "image/webp"];
 
 export function MenuScanUpload({ onAnalyzed, onCancel }: MenuScanUploadProps) {
+  const { t } = useLanguage();
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [analyzing, setAnalyzing] = useState(false);
@@ -30,10 +32,10 @@ export function MenuScanUpload({ onAnalyzed, onCancel }: MenuScanUploadProps) {
 
   const validateFile = (file: File): string | null => {
     if (file.size > MAX_FILE_SIZE) {
-      return "Image too large (max 5MB)";
+      return t("onboarding_wizard.image_too_large");
     }
     if (!ALLOWED_TYPES.includes(file.type)) {
-      return "Invalid file type. Please use JPEG, PNG, GIF, or WebP.";
+      return t("onboarding_wizard.invalid_file_type");
     }
     return null;
   };
@@ -75,7 +77,7 @@ export function MenuScanUpload({ onAnalyzed, onCancel }: MenuScanUploadProps) {
       onAnalyzed(res.data);
     } catch (err: unknown) {
       const message =
-        err instanceof Error ? err.message : "Failed to analyze menu. Please try again.";
+        err instanceof Error ? err.message : t("onboarding_wizard.failed_analyze");
       setError(message);
     } finally {
       setAnalyzing(false);
@@ -90,10 +92,10 @@ export function MenuScanUpload({ onAnalyzed, onCancel }: MenuScanUploadProps) {
             <Image className="h-8 w-8 text-indigo-500" />
           </div>
           <h2 className="text-2xl font-bold text-[#1E1B4B] font-[family-name:var(--font-playfair)]">
-            Upload Your Menu
+            {t("onboarding_wizard.upload_menu_title")}
           </h2>
           <p className="text-slate-500 max-w-md mx-auto">
-            Take a photo or upload an image of your menu and we&apos;ll extract all items automatically.
+            {t("onboarding_wizard.upload_menu_desc")}
           </p>
         </div>
 
@@ -111,7 +113,7 @@ export function MenuScanUpload({ onAnalyzed, onCancel }: MenuScanUploadProps) {
             className="w-full sm:w-auto bg-indigo-500 hover:bg-indigo-600 text-white"
           >
             <Camera className="h-4 w-4" />
-            Take Photo
+            {t("onboarding_wizard.take_photo")}
           </Button>
 
           <input
@@ -127,7 +129,7 @@ export function MenuScanUpload({ onAnalyzed, onCancel }: MenuScanUploadProps) {
             className="w-full sm:w-auto"
           >
             <Upload className="h-4 w-4" />
-            Upload Image
+            {t("onboarding_wizard.upload_image")}
           </Button>
         </div>
 
@@ -142,7 +144,7 @@ export function MenuScanUpload({ onAnalyzed, onCancel }: MenuScanUploadProps) {
             onClick={onCancel}
             className="text-sm text-slate-500 hover:text-slate-700 transition-colors cursor-pointer"
           >
-            I&apos;ll add items manually
+            {t("onboarding_wizard.add_manually")}
           </button>
         </div>
       </div>
@@ -156,12 +158,12 @@ export function MenuScanUpload({ onAnalyzed, onCancel }: MenuScanUploadProps) {
           <Image className="h-8 w-8 text-indigo-500" />
         </div>
         <h2 className="text-2xl font-bold text-[#1E1B4B] font-[family-name:var(--font-playfair)]">
-          Review Menu Photo
+          {t("onboarding_wizard.review_photo_title")}
         </h2>
         <p className="text-slate-500 max-w-md mx-auto">
           {analyzing
-            ? "Analyzing your menu with AI..."
-            : "Confirm this looks good and we&apos;ll extract your menu items."}
+            ? t("onboarding_wizard.analyzing_ai")
+            : t("onboarding_wizard.confirm_photo_desc")}
         </p>
       </div>
 
@@ -180,7 +182,7 @@ export function MenuScanUpload({ onAnalyzed, onCancel }: MenuScanUploadProps) {
           onClick={handleChooseDifferent}
           className="block mx-auto text-sm text-indigo-600 hover:text-indigo-700 transition-colors cursor-pointer"
         >
-          Choose Different Photo
+          {t("onboarding_wizard.choose_different")}
         </button>
       )}
 
@@ -191,7 +193,7 @@ export function MenuScanUpload({ onAnalyzed, onCancel }: MenuScanUploadProps) {
           loading={analyzing}
           className="w-full sm:w-auto bg-indigo-500 hover:bg-indigo-600 text-white"
         >
-          {analyzing ? "Analyzing your menu..." : "Analyze Menu"}
+          {analyzing ? t("onboarding_wizard.analyzing") : t("onboarding_wizard.analyze_menu")}
         </Button>
         {!analyzing && (
           <Button
@@ -199,7 +201,7 @@ export function MenuScanUpload({ onAnalyzed, onCancel }: MenuScanUploadProps) {
             onClick={onCancel}
             className="w-full sm:w-auto"
           >
-            Cancel
+            {t("common.cancel")}
           </Button>
         )}
       </div>

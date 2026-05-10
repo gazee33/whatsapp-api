@@ -20,6 +20,7 @@ import {
   dismissOnboarding,
   type OnboardingProgress,
 } from "@/config/navigation";
+import { useLanguage } from "@/i18n/language-context";
 
 const ICON_MAP: Record<string, React.ComponentType<{ className?: string }>> = {
   UserCheck,
@@ -36,6 +37,7 @@ function readProgress(): OnboardingProgress {
 }
 
 export function OnboardingProgressCard() {
+  const { t } = useLanguage();
   const [dismissed, setDismissed] = useState(() =>
     typeof window !== "undefined" && isOnboardingDismissed()
   );
@@ -85,7 +87,7 @@ export function OnboardingProgressCard() {
             <UserCheck className="h-4 w-4" />
           </div>
           <span className="text-sm font-medium text-indigo-700 dark:text-indigo-300">
-            Complete Setup ({completedCount}/{totalCount})
+            {t("onboarding_wizard.complete_setup")} ({completedCount}/{totalCount})
           </span>
         </div>
         <Button
@@ -101,7 +103,7 @@ export function OnboardingProgressCard() {
                 : "/dashboard"
             }
           >
-            Continue
+            {t("common.continue")}
           </Link>
         </Button>
       </div>
@@ -115,7 +117,7 @@ export function OnboardingProgressCard() {
   return (
     <Card className="border-indigo-200 dark:border-indigo-800">
       <CardHeader className="flex flex-row items-center justify-between pb-3">
-        <CardTitle className="text-base">Setup Progress</CardTitle>
+        <CardTitle className="text-base">{t("onboarding_wizard.setup_progress")}</CardTitle>
         <button
           onClick={dismiss}
           className="shrink-0 rounded p-1 text-muted-foreground hover:text-foreground transition-colors"
@@ -168,7 +170,7 @@ export function OnboardingProgressCard() {
                       isPending && "text-muted-foreground"
                     )}
                   >
-                    {step.label.en}
+                    {t(step.labelKey)}
                   </span>
                 </div>
                 {idx < ONBOARDING_STEPS.length - 1 && (
@@ -204,7 +206,7 @@ export function OnboardingProgressCard() {
                   : "/dashboard"
               }
             >
-              Complete Setup
+              {t("onboarding_wizard.complete_setup")}
             </Link>
           </Button>
         </div>

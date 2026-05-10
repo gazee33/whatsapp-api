@@ -1,10 +1,7 @@
 // Onboarding step definitions — shared between onboarding wizard and dashboard tracker
 export interface OnboardingStepDef {
   key: string;
-  label: {
-    en: string;
-    ar: string;
-  };
+  labelKey: string;
   iconName: string; // lucide-react icon name as string
   href: string;
 }
@@ -12,25 +9,25 @@ export interface OnboardingStepDef {
 export const ONBOARDING_STEPS: OnboardingStepDef[] = [
   {
     key: "register",
-    label: { en: "Sign Up", ar: "إنشاء حساب" },
+    labelKey: "onboarding_wizard.nav_sign_up",
     iconName: "UserCheck",
     href: "/register",
   },
   {
     key: "menu",
-    label: { en: "Fill Menu", ar: "أضف قائمتك" },
+    labelKey: "onboarding_wizard.nav_fill_menu",
     iconName: "UtensilsCrossed",
     href: "/menu",
   },
   {
     key: "simulate",
-    label: { en: "Test AI", ar: "جرب المحادثة" },
+    labelKey: "onboarding_wizard.nav_test_ai",
     iconName: "Terminal",
     href: "/simulator",
   },
   {
     key: "whatsapp",
-    label: { en: "Connect WhatsApp", ar: "اربط واتساب" },
+    labelKey: "onboarding_wizard.nav_connect_whatsapp",
     iconName: "Radio",
     href: "/whatsapp",
   },

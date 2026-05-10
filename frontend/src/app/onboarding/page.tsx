@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback, Suspense } from "react";
+import { useState, useEffect, useCallback, useMemo, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
   UserCheck,
@@ -19,14 +19,22 @@ import { MenuScanUpload } from "@/components/onboarding/menu-scan-upload";
 import { MenuScanPreview } from "@/components/onboarding/menu-scan-preview";
 import type { ExtractedMenu } from "@/lib/types";
 import { useMenuStore } from "@/stores/menu-store";
+import { useLanguage } from "@/i18n/language-context";
 
 type StepKey = "register" | "menu" | "simulate" | "whatsapp";
 
+const STEP_LABEL_KEYS: Record<string, string> = {
+  register: "onboarding_wizard.step_register",
+  menu: "onboarding_wizard.step_menu",
+  simulate: "onboarding_wizard.step_simulate",
+  whatsapp: "onboarding_wizard.step_whatsapp",
+};
+
 const STEPS = [
-  { key: "register" as const, label: "Register", icon: UserCheck },
-  { key: "menu" as const, label: "Menu", icon: UtensilsCrossed },
-  { key: "simulate" as const, label: "Simulate", icon: Terminal },
-  { key: "whatsapp" as const, label: "WhatsApp", icon: Radio },
+  { key: "register" as const, labelKey: STEP_LABEL_KEYS.register, icon: UserCheck },
+  { key: "menu" as const, labelKey: STEP_LABEL_KEYS.menu, icon: UtensilsCrossed },
+  { key: "simulate" as const, labelKey: STEP_LABEL_KEYS.simulate, icon: Terminal },
+  { key: "whatsapp" as const, labelKey: STEP_LABEL_KEYS.whatsapp, icon: Radio },
 ];
 
 const STORAGE_KEY = "nadil-onboarding-steps";
@@ -108,6 +116,7 @@ function StepContent({
   saving: boolean;
   saveError: string | null;
 }) {
+  const { t } = useLanguage();
   const router = useRouter();
 
   switch (step) {
@@ -119,18 +128,17 @@ function StepContent({
           </div>
           <div>
             <h2 className="text-2xl font-bold text-[#1E1B4B] font-[family-name:var(--font-playfair)]">
-              You&apos;ve already registered!
+              {t("onboarding_wizard.already_registered")}
             </h2>
             <p className="mt-2 text-slate-500">
-              Your account is set up. Let&apos;s move on to setting up your
-              restaurant.
+              {t("onboarding_wizard.account_setup_desc")}
             </p>
           </div>
           <Button
             onClick={() => onSkip("register")}
             className="bg-indigo-500 hover:bg-indigo-600 text-white"
           >
-            Continue Setup
+            {t("onboarding_wizard.continue_setup")}
             <ArrowRight className="w-4 h-4" />
           </Button>
         </div>
@@ -169,17 +177,15 @@ function StepContent({
               <UtensilsCrossed className="h-8 w-8 text-indigo-500" />
             </div>
             <h2 className="text-2xl font-bold text-[#1E1B4B] font-[family-name:var(--font-playfair)]">
-              Add Your Menu Items
+              {t("onboarding_wizard.add_menu_title")}
             </h2>
             <p className="text-slate-500 max-w-md mx-auto">
-              Upload your menu so your AI agent can help customers order. This
-              only takes a few minutes.
+              {t("onboarding_wizard.add_menu_desc")}
             </p>
           </div>
 
           <TipBox>
-            Tip: You can add categories like Appetizers, Main Courses, and
-            Drinks to keep your menu organized.
+            {t("onboarding_wizard.menu_tip")}
           </TipBox>
 
           <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
@@ -188,14 +194,14 @@ function StepContent({
               className="w-full sm:w-auto bg-indigo-500 hover:bg-indigo-600 text-white"
             >
               <Camera className="w-4 h-4" />
-              Scan Menu from Photo
+              {t("onboarding_wizard.scan_photo")}
             </Button>
             <Button
               variant="outline"
               onClick={() => router.push("/menu")}
               className="w-full sm:w-auto"
             >
-              Go to Menu
+              {t("onboarding_wizard.go_to_menu")}
               <ArrowRight className="w-4 h-4" />
             </Button>
           </div>
@@ -207,13 +213,13 @@ function StepContent({
               className="text-emerald-600 border-emerald-200 hover:bg-emerald-50"
             >
               <Check className="w-4 h-4" />
-              Mark as Complete
+              {t("onboarding_wizard.mark_complete")}
             </Button>
             <button
               onClick={() => onSkip("menu")}
               className="text-sm text-slate-500 hover:text-slate-700 transition-colors cursor-pointer"
             >
-              Skip for now
+              {t("onboarding_wizard.skip_for_now")}
             </button>
           </div>
         </div>
@@ -227,19 +233,17 @@ function StepContent({
               <Terminal className="h-8 w-8 text-indigo-500" />
             </div>
             <h2 className="text-2xl font-bold text-[#1E1B4B] font-[family-name:var(--font-playfair)]">
-              Try Your AI Waiter
+              {t("onboarding_wizard.try_ai_waiter")}
             </h2>
             <p className="text-slate-500 max-w-md mx-auto">
-              Send a test message and see how Nadil AI responds to customer
-              orders in natural conversation.
+              {t("onboarding_wizard.simulator_desc")}
             </p>
           </div>
 
           <InlineSimulator />
 
           <TipBox>
-            Try asking about the menu, placing an order, or inquiring about
-            prices — just like your customers would.
+            {t("onboarding_wizard.simulator_tip")}
           </TipBox>
 
           <div className="flex items-center justify-center gap-4 pt-2">
@@ -249,13 +253,13 @@ function StepContent({
               className="text-emerald-600 border-emerald-200 hover:bg-emerald-50"
             >
               <Check className="w-4 h-4" />
-              Mark as Complete
+              {t("onboarding_wizard.mark_complete")}
             </Button>
             <button
               onClick={() => onSkip("simulate")}
               className="text-sm text-slate-500 hover:text-slate-700 transition-colors cursor-pointer"
             >
-              Skip for now
+              {t("onboarding_wizard.skip_for_now")}
             </button>
           </div>
         </div>
@@ -269,17 +273,15 @@ function StepContent({
               <Radio className="h-8 w-8 text-indigo-500" />
             </div>
             <h2 className="text-2xl font-bold text-[#1E1B4B] font-[family-name:var(--font-playfair)]">
-              Connect Your WhatsApp
+              {t("onboarding_wizard.connect_whatsapp_title")}
             </h2>
             <p className="text-slate-500 max-w-md mx-auto">
-              Link your WhatsApp Business number to start receiving real
-              customer orders via WhatsApp.
+              {t("onboarding_wizard.connect_whatsapp_desc")}
             </p>
           </div>
 
           <TipBox>
-            Make sure you have a WhatsApp Business account ready before
-            connecting.
+            {t("onboarding_wizard.whatsapp_tip")}
           </TipBox>
 
           <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
@@ -287,7 +289,7 @@ function StepContent({
               onClick={() => router.push("/whatsapp")}
               className="w-full sm:w-auto bg-[#25D366] hover:bg-[#1ebe5b] text-white"
             >
-              Connect WhatsApp
+              {t("onboarding_wizard.connect_whatsapp")}
               <ArrowRight className="w-4 h-4" />
             </Button>
           </div>
@@ -299,13 +301,13 @@ function StepContent({
               className="text-emerald-600 border-emerald-200 hover:bg-emerald-50"
             >
               <Check className="w-4 h-4" />
-              Mark as Complete
+              {t("onboarding_wizard.mark_complete")}
             </Button>
             <button
               onClick={() => onSkip("whatsapp")}
               className="text-sm text-slate-500 hover:text-slate-700 transition-colors cursor-pointer"
             >
-              Skip for now
+              {t("onboarding_wizard.skip_for_now")}
             </button>
           </div>
         </div>
@@ -333,6 +335,7 @@ export default function OnboardingPage() {
 function OnboardingPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const { t } = useLanguage();
   const [completedSteps, setCompletedSteps] =
     useState<Record<StepKey, boolean>>(getInitialCompleted);
   const [mounted, setMounted] = useState(false);
@@ -346,6 +349,11 @@ function OnboardingPageContent() {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setMounted(true);
   }, []);
+
+  const stepsWithLabels = useMemo(
+    () => STEPS.map((s) => ({ ...s, label: t(s.labelKey) })),
+    [t]
+  );
 
   const currentStep = getStepFromParams(
     searchParams.get("step")
@@ -370,8 +378,8 @@ function OnboardingPageContent() {
 
   const advanceStep = useCallback(
     (fromStep: StepKey) => {
-      const currentIndex = STEPS.findIndex((s) => s.key === fromStep);
-      const nextStep = STEPS[currentIndex + 1];
+      const currentIndex = stepsWithLabels.findIndex((s) => s.key === fromStep);
+      const nextStep = stepsWithLabels[currentIndex + 1];
 
       if (!nextStep) {
         router.push("/dashboard");
@@ -410,7 +418,7 @@ function OnboardingPageContent() {
         setExtractedData(null);
         handleComplete("menu");
       } catch {
-        setSaveError("Failed to save menu. Please try again.");
+        setSaveError(t("onboarding_wizard.failed_save_menu"));
       } finally {
         setSaving(false);
       }
@@ -437,7 +445,7 @@ function OnboardingPageContent() {
     <div className="space-y-8 w-full">
       {/* Stepper */}
       <OnboardingStepper
-        steps={STEPS}
+        steps={stepsWithLabels}
         currentStep={currentStep}
         completedSteps={completedSteps}
         onStepClick={handleStepClick}

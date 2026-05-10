@@ -3,10 +3,11 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Sparkles } from "lucide-react";
-import { LanguageProvider } from "@/i18n/language-context";
+import { LanguageProvider, useLanguage } from "@/i18n/language-context";
 
 function OnboardingLayoutInner({ children }: { children: React.ReactNode }) {
   const router = useRouter();
+  const { t } = useLanguage();
 
   return (
     <div className="flex min-h-screen flex-col bg-gradient-to-br from-[#FAF5FF] via-[#EEF2FF] to-[#E0E7FF]">
@@ -35,7 +36,7 @@ function OnboardingLayoutInner({ children }: { children: React.ReactNode }) {
           onClick={() => router.push("/dashboard")}
           className="text-sm text-slate-500 hover:text-slate-700 transition-colors cursor-pointer"
         >
-          Skip for now
+          {t("onboarding_wizard.skip_for_now")}
         </button>
       </div>
 
