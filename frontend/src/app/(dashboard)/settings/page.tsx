@@ -55,7 +55,7 @@ const LANGUAGES = [
 ];
 
 export default function SettingsPage() {
-  const { t } = useLanguage();
+  const { t, lang } = useLanguage();
   const { settings, fetchSettings, updateSettings, isLoading } =
     useBusinessStore();
 
@@ -168,7 +168,7 @@ export default function SettingsPage() {
   const addZone = async () => {
     try {
       const res = await tenantClient.post("/zones", {
-        name: "",
+        name: lang === "ar" ? "حي جديد" : "New Zone",
         description: "",
         deliveryFee: 0,
         minimumOrder: null,
