@@ -8,6 +8,7 @@ export function initSocket(server: Http2Server): Server {
   
   const corsOrigin = process.env.CORS_ORIGIN || 'http://localhost:3000';
   io = new Server(server, {
+    path: '/api/socket.io',
     cors: {
       origin: corsOrigin,
       credentials: true,

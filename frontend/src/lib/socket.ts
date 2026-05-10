@@ -16,6 +16,7 @@ export function connectSocket(businessId: string): Socket {
   const token = useAuthStore.getState().accessToken;
 
   socket = io(SOCKET_URL, {
+    path: "/api/socket.io",
     auth: { token },
     transports: ["websocket", "polling"],
   });
