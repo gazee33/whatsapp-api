@@ -69,6 +69,12 @@ async function handleOnboardingCompleted(data: Record<string, unknown>) {
     return;
   }
 
+  // Clear any disconnected connection holding the same phoneNumberId
+  await prisma.dualhookConnection.updateMany({
+    where: { phoneNumberId, status: 'disconnected' },
+    data: { phoneNumberId: null },
+  });
+
   // Upsert DualhookConnection
   await prisma.dualhookConnection.upsert({
     where: { connectionId },
@@ -137,7 +143,7 @@ async function handleConnectionDisconnected(data: Record<string, unknown>) {
 
   await prisma.dualhookConnection.update({
     where: { connectionId },
-    data: { status: 'disconnected' },
+    data: { status: 'disconnected', phoneNumberId: null },
   });
 
   // Clear the access token so messages stop sending

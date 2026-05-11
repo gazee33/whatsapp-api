@@ -1,4 +1,5 @@
 import { io, Socket } from "socket.io-client";
+import { useBusinessStore } from "@/stores/business-store";
 import { useOrderStore } from "@/stores/order-store";
 import { useConversationStore } from "@/stores/conversation-store";
 import { useAuthStore } from "@/stores/auth-store";
@@ -35,6 +36,14 @@ export function connectSocket(businessId: string): Socket {
 
   socket.on("new-message", ({ customerId, message }) => {
     useConversationStore.getState().addMessage(customerId, message);
+  });
+
+  socket.on("whatsapp-connected", () => {
+    useBusinessStore.getState().fetchBusiness();
+  });
+
+  socket.on("whatsapp-disconnected", () => {
+    useBusinessStore.getState().fetchBusiness();
   });
 
   socket.on("connect_error", (err) => {

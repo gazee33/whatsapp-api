@@ -316,7 +316,7 @@ router.delete('/whatsapp/connections/:id', async (req: Request, res: Response) =
 
     await prisma.dualhookConnection.update({
       where: { id: connection.id },
-      data: { status: 'disconnected' },
+      data: { status: 'disconnected', phoneNumberId: null },
     });
 
     await prisma.business.update({
