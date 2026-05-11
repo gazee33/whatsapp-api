@@ -77,9 +77,9 @@ export function buildSystemPrompt(params: {
       ? `${step++}. IF delivery: ask customer to share their location on WhatsApp (send a pin), or type their address manually. When location is shared, you'll receive [Location shared: lat,lng]. Call set_delivery_address with the coordinates. When address is typed, call set_delivery_address with the address text.`
       : `${step++}. IF delivery: unavailable for this restaurant. Say so.`);
     workflowSteps.push(`${step++}. query_menu to browse items. If item has options, MUST ask which.`);
-    workflowSteps.push(`${step++}. Customer done → call request_confirmation tool.`);
+    workflowSteps.push(`${step++}. Customer done → call request_confirmation(orderType="xxx") — you MUST provide the orderType. If you don't know it yet, ask the customer.`);
     workflowSteps.push(`${step++}. Ask: "shall I place the order?".`);
-    workflowSteps.push(`${step++}. Customer explicitly says yes → submit_order with all gathered info.`);
+    workflowSteps.push(`${step++}. Customer explicitly says yes → submit_order (orderType is already saved, no need to include it).`);
     workflowSteps.push(`${step++}. After submit: done. Don't offer repeats. New orders start fresh from step 1.`);
 
     template = `## ROLE
@@ -95,6 +95,7 @@ ${workflowSteps.join('\n')}
 
 ## GUARDRAILS
 - Must call request_confirmation BEFORE submit_order. submit_order will reject without it.
+- request_confirmation requires orderType — ask the customer if not yet known.
 - A bare "yes"/"ok"/"تمام" before request_confirmation means general acknowledgment — NOT order confirmation.
 - Use item names from query_menu results as closely as possible.
 - If query_menu returns multiple matches: show options and ask — do NOT guess.

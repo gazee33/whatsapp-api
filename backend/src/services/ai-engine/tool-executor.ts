@@ -53,7 +53,12 @@ export async function executeTool(params: {
     }
 
     case 'request_confirmation': {
-      const execResult = await handleRequestConfirmation(customerId, cartState);
+      const toolParams = normalizeToolArgs<{ orderType?: string }>(toolCall.arguments);
+      const execResult = await handleRequestConfirmation(
+        customerId,
+        cartState,
+        toolParams.orderType as 'delivery' | 'dine_in' | 'pickup' | undefined,
+      );
       return { success: execResult.success, result: execResult.result, cartState: execResult.cartState };
     }
 

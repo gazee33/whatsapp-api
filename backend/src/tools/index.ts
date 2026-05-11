@@ -45,11 +45,17 @@ export const tools: ToolDefinition[] = [
   },
   {
     name: 'request_confirmation',
-    description: 'Request explicit customer confirmation before submitting an order. Call this when the customer has finished adding items and indicates they are ready to order. This will put the cart in awaiting_confirmation mode. After the customer confirms, call submit_order.',
+    description: 'Request explicit customer confirmation before submitting an order. Call this when the customer has finished adding items and indicates they are ready to order. You MUST provide the orderType — if you don\'t know it yet, ask the customer first. This will save the order type and put the cart in awaiting_confirmation mode. After the customer confirms, call submit_order.',
     parameters: {
       type: 'object',
-      properties: {},
-      required: []
+      properties: {
+        orderType: {
+          type: 'string',
+          enum: ['delivery', 'dine_in', 'pickup'],
+          description: 'Order type: delivery, dine_in, or pickup. REQUIRED — ask the customer if not yet known.'
+        }
+      },
+      required: ['orderType']
     }
   },
   {
@@ -73,12 +79,12 @@ export const tools: ToolDefinition[] = [
           }
         },
         orderNotes: { type: 'string', description: 'Order notes (optional)' },
-        orderType: { type: 'string', enum: ['delivery', 'dine_in', 'pickup'], description: 'Order type: delivery, dine_in, or pickup. REQUIRED.' },
+        orderType: { type: 'string', enum: ['delivery', 'dine_in', 'pickup'], description: 'Order type (optional — already saved from request_confirmation step).' },
         deliveryAddress: { type: 'string', description: 'Full delivery address. REQUIRED if orderType is delivery.' },
         deliveryNotes: { type: 'string', description: 'Delivery instructions like gate code (optional)' },
         contactPhone: { type: 'string', description: 'Contact number for delivery driver (optional)' }
       },
-      required: ['items', 'orderType']
+      required: ['items']
     }
   },
   {

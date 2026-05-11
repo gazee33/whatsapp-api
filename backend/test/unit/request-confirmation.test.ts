@@ -55,6 +55,7 @@ describe('handleRequestConfirmation', () => {
     const cart: CartState = {
       ...emptyCartState(),
       language: 'en',
+      orderType: 'pickup',
     };
 
     const result = await handleRequestConfirmation(customerId, cart);
@@ -83,6 +84,7 @@ describe('handleRequestConfirmation', () => {
     const cart: CartState = {
       ...emptyCartState(),
       language: 'en',
+      orderType: 'delivery',
       items: [{ name: 'Shawarma', quantity: 2, unitPrice: 25 }],
     };
 
@@ -98,6 +100,7 @@ describe('handleRequestConfirmation', () => {
     const cart: CartState = {
       ...emptyCartState(),
       language: 'ar',
+      orderType: 'pickup',
       items: [{ name: 'شاورما', quantity: 1, unitPrice: 25 }],
     };
 
@@ -109,7 +112,22 @@ describe('handleRequestConfirmation', () => {
     const saved = await getCartState(customerId);
     expect(saved.mode).toBe('awaiting_confirmation');
     expect(saved.language).toBe('ar');
+    expect(saved.orderType).toBe('pickup');
     expect(saved.items).toHaveLength(1);
+  });
+
+  it('rejects if orderType is missing', async () => {
+    const cart: CartState = {
+      ...emptyCartState(),
+      language: 'en',
+      items: [{ name: 'Shawarma', quantity: 1, unitPrice: 25 }],
+    };
+
+    const result = await handleRequestConfirmation(customerId, cart);
+
+    expect(result.success).toBe(false);
+    expect(result.result).toContain('Order type is required');
+    expect(result.cartState.mode).toBe('browsing');
   });
 
   it('preserves delivery location info and order type', async () => {
@@ -143,6 +161,7 @@ describe('handleRequestConfirmation', () => {
     const cart: CartState = {
       ...emptyCartState(),
       language: 'en',
+      orderType: 'dine_in',
       items: [
         { name: 'Shawarma', quantity: 1, unitPrice: 25 },
         { name: 'Fries', quantity: 2, unitPrice: 10 },

@@ -140,13 +140,22 @@ export async function handleSubmitOrder(
   customerId: string,
   params: SubmitOrderParams
 ): Promise<string> {
-  const { items, orderNotes, orderType, deliveryNotes, contactPhone } = params;
+  const { items, orderNotes, deliveryNotes, contactPhone } = params;
   let { deliveryAddress } = params;
+  let { orderType } = params;
 
   try {
     if (!items || items.length === 0) {
       console.error('[SubmitOrder] Validation: no items provided', { businessId, customerId, params });
       return 'No items provided for the order.';
+    }
+
+    // Fall back to cart-stored orderType if not in params
+    if (!orderType) {
+      const cart = await getCartState(customerId);
+      if (cart.orderType) {
+        orderType = cart.orderType;
+      }
     }
 
     // Get all available menu items for matching, including options
