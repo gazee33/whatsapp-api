@@ -1,7 +1,6 @@
 // Re-export tools and handlers
 export * from './tools/index.js';
 export * from './tools/query-menu.js';
-export * from './tools/add-to-cart.js';
 export * from './tools/submit-order.js';
 export * from './tools/check-status.js';
 export * from './tools/file-complaint.js';

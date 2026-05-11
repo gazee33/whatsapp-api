@@ -5,7 +5,7 @@ export async function handleRequestConfirmation(
   cartState: CartState,
 ): Promise<{ success: boolean; result: string; cartState: CartState }> {
   if (cartState.items.length === 0) {
-    return { success: false, result: 'Cannot confirm an empty order. You must call add_to_cart for each item the customer wants BEFORE calling request_confirmation. Example: add_to_cart name="Shawarma Chicken" quantity=2 optionName="Large". Then call request_confirmation again.', cartState };
+    return { success: false, result: 'Cannot confirm an empty order. Please add items to the cart first.', cartState };
   }
 
   if (cartState.mode === 'order_submitted') {

@@ -1,6 +1,5 @@
 import type { ToolCall } from '../../llm/types.js';
 import { handleQueryMenu } from '../../tools/query-menu.js';
-import { handleAddToCart } from '../../tools/add-to-cart.js';
 import { handleSubmitOrder } from '../../tools/submit-order.js';
 import { handleCheckStatus } from '../../tools/check-status.js';
 import { handleFileComplaint } from '../../tools/file-complaint.js';
@@ -8,7 +7,6 @@ import { handleCheckRestaurantInfo } from '../../tools/check-restaurant-info.js'
 import { handleSetDeliveryAddress } from '../../tools/set-delivery-address.js';
 import { handleRequestConfirmation } from '../../tools/request-confirmation.js';
 import type { QueryMenuParams } from '../../tools/query-menu.js';
-import type { AddToCartParams } from '../../tools/add-to-cart.js';
 import type { SubmitOrderParams } from '../../tools/submit-order.js';
 import type { CheckStatusParams } from '../../tools/check-status.js';
 import type { FileComplaintParams } from '../../tools/file-complaint.js';
@@ -52,12 +50,6 @@ export async function executeTool(params: {
       const toolParams = normalizeToolArgs<QueryMenuParams>(toolCall.arguments);
       const result = await handleQueryMenu(businessId, toolParams);
       return { success: true, result };
-    }
-
-    case 'add_to_cart': {
-      const toolParams = normalizeToolArgs<AddToCartParams>(toolCall.arguments);
-      const execResult = await handleAddToCart(businessId, customerId, toolParams, cartState);
-      return { success: execResult.success, result: execResult.result, cartState: execResult.cartState };
     }
 
     case 'request_confirmation': {

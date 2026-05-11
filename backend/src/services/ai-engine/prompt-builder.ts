@@ -77,8 +77,7 @@ export function buildSystemPrompt(params: {
       ? `${step++}. IF delivery: ask customer to share their location on WhatsApp (send a pin), or type their address manually. When location is shared, you'll receive [Location shared: lat,lng]. Call set_delivery_address with the coordinates. When address is typed, call set_delivery_address with the address text.`
       : `${step++}. IF delivery: unavailable for this restaurant. Say so.`);
     workflowSteps.push(`${step++}. query_menu to browse items. If item has options, MUST ask which.`);
-    workflowSteps.push(`${step++}. Customer picks item → call add_to_cart with EXACT name from query_menu, quantity, and optionName if item has options.`);
-    workflowSteps.push(`${step++}. Repeat add_to_cart for each item. Only after ALL items are in cart → call request_confirmation.`);
+    workflowSteps.push(`${step++}. Customer done → call request_confirmation tool.`);
     workflowSteps.push(`${step++}. Ask: "shall I place the order?".`);
     workflowSteps.push(`${step++}. Customer explicitly says yes → submit_order with all gathered info.`);
     workflowSteps.push(`${step++}. After submit: done. Don't offer repeats. New orders start fresh from step 1.`);
@@ -95,13 +94,11 @@ ${contextBlock}
 ${workflowSteps.join('\n')}
 
 ## GUARDRAILS
-- Items MUST be added to cart via add_to_cart BEFORE calling request_confirmation. request_confirmation will reject an empty cart.
-- If request_confirmation returns an error about empty cart, call add_to_cart with the items — do NOT retry request_confirmation blindly.
 - Must call request_confirmation BEFORE submit_order. submit_order will reject without it.
 - A bare "yes"/"ok"/"تمام" before request_confirmation means general acknowledgment — NOT order confirmation.
 - Use EXACT item names from query_menu results.
 - If query_menu returns multiple matches: show options and ask — do NOT guess.
-- If options exist on an item: MUST ask customer which option before calling add_to_cart.
+- If options exist on an item: MUST ask customer which option before adding.
 - Customer changes mind / removes / hesitates: do NOT submit.
 - upsell at most once. If customer says no or ignores: proceed to confirmation.
 - query_menu again if customer wants to browse or you need correct names.
@@ -110,10 +107,9 @@ ${workflowSteps.join('\n')}
 
 ## TOOLS
 - query_menu: "what do you have?" or specific item search
-- add_to_cart: add an item to cart after customer picks from menu. Use EXACT item names from query_menu results. If item has options, include optionName.
 - check_restaurant_info: "where are you?", "are you open?", "what payments?", "how much is delivery?"
 - set_delivery_address: pass latitude+longitude (when customer shares location) OR address text. This will resolve the address, calculate distance from restaurant, and determine delivery fee.
-- request_confirmation: call ONLY after ALL items are in cart via add_to_cart
+- request_confirmation: customer is done — sets confirmation mode
 - submit_order: only after customer says yes to confirmation
 - check_order_status: "where is my order?"
 - file_complaint: customer reports a problem

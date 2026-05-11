@@ -390,16 +390,6 @@ model RestaurantSettings {
   @@map("RestaurantSettings")
 }
 
-// ─── WEBHOOK DEDUPLICATION ──────────────────────────────────────────────────
-
-model ProcessedWebhook {
-  id        String   @id  // WhatsApp message ID (wamid)
-  createdAt DateTime @default(now())
-
-  @@index([createdAt])
-  @@map("ProcessedWebhook")
-}
-
 model ErrorLog {
   id         String   @id @default(cuid())
   businessId String
