@@ -8,6 +8,26 @@ import { logError } from '../services/error-log.js';
 
 const router = Router();
 
+// Track processed message IDs per customer to prevent duplicate processing
+// Key: `${customerId}:${messageId}`, Value: timestamp
+const processedMessages = new Map<string, number>();
+const DEDUP_TTL_MS = 10 * 60 * 1000; // 10 minutes
+
+// Per-customer processing lock to prevent concurrent sessions
+const customerLocks = new Set<string>();
+
+function cleanupProcessedMessages() {
+  const cutoff = Date.now() - DEDUP_TTL_MS;
+  for (const [key, timestamp] of processedMessages) {
+    if (timestamp < cutoff) {
+      processedMessages.delete(key);
+    }
+  }
+}
+
+// Cleanup stale entries every 5 minutes
+setInterval(cleanupProcessedMessages, 5 * 60 * 1000);
+
 function verifyWebhookSignature(req: Request, appSecret: string): boolean {
   const signature = req.headers['x-hub-signature-256'] as string;
   if (!signature) {
@@ -89,6 +109,8 @@ router.post('/', async (req: Request, res: Response) => {
   // Support x-api-key header for simulator requests (skips WhatsApp-specific logic)
   const apiKey = req.headers['x-api-key'] as string | undefined;
   const isSimulator = !!apiKey;
+
+  let lockedCustomerId: string | undefined;
 
   try {
     const { entry } = req.body;
@@ -253,6 +275,24 @@ router.post('/', async (req: Request, res: Response) => {
       console.log(`[Webhook] Existing customer: ${customer.id}`);
     }
 
+    // Deduplicate: skip if this message was already successfully processed
+    let dedupKey: string | undefined;
+    if (message.id) {
+      dedupKey = `${customer.id}:${message.id}`;
+      if (processedMessages.has(dedupKey)) {
+        console.log(`[Webhook] Duplicate message ${message.id} for customer ${customer.id} — skipping`);
+        return res.sendStatus(200);
+      }
+    }
+
+    // Per-customer processing lock: prevent concurrent sessions for the same customer
+    if (customerLocks.has(customer.id)) {
+      console.log(`[Webhook] Customer ${customer.id} already being processed — returning 200 (WhatsApp will retry)`);
+      return res.sendStatus(200);
+    }
+    customerLocks.add(customer.id);
+    lockedCustomerId = customer.id;
+
     const onboardingOK = isOnboardingComplete(business);
     console.log(`[Webhook] Onboarding complete: ${onboardingOK} (hasPhoneId=${!!business.whatsappPhoneNumberId}, hasToken=${!!business.whatsappAccessToken})`);
 
@@ -310,6 +350,10 @@ router.post('/', async (req: Request, res: Response) => {
         body: reply,
       });
       console.log(`[Webhook] WhatsApp send completed for customer ${customer.id}`);
+      // Record dedup only after successful processing + send, so transient failures allow retries
+      if (dedupKey) {
+        processedMessages.set(dedupKey, Date.now());
+      }
     } else {
       console.warn(`[Webhook] Reply NOT sent — onboarding incomplete`);
     }
@@ -331,6 +375,10 @@ router.post('/', async (req: Request, res: Response) => {
   } catch (error) {
     console.error('Webhook error:', error);
     res.status(500).json({ error: 'Internal server error' });
+  } finally {
+    if (lockedCustomerId) {
+      customerLocks.delete(lockedCustomerId);
+    }
   }
 });
 

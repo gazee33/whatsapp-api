@@ -275,7 +275,7 @@ export async function handleSubmitOrder(
     const totalWithDelivery = cartDeliveryFee ? totalPrice + cartDeliveryFee : totalPrice;
 
     // Create order with items in a transaction
-    const referenceId = await generateOrderReferenceId(businessId);
+    const referenceId = generateOrderReferenceId();
 
     const order = await prisma.$transaction(async (tx) => {
       // Create order

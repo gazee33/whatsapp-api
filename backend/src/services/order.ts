@@ -46,7 +46,7 @@ export async function createOrder(
     }
 
     // Create order with reference ID
-    const referenceId = await generateOrderReferenceId(businessId);
+    const referenceId = generateOrderReferenceId();
     
     const order = await tx.order.create({
       data: {
