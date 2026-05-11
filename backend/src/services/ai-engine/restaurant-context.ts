@@ -1,5 +1,10 @@
 import { prisma } from '../../lib/prisma.js';
 
+export interface DeliveryTierInfo {
+  maxKm: number;
+  fee: number;
+}
+
 export interface RestaurantContext {
   restaurantName: string;
   currency: string;
@@ -8,6 +13,8 @@ export interface RestaurantContext {
   aiRules: string;
   defaultLanguage: string;
   address: string | null;
+  latitude: number | null;
+  longitude: number | null;
   phoneNumber: string | null;
   deliveryEnabled: boolean;
   dineInEnabled: boolean;
@@ -15,6 +22,8 @@ export interface RestaurantContext {
   estimatedPrepTimeMinutes: number | null;
   paymentMethods: string[];
   isTemporarilyClosed: boolean;
+  deliveryTiers: DeliveryTierInfo[];
+  maxDeliveryDistanceKm: number | null;
 }
 
 export async function getRestaurantContext(businessId: string): Promise<RestaurantContext> {
@@ -30,6 +39,13 @@ export async function getRestaurantContext(businessId: string): Promise<Restaura
     } catch {}
   }
 
+  let deliveryTiers: DeliveryTierInfo[] = [];
+  if (settings?.deliveryTiers) {
+    try {
+      deliveryTiers = JSON.parse(settings.deliveryTiers);
+    } catch {}
+  }
+
   return {
     restaurantName: settings?.name || business?.name || 'the restaurant',
     currency: settings?.currency || 'SAR',
@@ -38,6 +54,8 @@ export async function getRestaurantContext(businessId: string): Promise<Restaura
     aiRules: settings?.aiRules || '',
     defaultLanguage: settings?.defaultLanguage || 'en',
     address: settings?.address || null,
+    latitude: settings?.latitude || null,
+    longitude: settings?.longitude || null,
     phoneNumber: settings?.phoneNumber || null,
     deliveryEnabled: settings?.deliveryEnabled ?? false,
     dineInEnabled: settings?.dineInEnabled ?? true,
@@ -45,5 +63,7 @@ export async function getRestaurantContext(businessId: string): Promise<Restaura
     estimatedPrepTimeMinutes: settings?.estimatedPrepTimeMinutes || null,
     paymentMethods,
     isTemporarilyClosed: settings?.isTemporarilyClosed ?? false,
+    deliveryTiers,
+    maxDeliveryDistanceKm: settings?.maxDeliveryDistanceKm || null,
   };
 }

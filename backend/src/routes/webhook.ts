@@ -116,14 +116,29 @@ router.post('/', async (req: Request, res: Response) => {
     const phoneNumberId = changes.metadata?.phone_number_id;
     const from = message.from;
     const text = message.text?.body || '';
+    const location = message.location;
 
     // Extract contact name from the contacts array (not from message object)
     const contacts = changes.contacts || [];
     const contact = contacts.find((c: any) => c.wa_id === from);
     const name = contact?.profile?.name || 'Customer';
 
-    if (!text) {
+    if (!text && !location) {
       return res.sendStatus(200);
+    }
+
+    // Build text from location message if no text is provided
+    let effectiveText = text;
+    let locationData: { latitude: number; longitude: number; name?: string; address?: string } | undefined;
+
+    if (location) {
+      locationData = {
+        latitude: location.latitude,
+        longitude: location.longitude,
+        name: location.name,
+        address: location.address,
+      };
+      effectiveText = text || '📍 Share my location';
     }
 
     // Find business by API key (simulator) or phone_number_id (real webhook)
@@ -257,7 +272,7 @@ router.post('/', async (req: Request, res: Response) => {
       sessionId = lastMsg?.sessionId;
 
       console.log(`[Webhook] Calling AI agent for customer ${customer.id}...`);
-      reply = await processMessage(business, customer, text);
+      reply = await processMessage(business, customer, effectiveText, locationData);
       console.log(`[Webhook] AI reply: ${reply.substring(0, 100)}`);
     } catch (error: any) {
       const isRateLimit = error?.message?.includes('rate limit');

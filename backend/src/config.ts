@@ -21,6 +21,9 @@ export const config = {
   maxLoginAttempts: parseInt(process.env.MAX_LOGIN_ATTEMPTS || '5', 10),
   lockoutDurationMinutes: parseInt(process.env.LOCKOUT_DURATION_MINUTES || '30', 10),
 
+  // Google Maps
+  googleMapsApiKey: process.env.GOOGLE_MAPS_API_KEY || '',
+
   // DualHook Platform API
   dualhookApiKey: process.env.DUALHOOK_API_KEY || '',
   dualhookSigningSecret: process.env.DUALHOOK_SIGNING_SECRET || '',

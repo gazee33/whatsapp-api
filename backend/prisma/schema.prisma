@@ -30,7 +30,6 @@ model Business {
   roles       Role[]
   auditLogs   AuditLog[]
   dualhookConnections DualhookConnection[]
-  deliveryZones DeliveryZone[]
 
   @@map("Business")
 }
@@ -301,23 +300,6 @@ model Option {
   @@map("Option")
 }
 
-model DeliveryZone {
-  id                       String    @id @default(cuid())
-  businessId               String
-  business                 Business  @relation(fields: [businessId], references: [id], onDelete: Cascade)
-  name                     String
-  description              String?
-  deliveryFee              Float     @default(0)
-  minimumOrder             Float?
-  orders                   Order[]
-  isActive                 Boolean   @default(true)
-  createdAt                DateTime  @default(now())
-
-  @@unique([businessId, name])
-  @@index([businessId])
-  @@map("DeliveryZone")
-}
-
 model Order {
   id              String      @id @default(cuid())
   referenceId     String      @unique
@@ -331,8 +313,9 @@ model Order {
   orderType       String?
   deliveryAddress String?
   deliveryNotes   String?
-  deliveryZoneId  String?
-  deliveryZone    DeliveryZone? @relation(fields: [deliveryZoneId], references: [id], onDelete: SetNull)
+  deliveryDistanceKm Float?
+  customerLatitude   Float?
+  customerLongitude  Float?
   contactPhone    String?
   items           OrderItem[]
   createdAt       DateTime    @default(now())
@@ -393,6 +376,10 @@ model RestaurantSettings {
   deliveryEnabled Boolean @default(false)
   dineInEnabled    Boolean @default(true)
   pickupEnabled    Boolean @default(true)
+
+  // Delivery pricing (distance-based)
+  deliveryTiers          String?   // JSON: [{"maxKm":3,"fee":5},{"maxKm":7,"fee":10},{"maxKm":10,"fee":15}]
+  maxDeliveryDistanceKm  Float?
 
   // Operations
   estimatedPrepTimeMinutes Int?

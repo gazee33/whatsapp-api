@@ -20,6 +20,19 @@ export function detectLanguage(text: string): SupportedLanguage | null {
   return 'en';
 }
 
+function formatDeliveryTiers(context: RestaurantContext): string {
+  if (context.deliveryTiers.length === 0) return '';
+
+  let result = 'Delivery fees (distance-based):\n';
+  for (const tier of context.deliveryTiers) {
+    result += `- Up to ${tier.maxKm} km: ${tier.fee} ${context.currency}\n`;
+  }
+  if (context.maxDeliveryDistanceKm) {
+    result += `Max delivery distance: ${context.maxDeliveryDistanceKm} km\n`;
+  }
+  return result;
+}
+
 export function buildSystemPrompt(params: {
   businessId: string;
   language: SupportedLanguage;
@@ -47,6 +60,9 @@ export function buildSystemPrompt(params: {
     ];
     if (orderTypes.length > 0) contextLines.push(`Types: ${orderTypeStr}`);
     if (context.estimatedPrepTimeMinutes) contextLines.push(`Prep: ~${context.estimatedPrepTimeMinutes} min`);
+    if (context.deliveryEnabled) {
+      contextLines.push(formatDeliveryTiers(context));
+    }
     const contextBlock = contextLines.join('\n');
 
     const langInstr =
@@ -58,7 +74,7 @@ export function buildSystemPrompt(params: {
     let step = 1;
     workflowSteps.push(`${step++}. Ask order type (${orderTypeStr}).`);
     workflowSteps.push(context.deliveryEnabled
-      ? `${step++}. IF delivery: query_zones → customer picks zone → set_delivery_address with zone name + address.`
+      ? `${step++}. IF delivery: ask customer to share their location on WhatsApp (send a pin), or type their address manually. When location is shared, you'll receive [Location shared: lat,lng]. Call set_delivery_address with the coordinates. When address is typed, call set_delivery_address with the address text.`
       : `${step++}. IF delivery: unavailable for this restaurant. Say so.`);
     workflowSteps.push(`${step++}. query_menu to browse items. If item has options, MUST ask which.`);
     workflowSteps.push(`${step++}. Customer done → call request_confirmation tool.`);
@@ -91,9 +107,8 @@ ${workflowSteps.join('\n')}
 
 ## TOOLS
 - query_menu: "what do you have?" or specific item search
-- query_zones: "do you deliver?" — lists delivery zones
-- check_restaurant_info: "where are you?", "are you open?", "what payments?"
-- set_delivery_address: after customer picks zone + provides address
+- check_restaurant_info: "where are you?", "are you open?", "what payments?", "how much is delivery?"
+- set_delivery_address: pass latitude+longitude (when customer shares location) OR address text. This will resolve the address, calculate distance from restaurant, and determine delivery fee.
 - request_confirmation: customer is done — sets confirmation mode
 - submit_order: only after customer says yes to confirmation
 - check_order_status: "where is my order?"

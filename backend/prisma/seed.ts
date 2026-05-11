@@ -398,6 +398,8 @@ async function main() {
       deliveryEnabled: true,
       dineInEnabled: true,
       pickupEnabled: true,
+      deliveryTiers: '[{"maxKm":3,"fee":5},{"maxKm":7,"fee":10},{"maxKm":10,"fee":15}]',
+      maxDeliveryDistanceKm: 10,
       estimatedPrepTimeMinutes: 20,
       paymentMethods: '["cash","card","apple_pay"]',
       isTemporarilyClosed: false,
@@ -406,31 +408,6 @@ async function main() {
   })
 
   console.log('Created restaurant settings')
-
-  // Create delivery zones
-  const zones = [
-    { name: 'Al-Malaz', description: 'Within Al-Malaz district', deliveryFee: 5, minimumOrder: 20 },
-    { name: 'Al-Rawdah', description: 'Al-Rawdah district', deliveryFee: 8, minimumOrder: 25 },
-    { name: 'Downtown', description: 'Riyadh city center', deliveryFee: 10, minimumOrder: 30 },
-    { name: 'Al-Nakheel', description: 'Al-Nakheel district', deliveryFee: 12, minimumOrder: 35 },
-  ]
-
-  for (const zone of zones) {
-    await prisma.deliveryZone.upsert({
-      where: { businessId_name: { businessId: business.id, name: zone.name } },
-      update: {},
-      create: {
-        businessId: business.id,
-        name: zone.name,
-        description: zone.description,
-        deliveryFee: zone.deliveryFee,
-        minimumOrder: zone.minimumOrder,
-        isActive: true,
-      },
-    })
-  }
-
-  console.log(`Created delivery zones: ${zones.length}`)
 
   console.log('\n✅ Full seed completed successfully!')
 }

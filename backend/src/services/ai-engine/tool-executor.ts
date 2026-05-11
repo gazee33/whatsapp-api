@@ -3,7 +3,6 @@ import { handleQueryMenu } from '../../tools/query-menu.js';
 import { handleSubmitOrder } from '../../tools/submit-order.js';
 import { handleCheckStatus } from '../../tools/check-status.js';
 import { handleFileComplaint } from '../../tools/file-complaint.js';
-import { handleQueryZones } from '../../tools/query-zones.js';
 import { handleCheckRestaurantInfo } from '../../tools/check-restaurant-info.js';
 import { handleSetDeliveryAddress } from '../../tools/set-delivery-address.js';
 import { handleRequestConfirmation } from '../../tools/request-confirmation.js';
@@ -11,7 +10,6 @@ import type { QueryMenuParams } from '../../tools/query-menu.js';
 import type { SubmitOrderParams } from '../../tools/submit-order.js';
 import type { CheckStatusParams } from '../../tools/check-status.js';
 import type { FileComplaintParams } from '../../tools/file-complaint.js';
-import type { QueryZonesParams } from '../../tools/query-zones.js';
 import type { CheckRestaurantInfoParams } from '../../tools/check-restaurant-info.js';
 import type { SetDeliveryAddressParams } from '../../tools/set-delivery-address.js';
 import { type CartState, emptyCartState } from './cart-state.js';
@@ -119,12 +117,6 @@ export async function executeTool(params: {
       };
     }
 
-    case 'query_zones': {
-      const toolParams = normalizeToolArgs<QueryZonesParams>(toolCall.arguments);
-      const result = await handleQueryZones(businessId, toolParams);
-      return { success: true, result };
-    }
-
     case 'check_restaurant_info': {
       const toolParams = normalizeToolArgs<CheckRestaurantInfoParams>(toolCall.arguments);
       const result = await handleCheckRestaurantInfo(businessId, toolParams);
@@ -133,12 +125,12 @@ export async function executeTool(params: {
 
     case 'set_delivery_address': {
       const toolParams = normalizeToolArgs<SetDeliveryAddressParams>(toolCall.arguments);
-      const result = await handleSetDeliveryAddress(businessId, customerId, toolParams);
-      const isAddressError = result.startsWith('Please provide') || result.startsWith('Delivery zone');
+      const execResult = await handleSetDeliveryAddress(businessId, customerId, toolParams);
       return {
-        success: !isAddressError,
-        result,
-        errorCode: isAddressError ? 'INVALID_DELIVERY_ADDRESS' : undefined,
+        success: execResult.success,
+        result: execResult.result,
+        errorCode: execResult.success ? undefined : 'INVALID_DELIVERY_ADDRESS',
+        cartState: execResult.success ? execResult.cartState : cartState,
       };
     }
 

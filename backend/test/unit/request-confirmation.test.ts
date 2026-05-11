@@ -112,15 +112,18 @@ describe('handleRequestConfirmation', () => {
     expect(saved.items).toHaveLength(1);
   });
 
-  it('preserves delivery info and order type', async () => {
+  it('preserves delivery location info and order type', async () => {
     const cart: CartState = {
       ...emptyCartState(),
       language: 'en',
       orderType: 'delivery',
-      deliveryInfo: {
-        zoneId: 'zone-1',
-        zoneName: 'Al-Malaz',
-        address: '123 Main St',
+      deliveryLocation: {
+        latitude: 24.6748,
+        longitude: 46.6918,
+        address: '123 Main St, Riyadh',
+        googleAddress: '123 Main St, Riyadh, Saudi Arabia',
+        distanceKm: 4.2,
+        durationMin: 12,
         fee: 10,
       },
       items: [{ name: 'Shawarma', quantity: 1, unitPrice: 25 }],
@@ -131,8 +134,9 @@ describe('handleRequestConfirmation', () => {
     expect(result.success).toBe(true);
     expect(result.cartState.mode).toBe('awaiting_confirmation');
     expect(result.cartState.orderType).toBe('delivery');
-    expect(result.cartState.deliveryInfo?.zoneName).toBe('Al-Malaz');
-    expect(result.cartState.deliveryInfo?.address).toBe('123 Main St');
+    expect(result.cartState.deliveryLocation?.address).toBe('123 Main St, Riyadh');
+    expect(result.cartState.deliveryLocation?.distanceKm).toBe(4.2);
+    expect(result.cartState.deliveryLocation?.fee).toBe(10);
   });
 
   it('summarises up to 3 items and mentions extras', async () => {

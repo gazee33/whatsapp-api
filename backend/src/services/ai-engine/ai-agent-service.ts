@@ -55,11 +55,12 @@ export class AIAgentService {
   async processMessage(params: {
     customerId: string;
     message: string;
+    locationData?: { latitude: number; longitude: number; name?: string; address?: string };
   }): Promise<{
     reply: string;
     orderId?: string;
   }> {
-    const { customerId, message } = params;
+    const { customerId, message, locationData } = params;
 
     const MAX_MESSAGE_LENGTH = 4000;
     if (message.length > MAX_MESSAGE_LENGTH) {
@@ -107,13 +108,17 @@ export class AIAgentService {
       context,
     });
 
+    const userContent = locationData
+      ? `[Location shared: ${locationData.latitude},${locationData.longitude}${locationData.name ? ` — ${locationData.name}` : ''}${locationData.address ? ` (${locationData.address})` : ''}]\n${message}`
+      : message;
+
     const messages: ChatMessage[] = [
       { role: 'system', content: systemPrompt },
       ...historyMessages.map((m) => ({
         role: m.role as 'user' | 'assistant',
         content: m.content,
       })),
-      { role: 'user', content: message },
+      { role: 'user', content: userContent },
     ];
 
     const promptStartTime = Date.now();

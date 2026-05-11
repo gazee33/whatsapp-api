@@ -39,8 +39,9 @@ import {
   Settings2,
   Plus,
   Trash2,
+  Route,
 } from "lucide-react";
-import type { DeliveryZone } from "@/lib/types";
+import type { DeliveryTier } from "@/lib/types";
 
 const CURRENCIES = [
   { value: "SAR", label: "SAR - Saudi Riyal" },
@@ -75,28 +76,20 @@ export default function SettingsPage() {
   const [dineInEnabled, setDineInEnabled] = useState(true);
   const [pickupEnabled, setPickupEnabled] = useState(true);
 
+  const [deliveryTiers, setDeliveryTiers] = useState<DeliveryTier[]>([]);
+  const [maxDeliveryDistanceKm, setMaxDeliveryDistanceKm] = useState("");
+
   const [estimatedPrepTimeMinutes, setEstimatedPrepTimeMinutes] = useState("");
   const [paymentMethodsStr, setPaymentMethodsStr] = useState("");
   const [isTemporarilyClosed, setIsTemporarilyClosed] = useState(false);
   const [defaultLanguage, setDefaultLanguage] = useState("en");
 
-  const [zones, setZones] = useState<DeliveryZone[]>([]);
   const [saving, setSaving] = useState(false);
   const [loaded, setLoaded] = useState(false);
 
-  const loadZones = useCallback(async () => {
-    try {
-      const res = await tenantClient.get("/zones");
-      setZones(res.data);
-    } catch {
-      // ignore
-    }
-  }, []);
-
   useEffect(() => {
     fetchSettings().then(() => setLoaded(true));
-    loadZones();
-  }, [fetchSettings, loadZones]);
+  }, [fetchSettings]);
 
   useEffect(() => {
     if (settings) {
@@ -113,6 +106,17 @@ export default function SettingsPage() {
       setDeliveryEnabled(settings.deliveryEnabled ?? false);
       setDineInEnabled(settings.dineInEnabled ?? true);
       setPickupEnabled(settings.pickupEnabled ?? true);
+      try {
+        const tiers = JSON.parse(settings.deliveryTiers || "[]");
+        setDeliveryTiers(Array.isArray(tiers) ? tiers : []);
+      } catch {
+        setDeliveryTiers([]);
+      }
+      setMaxDeliveryDistanceKm(
+        settings.maxDeliveryDistanceKm != null
+          ? String(settings.maxDeliveryDistanceKm)
+          : ""
+      );
       setEstimatedPrepTimeMinutes(
         settings.estimatedPrepTimeMinutes != null
           ? String(settings.estimatedPrepTimeMinutes)
@@ -150,6 +154,10 @@ export default function SettingsPage() {
         deliveryEnabled,
         dineInEnabled,
         pickupEnabled,
+        deliveryTiers: deliveryTiers.length > 0 ? JSON.stringify(deliveryTiers) : null,
+        maxDeliveryDistanceKm: maxDeliveryDistanceKm
+          ? parseFloat(maxDeliveryDistanceKm)
+          : null,
         estimatedPrepTimeMinutes: estimatedPrepTimeMinutes
           ? parseInt(estimatedPrepTimeMinutes, 10)
           : null,
@@ -165,51 +173,19 @@ export default function SettingsPage() {
     }
   };
 
-  const addZone = async () => {
-    try {
-      const res = await tenantClient.post("/zones", {
-        name: lang === "ar" ? "حي جديد" : "New Zone",
-        description: "",
-        deliveryFee: 0,
-        minimumOrder: null,
-      });
-      setZones((prev) => [...prev, res.data]);
-    } catch (err: any) {
-      toast.error(err?.response?.data?.error || "Failed to add zone");
-    }
+  const addTier = () => {
+    const lastMax = deliveryTiers.length > 0 ? deliveryTiers[deliveryTiers.length - 1].maxKm : 0;
+    setDeliveryTiers([...deliveryTiers, { maxKm: lastMax + 5, fee: 0 }]);
   };
 
-  const updateZone = async (index: number, field: string, value: any) => {
-    const zone = zones[index];
-    const updated = { ...zone, [field]: value };
-    const newZones = [...zones];
-    newZones[index] = updated;
-    setZones(newZones);
-
-    if (zone.id) {
-      try {
-        await tenantClient.put(`/zones/${zone.id}`, {
-          name: updated.name,
-          description: updated.description,
-          deliveryFee: updated.deliveryFee,
-          minimumOrder: updated.minimumOrder,
-          isActive: updated.isActive,
-        });
-      } catch {
-        newZones[index] = zone;
-        setZones([...newZones]);
-      }
-    }
+  const updateTier = (index: number, field: keyof DeliveryTier, value: number) => {
+    const tiers = [...deliveryTiers];
+    tiers[index] = { ...tiers[index], [field]: value };
+    setDeliveryTiers(tiers);
   };
 
-  const deleteZone = async (index: number) => {
-    const zone = zones[index];
-    try {
-      await tenantClient.delete(`/zones/${zone.id}`);
-      setZones((prev) => prev.filter((_, i) => i !== index));
-    } catch {
-      toast.error("Failed to delete zone");
-    }
+  const removeTier = (index: number) => {
+    setDeliveryTiers(deliveryTiers.filter((_, i) => i !== index));
   };
 
   if (!loaded || isLoading) {
@@ -422,90 +398,74 @@ export default function SettingsPage() {
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-base">
-                <Truck className="h-4 w-4" />
-                {t("settings.delivery_zones")}
+                <Route className="h-4 w-4" />
+                {t("settings.delivery_tiers")}
               </CardTitle>
               <CardDescription>
-                {t("settings.delivery_config_desc")}
+                {t("settings.delivery_tiers_desc")}
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              {zones.length === 0 && (
-                <p className="text-sm text-muted-foreground">{t("settings.no_zones")}</p>
+              {deliveryTiers.length === 0 && (
+                <p className="text-sm text-muted-foreground">{t("settings.delivery_no_tiers")}</p>
               )}
-              {zones.map((zone, index) => (
-                <div key={zone.id} className="flex items-start gap-2 rounded-lg border p-3">
-                  <div className="flex-1 space-y-2">
-                    <div className="grid grid-cols-2 gap-2">
-                      <div className="space-y-1">
-                        <Label className="text-xs">{t("settings.zone_name")}</Label>
-                        <Input
-                          value={zone.name}
-                          onChange={(e) => updateZone(index, "name", e.target.value)}
-                          placeholder={t("settings.zone_name_placeholder")}
-                        />
-                      </div>
-                      <div className="space-y-1">
-                        <Label className="text-xs">{t("settings.zone_fee")}</Label>
-                        <Input
-                          type="number"
-                          step="0.01"
-                          min="0"
-                          value={zone.deliveryFee}
-                          onChange={(e) =>
-                            updateZone(index, "deliveryFee", parseFloat(e.target.value) || 0)
-                          }
-                        />
-                      </div>
-                    </div>
-                    <div className="grid grid-cols-2 gap-2">
-                      <div className="space-y-1">
-                        <Label className="text-xs">{t("settings.zone_description")}</Label>
-                        <Input
-                          value={zone.description || ""}
-                          onChange={(e) => updateZone(index, "description", e.target.value)}
-                          placeholder={t("settings.zone_description_placeholder")}
-                        />
-                      </div>
-                      <div className="space-y-1">
-                        <Label className="text-xs">{t("settings.zone_minimum")}</Label>
-                        <Input
-                          type="number"
-                          step="0.01"
-                          min="0"
-                          value={zone.minimumOrder ?? ""}
-                          onChange={(e) =>
-                            updateZone(
-                              index,
-                              "minimumOrder",
-                              e.target.value ? parseFloat(e.target.value) : null
-                            )
-                          }
-                        />
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Switch
-                        checked={zone.isActive}
-                        onCheckedChange={(v) => updateZone(index, "isActive", v)}
+              {deliveryTiers.map((tier, index) => (
+                <div key={index} className="flex items-start gap-2 rounded-lg border p-3">
+                  <div className="flex-1 grid grid-cols-2 gap-2">
+                    <div className="space-y-1">
+                      <Label className="text-xs">{t("settings.delivery_max_km")}</Label>
+                      <Input
+                        type="number"
+                        step="0.5"
+                        min="0"
+                        value={tier.maxKm}
+                        onChange={(e) => updateTier(index, "maxKm", parseFloat(e.target.value) || 0)}
                       />
-                      <span className="text-xs text-muted-foreground">{t("settings.zone_active")}</span>
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-xs">{t("settings.delivery_fee_sar")}</Label>
+                      <Input
+                        type="number"
+                        step="0.5"
+                        min="0"
+                        value={tier.fee}
+                        onChange={(e) => updateTier(index, "fee", parseFloat(e.target.value) || 0)}
+                      />
                     </div>
                   </div>
                   <Button
                     variant="ghost"
                     size="icon"
-                    className="mt-1 shrink-0 text-destructive"
-                    onClick={() => deleteZone(index)}
+                    className="mt-5 shrink-0 text-destructive"
+                    onClick={() => removeTier(index)}
                   >
                     <Trash2 className="h-4 w-4" />
                   </Button>
                 </div>
               ))}
-              <Button variant="outline" size="sm" onClick={addZone}>
+              <Button variant="outline" size="sm" onClick={addTier}>
                 <Plus className="h-4 w-4" />
-                {t("settings.add_zone")}
+                {t("settings.delivery_add_tier")}
               </Button>
+
+              <Separator />
+
+              <div className="space-y-2">
+                <Label htmlFor="maxDistance">{t("settings.delivery_max_distance")}</Label>
+                <div className="flex items-center gap-2">
+                  <Input
+                    id="maxDistance"
+                    type="number"
+                    step="0.5"
+                    min="0"
+                    placeholder={t("settings.delivery_max_distance_km")}
+                    value={maxDeliveryDistanceKm}
+                    onChange={(e) => setMaxDeliveryDistanceKm(e.target.value)}
+                    className="max-w-[200px]"
+                  />
+                  <span className="text-xs text-muted-foreground">{t("settings.delivery_km_unit")}</span>
+                </div>
+              </div>
             </CardContent>
           </Card>
         )}

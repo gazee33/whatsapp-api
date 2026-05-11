@@ -2,6 +2,7 @@ import { prisma } from '../lib/prisma.js';
 import { emitToBusinessRoom } from '../socket.js';
 import { logError } from '../services/error-log.js';
 import { generateOrderReferenceId } from '../lib/order-ref.js';
+import { getCartState } from '../services/ai-engine/cart-state.js';
 
 export interface OrderItemInput {
   name: string;
@@ -16,7 +17,6 @@ export interface SubmitOrderParams {
   orderType?: 'delivery' | 'dine_in' | 'pickup';
   deliveryAddress?: string;
   deliveryNotes?: string;
-  deliveryZoneId?: string;
   contactPhone?: string;
 }
 
@@ -140,7 +140,8 @@ export async function handleSubmitOrder(
   customerId: string,
   params: SubmitOrderParams
 ): Promise<string> {
-  const { items, orderNotes, orderType, deliveryAddress, deliveryNotes, deliveryZoneId, contactPhone } = params;
+  const { items, orderNotes, orderType, deliveryNotes, contactPhone } = params;
+  let { deliveryAddress } = params;
 
   try {
     if (!items || items.length === 0) {
@@ -241,6 +242,28 @@ export async function handleSubmitOrder(
       return sum + itemPrice * item.quantity;
     }, 0);
 
+    // Load cart state for delivery location info if delivery order
+    let deliveryDistanceKm: number | undefined;
+    let customerLatitude: number | undefined;
+    let customerLongitude: number | undefined;
+    let cartDeliveryFee: number | undefined;
+    if (orderType === 'delivery') {
+      const cart = await getCartState(customerId);
+      if (cart.deliveryLocation) {
+        deliveryDistanceKm = cart.deliveryLocation.distanceKm;
+        customerLatitude = cart.deliveryLocation.latitude;
+        customerLongitude = cart.deliveryLocation.longitude;
+        cartDeliveryFee = cart.deliveryLocation.fee;
+        // Use cart address as fallback if LLM didn't provide deliveryAddress
+        if (!deliveryAddress && cart.deliveryLocation.address) {
+          deliveryAddress = cart.deliveryLocation.address;
+        }
+      }
+    }
+
+    // Include delivery fee in total price for delivery orders
+    const totalWithDelivery = cartDeliveryFee ? totalPrice + cartDeliveryFee : totalPrice;
+
     // Create order with items in a transaction
     const referenceId = await generateOrderReferenceId(businessId);
 
@@ -250,14 +273,16 @@ export async function handleSubmitOrder(
         data: {
           businessId,
           customerId,
-          totalPrice,
+          totalPrice: totalWithDelivery,
           notes: orderNotes,
           status: 'pending',
           referenceId,
           orderType: orderType || null,
           deliveryAddress: deliveryAddress || null,
           deliveryNotes: deliveryNotes || null,
-          deliveryZoneId: deliveryZoneId || null,
+          deliveryDistanceKm: deliveryDistanceKm || null,
+          customerLatitude: customerLatitude || null,
+          customerLongitude: customerLongitude || null,
           contactPhone: contactPhone || null,
         },
       });
@@ -321,7 +346,11 @@ export async function handleSubmitOrder(
       }
     }
     lines.push('');
-    lines.push(`Total: ${totalPrice.toFixed(2)}`);
+    if (cartDeliveryFee) {
+      lines.push(`Subtotal: ${totalPrice.toFixed(2)}`);
+      lines.push(`🚚 Delivery fee: ${cartDeliveryFee.toFixed(2)}`);
+    }
+    lines.push(`Total: ${totalWithDelivery.toFixed(2)}`);
 
     if (order.orderType) {
       const typeLabels: Record<string, string> = {
@@ -332,6 +361,9 @@ export async function handleSubmitOrder(
       lines.push(`Type: ${typeLabels[order.orderType] || order.orderType}`);
       if (order.orderType === 'delivery' && order.deliveryAddress) {
         lines.push(`📍 Deliver to: ${order.deliveryAddress}`);
+      }
+      if (order.orderType === 'delivery' && deliveryDistanceKm) {
+        lines.push(`📏 Distance: ${deliveryDistanceKm} km`);
       }
     }
 

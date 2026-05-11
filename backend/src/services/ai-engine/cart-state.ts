@@ -5,7 +5,6 @@ export type SupportedLanguage = 'ar' | 'en';
 export type AgentMode =
   | 'browsing'
   | 'order_type_selection'
-  | 'zone_selection'
   | 'address_entry'
   | 'cart_review'
   | 'awaiting_confirmation'
@@ -22,13 +21,15 @@ export interface CartItem {
   notes?: string;
 }
 
-export interface DeliveryInfo {
-  zoneId: string;
-  zoneName: string;
+export interface LocationInfo {
+  latitude: number;
+  longitude: number;
   address: string;
-  notes?: string;
+  googleAddress: string;
+  distanceKm: number;
+  durationMin: number;
   fee: number;
-  minimumOrder?: number;
+  notes?: string;
   contactPhone?: string;
 }
 
@@ -37,7 +38,7 @@ export interface CartState {
   language?: SupportedLanguage;
   items: CartItem[];
   orderType?: 'delivery' | 'dine_in' | 'pickup';
-  deliveryInfo?: DeliveryInfo;
+  deliveryLocation?: LocationInfo;
   updatedAt: string;
 }
 
@@ -70,9 +71,9 @@ export function formatCartForPrompt(cart: CartState, currency: string): string {
 
   const sections: string[] = [lines.join('\n')];
 
-  if (cart.deliveryInfo) {
+  if (cart.deliveryLocation) {
     sections.push(
-      `\nDelivery info:\n  Zone: ${cart.deliveryInfo.zoneName}\n  Address: ${cart.deliveryInfo.address}${cart.deliveryInfo.notes ? `\n  Notes: ${cart.deliveryInfo.notes}` : ''}${cart.deliveryInfo.contactPhone ? `\n  Contact: ${cart.deliveryInfo.contactPhone}` : ''}\n  Fee: ${cart.deliveryInfo.fee} ${currency}${cart.deliveryInfo.minimumOrder ? ` (min: ${cart.deliveryInfo.minimumOrder} ${currency})` : ''}`,
+      `\nDelivery info:\n  Address: ${cart.deliveryLocation.address}\n  Distance: ${cart.deliveryLocation.distanceKm} km (≈${cart.deliveryLocation.durationMin} min)\n  Delivery fee: ${cart.deliveryLocation.fee} ${currency}${cart.deliveryLocation.notes ? `\n  Notes: ${cart.deliveryLocation.notes}` : ''}${cart.deliveryLocation.contactPhone ? `\n  Contact: ${cart.deliveryLocation.contactPhone}` : ''}`,
     );
   }
 
@@ -97,7 +98,7 @@ export async function getCartState(customerId: string): Promise<CartState> {
       language: parsed.language,
       items: Array.isArray(parsed.items) ? parsed.items : [],
       orderType: parsed.orderType,
-      deliveryInfo: parsed.deliveryInfo,
+      deliveryLocation: parsed.deliveryLocation,
       updatedAt: parsed.updatedAt ?? new Date().toISOString(),
     };
   } catch {

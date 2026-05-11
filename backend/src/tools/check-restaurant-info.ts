@@ -8,13 +8,9 @@ export async function handleCheckRestaurantInfo(
   businessId: string,
   params: CheckRestaurantInfoParams
 ): Promise<string> {
-  const [settings, zones] = await Promise.all([
-    prisma.restaurantSettings.findUnique({ where: { businessId } }),
-    prisma.deliveryZone.findMany({
-      where: { businessId, isActive: true },
-      orderBy: { deliveryFee: 'asc' },
-    }),
-  ]);
+  const settings = await prisma.restaurantSettings.findUnique({
+    where: { businessId },
+  });
 
   if (!settings) {
     return 'Restaurant settings not configured.';
@@ -62,15 +58,22 @@ export async function handleCheckRestaurantInfo(
 
   if (topic === 'delivery' || topic === 'all') {
     if (settings.deliveryEnabled) {
-      if (zones.length > 0) {
-        const zoneLines = zones.map(
-          (z) =>
-            `- ${z.name}: ${z.deliveryFee.toFixed(2)} fee${
-              z.minimumOrder ? ` (min ${z.minimumOrder.toFixed(2)})` : ''
-            }`
-        );
-        lines.push('🚚 Delivery zones:', ...zoneLines);
+      let deliveryInfo = '🚚 Delivery: Available\n';
+      if (settings.deliveryTiers) {
+        try {
+          const tiers = JSON.parse(settings.deliveryTiers);
+          if (Array.isArray(tiers) && tiers.length > 0) {
+            deliveryInfo += 'Delivery fees (distance-based):\n';
+            for (const tier of tiers) {
+              deliveryInfo += `- Up to ${tier.maxKm} km: ${tier.fee.toFixed(2)}\n`;
+            }
+          }
+        } catch {}
       }
+      if (settings.maxDeliveryDistanceKm) {
+        deliveryInfo += `Max delivery distance: ${settings.maxDeliveryDistanceKm} km`;
+      }
+      lines.push(deliveryInfo.trim());
     }
   }
 

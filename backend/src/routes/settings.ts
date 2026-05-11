@@ -41,6 +41,7 @@ router.put('/', async (req: Request, res: Response) => {
       name, openingTime, closingTime, welcomeMsg, aiRules, currency,
       address, latitude, longitude, phoneNumber,
       deliveryEnabled, dineInEnabled, pickupEnabled,
+      deliveryTiers, maxDeliveryDistanceKm,
       estimatedPrepTimeMinutes, paymentMethods, isTemporarilyClosed, defaultLanguage,
     } = req.body;
     
@@ -50,6 +51,8 @@ router.put('/', async (req: Request, res: Response) => {
         name, openingTime, closingTime, welcomeMsg, aiRules, currency,
         address, latitude, longitude, phoneNumber,
         deliveryEnabled, dineInEnabled, pickupEnabled,
+        deliveryTiers,
+        maxDeliveryDistanceKm: maxDeliveryDistanceKm != null ? Number(maxDeliveryDistanceKm) : undefined,
         estimatedPrepTimeMinutes: estimatedPrepTimeMinutes != null ? Number(estimatedPrepTimeMinutes) : undefined,
         paymentMethods,
         isTemporarilyClosed,
@@ -67,6 +70,8 @@ router.put('/', async (req: Request, res: Response) => {
         deliveryEnabled: deliveryEnabled ?? false,
         dineInEnabled: dineInEnabled ?? true,
         pickupEnabled: pickupEnabled ?? true,
+        deliveryTiers,
+        maxDeliveryDistanceKm: maxDeliveryDistanceKm != null ? Number(maxDeliveryDistanceKm) : undefined,
         estimatedPrepTimeMinutes: estimatedPrepTimeMinutes != null ? Number(estimatedPrepTimeMinutes) : undefined,
         paymentMethods: paymentMethods || '["cash","card"]',
         isTemporarilyClosed: isTemporarilyClosed ?? false,

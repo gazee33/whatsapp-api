@@ -226,23 +226,10 @@ export interface ConversationDetail {
   sessions: Record<string, Message[]>;
 }
 
-// ── Delivery Zone ──
-export interface DeliveryZone {
-  id: string;
-  businessId: string;
-  name: string;
-  description: string | null;
-  deliveryFee: number;
-  minimumOrder: number | null;
-  isActive: boolean;
-}
-
-export interface DeliveryZonePayload {
-  name: string;
-  description?: string;
-  deliveryFee: number;
-  minimumOrder?: number | null;
-  isActive?: boolean;
+// ── Delivery Tier ──
+export interface DeliveryTier {
+  maxKm: number;
+  fee: number;
 }
 
 // ── Settings ──
@@ -262,6 +249,8 @@ export interface RestaurantSettings {
   deliveryEnabled: boolean;
   dineInEnabled: boolean;
   pickupEnabled: boolean;
+  deliveryTiers: string | null;
+  maxDeliveryDistanceKm: number | null;
   estimatedPrepTimeMinutes: number | null;
   paymentMethods: string;
   isTemporarilyClosed: boolean;
@@ -282,6 +271,8 @@ export interface RestaurantSettingsPayload {
   deliveryEnabled?: boolean;
   dineInEnabled?: boolean;
   pickupEnabled?: boolean;
+  deliveryTiers?: string | null;
+  maxDeliveryDistanceKm?: number | null;
   estimatedPrepTimeMinutes?: number | null;
   paymentMethods?: string;
   isTemporarilyClosed?: boolean;
