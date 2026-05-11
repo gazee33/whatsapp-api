@@ -16,7 +16,9 @@ import type { SetDeliveryAddressParams } from '../../tools/set-delivery-address.
 import { type CartState, emptyCartState } from './cart-state.js';
 
 export interface ToolExecutionResult {
+  success: boolean;
   result: string;
+  errorCode?: string;
   cartState?: CartState;
   createdOrderId?: string;
 }
@@ -26,7 +28,6 @@ function normalizeToolArgs<T>(args: unknown): T {
     try {
       return JSON.parse(args) as T;
     } catch (err) {
-      console.error('[normalizeToolArgs] Failed to parse tool arguments:', args);
       throw new Error(`Invalid tool arguments format: ${(args as string).substring(0, 200)}`);
     }
   }
@@ -49,7 +50,7 @@ export async function executeTool(params: {
     case 'query_menu': {
       const toolParams = normalizeToolArgs<QueryMenuParams>(toolCall.arguments);
       const result = await handleQueryMenu(businessId, toolParams);
-      return { result };
+      return { success: true, result };
     }
 
     case 'submit_order': {
@@ -59,9 +60,10 @@ export async function executeTool(params: {
         try {
           (toolParams as any).items = JSON.parse((toolParams as any).items);
         } catch {
-          console.error('[executeTool] items field is not valid JSON:', (toolParams as any).items);
           return {
+            success: false,
             result: 'The order items data was malformed. Please try again with valid item names and quantities.',
+            errorCode: 'MALFORMED_ORDER_ITEMS',
           };
         }
       }
@@ -70,43 +72,55 @@ export async function executeTool(params: {
       const createdOrderId = extractCreatedOrderId(result);
 
       return {
+        success: !!createdOrderId,
         result,
         createdOrderId,
-        cartState: createdOrderId ? emptyCartState() : cartState,
+        errorCode: !createdOrderId ? 'SUBMIT_ORDER_FAILED' : undefined,
+        cartState: createdOrderId ? { ...emptyCartState(), language: cartState.language } : cartState,
       };
     }
 
     case 'check_order_status': {
       const toolParams = normalizeToolArgs<CheckStatusParams>(toolCall.arguments);
       const result = await handleCheckStatus(businessId, customerId, toolParams);
-      return { result };
+      return { success: true, result };
     }
 
     case 'file_complaint': {
       const toolParams = normalizeToolArgs<FileComplaintParams>(toolCall.arguments);
       const result = await handleFileComplaint(businessId, customerId, toolParams);
-      return { result };
+      const isValidationError = result.startsWith('Please provide');
+      return {
+        success: !isValidationError,
+        result,
+        errorCode: isValidationError ? 'MISSING_COMPLAINT_CONTENT' : undefined,
+      };
     }
 
     case 'query_zones': {
       const toolParams = normalizeToolArgs<QueryZonesParams>(toolCall.arguments);
       const result = await handleQueryZones(businessId, toolParams);
-      return { result };
+      return { success: true, result };
     }
 
     case 'check_restaurant_info': {
       const toolParams = normalizeToolArgs<CheckRestaurantInfoParams>(toolCall.arguments);
       const result = await handleCheckRestaurantInfo(businessId, toolParams);
-      return { result };
+      return { success: true, result };
     }
 
     case 'set_delivery_address': {
       const toolParams = normalizeToolArgs<SetDeliveryAddressParams>(toolCall.arguments);
       const result = await handleSetDeliveryAddress(businessId, customerId, toolParams);
-      return { result };
+      const isAddressError = result.startsWith('Please provide') || result.startsWith('Delivery zone');
+      return {
+        success: !isAddressError,
+        result,
+        errorCode: isAddressError ? 'INVALID_DELIVERY_ADDRESS' : undefined,
+      };
     }
 
     default:
-      return { result: `Unknown tool: ${toolCall.name}` };
+      return { success: false, result: `Unknown tool: ${toolCall.name}`, errorCode: 'UNKNOWN_TOOL' };
   }
 }

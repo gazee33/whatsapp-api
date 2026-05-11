@@ -1,7 +1,5 @@
-import { type CartState, formatCartForPrompt } from './cart-state.js';
+import { type CartState, type SupportedLanguage, formatCartForPrompt } from './cart-state.js';
 import type { RestaurantContext } from './restaurant-context.js';
-
-export type SupportedLanguage = 'ar' | 'en';
 
 const CACHE_TTL_MS = 600000; // 10 minutes
 const systemPromptCache = new Map<string, { template: string; expires: number }>();
@@ -109,4 +107,13 @@ Tools: query_menu, query_zones, check_restaurant_info, set_delivery_address, sub
 
   const cartSection = `\n\nCurrent cart:\n${formatCartForPrompt(cartState, context.currency)}`;
   return template + cartSection;
+}
+
+export function sanitizeToolOutput(output: string): string {
+  const cleaned = output.replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, '');
+  const MAX_TOOL_OUTPUT_LENGTH = 4000;
+  if (cleaned.length > MAX_TOOL_OUTPUT_LENGTH) {
+    return cleaned.substring(0, MAX_TOOL_OUTPUT_LENGTH) + '\n[Output truncated]';
+  }
+  return cleaned;
 }

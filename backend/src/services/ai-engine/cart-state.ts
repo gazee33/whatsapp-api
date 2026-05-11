@@ -1,5 +1,7 @@
 import { prisma } from '../../lib/prisma.js';
 
+export type SupportedLanguage = 'ar' | 'en';
+
 export type AgentMode =
   | 'browsing'
   | 'order_type_selection'
@@ -32,6 +34,7 @@ export interface DeliveryInfo {
 
 export interface CartState {
   mode: AgentMode;
+  language?: SupportedLanguage;
   items: CartItem[];
   orderType?: 'delivery' | 'dine_in' | 'pickup';
   deliveryInfo?: DeliveryInfo;
@@ -94,6 +97,7 @@ export async function getCartState(customerId: string): Promise<CartState> {
     const parsed = JSON.parse(customer.cartState) as Partial<CartState>;
     return {
       mode: parsed.mode ?? 'browsing',
+      language: parsed.language,
       items: Array.isArray(parsed.items) ? parsed.items : [],
       orderType: parsed.orderType,
       deliveryInfo: parsed.deliveryInfo,
