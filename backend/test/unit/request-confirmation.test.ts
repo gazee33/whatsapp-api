@@ -51,7 +51,7 @@ describe('handleRequestConfirmation', () => {
     await testPrisma.$disconnect();
   });
 
-  it('rejects empty cart', async () => {
+  it('accepts empty cart (LLM manages items from context)', async () => {
     const cart: CartState = {
       ...emptyCartState(),
       language: 'en',
@@ -59,9 +59,9 @@ describe('handleRequestConfirmation', () => {
 
     const result = await handleRequestConfirmation(customerId, cart);
 
-    expect(result.success).toBe(false);
-    expect(result.result).toContain('Cannot confirm an empty order');
-    expect(result.cartState.mode).toBe('browsing');
+    expect(result.success).toBe(true);
+    expect(result.result).toContain('Confirmation mode set');
+    expect(result.cartState.mode).toBe('awaiting_confirmation');
   });
 
   it('rejects already submitted order', async () => {

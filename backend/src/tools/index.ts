@@ -54,7 +54,7 @@ export const tools: ToolDefinition[] = [
   },
   {
     name: 'submit_order',
-    description: 'Create a new order with items. Use when customer confirms they want to order. Extract items from conversation history — include name (use exact menu names from query_menu results) and quantity for each item. If the item has options (shown after "Options:" in query_menu results), you MUST include optionName. If the item has NO options, do NOT include optionName.',
+    description: 'Create a new order with items. Use when customer confirms they want to order. Extract items from conversation history — include name and quantity for each item. If the item has options (shown after "Options:" in query_menu results), you MUST include optionName. If the item has NO options, do NOT include optionName.',
     parameters: {
       type: 'object',
       properties: {
@@ -64,7 +64,7 @@ export const tools: ToolDefinition[] = [
           items: {
             type: 'object',
             properties: {
-              name: { type: 'string', description: 'Name of the menu item (exact match from query_menu)' },
+              name: { type: 'string', description: 'Name of the menu item' },
               quantity: { type: 'number', description: 'How many of this item' },
               optionName: { type: 'string', description: 'The selected option name (e.g. "Large", "3 سيخ"). REQUIRED if item has options, otherwise omit.' },
               notes: { type: 'string', description: 'Special instructions (optional)' }

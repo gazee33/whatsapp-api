@@ -4,10 +4,6 @@ export async function handleRequestConfirmation(
   customerId: string,
   cartState: CartState,
 ): Promise<{ success: boolean; result: string; cartState: CartState }> {
-  if (cartState.items.length === 0) {
-    return { success: false, result: 'Cannot confirm an empty order. Please add items to the cart first.', cartState };
-  }
-
   if (cartState.mode === 'order_submitted') {
     return {
       success: false,
