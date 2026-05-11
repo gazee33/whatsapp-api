@@ -44,8 +44,22 @@ export const tools: ToolDefinition[] = [
     }
   },
   {
+    name: 'add_to_cart',
+    description: 'Add an item to the customer\'s cart. Use AFTER query_menu when the customer picks an item. If the item has options (shown in query_menu results), you MUST ask the customer which option they want, then include optionName. Do NOT call request_confirmation until items are in the cart.',
+    parameters: {
+      type: 'object',
+      properties: {
+        name: { type: 'string', description: 'Item name — use EXACT name from query_menu results' },
+        quantity: { type: 'number', description: 'Quantity (minimum 1)' },
+        optionName: { type: 'string', description: 'Selected option name (REQUIRED if item has options; shown after "Options:" in query_menu results)' },
+        notes: { type: 'string', description: 'Special instructions (optional)' }
+      },
+      required: ['name', 'quantity']
+    }
+  },
+  {
     name: 'request_confirmation',
-    description: 'Request explicit customer confirmation before submitting an order. Call this when the customer has finished adding items and indicates they are ready to order. This will put the cart in awaiting_confirmation mode. After the customer confirms, call submit_order.',
+    description: 'Request explicit customer confirmation before submitting an order. Call this ONLY after add_to_cart was called for every item. If you get an error about empty cart, call add_to_cart first and retry.',
     parameters: {
       type: 'object',
       properties: {},

@@ -113,6 +113,20 @@ router.post('/', async (req: Request, res: Response) => {
     }
 
     const message = messages[0];
+    const wamid = message.id;
+
+    if (wamid) {
+      const alreadyProcessed = await prisma.processedWebhook.findUnique({ where: { id: wamid } });
+      if (alreadyProcessed) {
+        console.log(`[Webhook] Duplicate message ${wamid} — skipping`);
+        return res.sendStatus(200);
+      }
+      await prisma.processedWebhook.create({ data: { id: wamid } }).catch(() => {});
+      prisma.processedWebhook.deleteMany({
+        where: { createdAt: { lt: new Date(Date.now() - 86400000) } },
+      }).catch(() => {});
+    }
+
     const phoneNumberId = changes.metadata?.phone_number_id;
     const from = message.from;
     const text = message.text?.body || '';

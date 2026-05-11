@@ -3,6 +3,8 @@ import { emitToBusinessRoom } from '../socket.js';
 import { logError } from '../services/error-log.js';
 import { generateOrderReferenceId } from '../lib/order-ref.js';
 import { getCartState } from '../services/ai-engine/cart-state.js';
+import { findBestMatch, findOption, getAvailableOptions } from '../lib/menu-matcher.js';
+import type { MenuMatchOption } from '../lib/menu-matcher.js';
 
 export interface OrderItemInput {
   name: string;
@@ -20,119 +22,12 @@ export interface SubmitOrderParams {
   contactPhone?: string;
 }
 
-// Arabic-aware normalization for fuzzy matching
-function normalizeArabic(s: string): string {
-  return s
-    .toLowerCase()
-    .replace(/[أإآ]/g, 'ا')
-    .replace(/ة/g, 'ه')
-    .replace(/ى/g, 'ي')
-    .replace(/[^\u0600-\u06FFa-z0-9\s]/g, '')
-    .replace(/\s+/g, ' ')
-    .trim();
-}
-
-function fuzzyMatch(itemName: string | undefined, menuName: string): boolean {
-  if (!itemName) return false;
-  const normalize = (s: string) => normalizeArabic(s);
-
-  const a = normalize(itemName);
-  const b = normalize(menuName);
-
-  if (!a || !b) return false;
-
-  // Exact match
-  if (a === b) return true;
-
-  // Contains match
-  if (a.includes(b) || b.includes(a)) return true;
-
-  // Word overlap match
-  const wordsA = a.split(/\s+/).filter(Boolean);
-  const wordsB = b.split(/\s+/).filter(Boolean);
-  const overlap = wordsA.filter((w) => wordsB.some((wb) => wb.includes(w) || w.includes(wb)));
-
-  return overlap.length > 0;
-}
-
-// Strip parenthetical translations like "Mixed Grill (مشويات مشكلة)" → "مشويات مشكلة"
-function stripParenthetical(s: string): string {
-  return s
-    .replace(/\([^)]*\)/g, '')
-    .replace(/\s+/g, ' ')
-    .trim();
-}
-
 interface MenuItemWithOptions {
   id: string;
   name: string;
   nameAr: string | null;
   price: number;
-  options?: Array<{
-    id: string;
-    name: string;
-    price: number;
-  }>;
-}
-
-function findBestMatch(
-  itemName: string,
-  menuItems: Array<{ id: string; name: string; nameAr: string | null; price: number }>
-): typeof menuItems[0] | undefined {
-  const cleanedItem = stripParenthetical(itemName);
-
-  // 1. Exact match on name or nameAr (with cleaned item name)
-  const exact = menuItems.find(
-    (mi) => mi.name === cleanedItem || mi.name === itemName || mi.nameAr === cleanedItem || mi.nameAr === itemName
-  );
-  if (exact) return exact;
-
-  // 2. Fuzzy match against both name and nameAr (with cleaned item name)
-  for (const mi of menuItems) {
-    if (fuzzyMatch(cleanedItem, mi.name)) return mi;
-    if (fuzzyMatch(itemName, mi.name)) return mi;
-    if (mi.nameAr && fuzzyMatch(cleanedItem, mi.nameAr)) return mi;
-    if (mi.nameAr && fuzzyMatch(itemName, mi.nameAr)) return mi;
-  }
-
-  return undefined;
-}
-
-// Find an option by name using fuzzy matching
-function findOption(
-  optionName: string,
-  options: MenuItemWithOptions['options']
-): { id: string; name: string; price: number } | undefined {
-  if (!options || options.length === 0) return undefined;
-
-  const cleanedOptionName = stripParenthetical(optionName);
-
-  // First try exact match on name
-  for (const opt of options) {
-    if (opt.name === cleanedOptionName || opt.name === optionName) {
-      return opt;
-    }
-  }
-
-  // Then try fuzzy match
-  for (const opt of options) {
-    if (fuzzyMatch(cleanedOptionName, opt.name)) return opt;
-    if (fuzzyMatch(optionName, opt.name)) return opt;
-  }
-
-  return undefined;
-}
-
-// Get available options as a formatted string
-function getAvailableOptions(
-  options: MenuItemWithOptions['options']
-): string {
-  if (!options || options.length === 0) return '';
-
-  return options.map((opt) => {
-    const priceStr = opt.price > 0 ? ` (+${opt.price.toFixed(2)})` : '';
-    return `${opt.name}${priceStr}`;
-  }).join(', ');
+  options?: MenuMatchOption[];
 }
 
 export async function handleSubmitOrder(
