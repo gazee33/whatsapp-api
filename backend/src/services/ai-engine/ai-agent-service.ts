@@ -15,7 +15,7 @@ import type { SupportedLanguage } from './cart-state.js';
 import { executeTool } from './tool-executor.js';
 import type { ToolExecutionResult } from './tool-executor.js';
 
-const MAX_TOOL_ITERATIONS = 3;
+const MAX_TOOL_ITERATIONS = 6;
 const MAX_HISTORY_MESSAGES = 20;
 const MAX_HISTORY_TOKENS = 3000;
 const TOOL_TIMEOUT_MS = 15000;
