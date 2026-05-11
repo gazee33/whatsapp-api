@@ -54,6 +54,15 @@ export const tools: ToolDefinition[] = [
     }
   },
   {
+    name: 'request_confirmation',
+    description: 'Request explicit customer confirmation before submitting an order. Call this when the customer has finished adding items and indicates they are ready to order. This will put the cart in awaiting_confirmation mode. After the customer confirms, call submit_order.',
+    parameters: {
+      type: 'object',
+      properties: {},
+      required: []
+    }
+  },
+  {
     name: 'submit_order',
     description: 'Create a new order with items. Use when customer confirms they want to order. Extract items from conversation history — include name (use exact menu names from query_menu results) and quantity for each item. If the item has options (shown after "Options:" in query_menu results), you MUST include optionName. If the item has NO options, do NOT include optionName.',
     parameters: {

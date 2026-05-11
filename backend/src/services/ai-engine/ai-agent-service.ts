@@ -10,7 +10,7 @@ import { getCartState, saveCartState } from './cart-state.js';
 import type { CartState } from './cart-state.js';
 import { getRestaurantContext } from './restaurant-context.js';
 import type { RestaurantContext } from './restaurant-context.js';
-import { detectLanguage, buildSystemPrompt, sanitizeToolOutput, shouldMarkConfirmationRequested } from './prompt-builder.js';
+import { detectLanguage, buildSystemPrompt, sanitizeToolOutput } from './prompt-builder.js';
 import type { SupportedLanguage } from './cart-state.js';
 import { executeTool } from './tool-executor.js';
 import type { ToolExecutionResult } from './tool-executor.js';
@@ -77,11 +77,12 @@ export class AIAgentService {
     ]);
 
     if (!cartState.language) {
+      const seedLanguage = (context.defaultLanguage === 'ar' ? 'ar' : 'en') as SupportedLanguage;
       const detected = detectLanguage(message);
-      cartState = { ...cartState, language: detected };
+      cartState = { ...cartState, language: detected ?? seedLanguage };
       await saveCartState(customerId, cartState);
     }
-    const language = cartState.language ?? 'en';
+    const language = cartState.language ?? (context.defaultLanguage === 'ar' ? 'ar' : 'en') as SupportedLanguage;
 
     let createdOrderId: string | undefined;
 
@@ -359,8 +360,6 @@ export class AIAgentService {
     if (cartState.items.length > 0) {
       cartState = {
         ...cartState,
-        mode: shouldMarkConfirmationRequested(finalResponse) ? 'awaiting_confirmation' : cartState.mode,
-        lastAssistantAskedForConfirmation: shouldMarkConfirmationRequested(finalResponse),
         updatedAt: new Date().toISOString(),
       };
       await saveCartState(customerId, cartState);

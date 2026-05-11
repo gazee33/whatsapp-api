@@ -6,6 +6,7 @@ export interface RestaurantContext {
   openingTime: string;
   closingTime: string;
   aiRules: string;
+  defaultLanguage: string;
   address: string | null;
   phoneNumber: string | null;
   deliveryEnabled: boolean;
@@ -35,6 +36,7 @@ export async function getRestaurantContext(businessId: string): Promise<Restaura
     openingTime: settings?.openingTime || '09:00',
     closingTime: settings?.closingTime || '23:00',
     aiRules: settings?.aiRules || '',
+    defaultLanguage: settings?.defaultLanguage || 'en',
     address: settings?.address || null,
     phoneNumber: settings?.phoneNumber || null,
     deliveryEnabled: settings?.deliveryEnabled ?? false,

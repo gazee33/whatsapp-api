@@ -38,7 +38,6 @@ export interface CartState {
   items: CartItem[];
   orderType?: 'delivery' | 'dine_in' | 'pickup';
   deliveryInfo?: DeliveryInfo;
-  lastAssistantAskedForConfirmation?: boolean;
   updatedAt: string;
 }
 
@@ -46,7 +45,6 @@ export function emptyCartState(): CartState {
   return {
     mode: 'browsing',
     items: [],
-    lastAssistantAskedForConfirmation: false,
     updatedAt: new Date().toISOString(),
   };
 }
@@ -81,7 +79,6 @@ export function formatCartForPrompt(cart: CartState, currency: string): string {
   sections.push(`Total: ${calculateCartTotal(cart.items)} ${currency}`);
   sections.push(`Mode: ${cart.mode}`);
   if (cart.orderType) sections.push(`Order type: ${cart.orderType}`);
-  sections.push(`Confirmation requested: ${cart.lastAssistantAskedForConfirmation ? 'yes' : 'no'}`);
 
   return sections.join('\n');
 }
@@ -101,7 +98,6 @@ export async function getCartState(customerId: string): Promise<CartState> {
       items: Array.isArray(parsed.items) ? parsed.items : [],
       orderType: parsed.orderType,
       deliveryInfo: parsed.deliveryInfo,
-      lastAssistantAskedForConfirmation: Boolean(parsed.lastAssistantAskedForConfirmation),
       updatedAt: parsed.updatedAt ?? new Date().toISOString(),
     };
   } catch {

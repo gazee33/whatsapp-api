@@ -6,6 +6,7 @@ import { handleFileComplaint } from '../../tools/file-complaint.js';
 import { handleQueryZones } from '../../tools/query-zones.js';
 import { handleCheckRestaurantInfo } from '../../tools/check-restaurant-info.js';
 import { handleSetDeliveryAddress } from '../../tools/set-delivery-address.js';
+import { handleRequestConfirmation } from '../../tools/request-confirmation.js';
 import type { QueryMenuParams } from '../../tools/query-menu.js';
 import type { SubmitOrderParams } from '../../tools/submit-order.js';
 import type { CheckStatusParams } from '../../tools/check-status.js';
@@ -53,7 +54,28 @@ export async function executeTool(params: {
       return { success: true, result };
     }
 
+    case 'request_confirmation': {
+      const execResult = await handleRequestConfirmation(customerId, cartState);
+      return { success: execResult.success, result: execResult.result, cartState: execResult.cartState };
+    }
+
     case 'submit_order': {
+      if (cartState.mode === 'order_submitted') {
+        return {
+          success: false,
+          result: 'This order has already been submitted. Please start a new order if you want to order again.',
+          errorCode: 'ORDER_ALREADY_SUBMITTED',
+        };
+      }
+
+      if (cartState.mode !== 'awaiting_confirmation') {
+        return {
+          success: false,
+          result: 'Please call request_confirmation first to get the customer\'s explicit approval before submitting.',
+          errorCode: 'CONFIRMATION_REQUIRED',
+        };
+      }
+
       const toolParams = normalizeToolArgs<SubmitOrderParams>(toolCall.arguments);
 
       if (toolParams && typeof (toolParams as any).items === 'string') {
