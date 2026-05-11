@@ -119,12 +119,12 @@ export default function OrderDetailPage() {
                         <p className="text-sm">
                           {item.quantity} x{" "}
                           {formatCurrency(
-                            item.menuItem?.price ?? 0
+                            item.menuItem?.basePrice ?? 0
                           )}
                         </p>
                         <p className="text-xs font-medium text-muted-foreground">
                           {formatCurrency(
-                            item.quantity * (item.menuItem?.price ?? 0)
+                            item.quantity * (item.menuItem?.basePrice ?? 0)
                           )}
                         </p>
                       </div>

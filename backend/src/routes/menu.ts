@@ -147,17 +147,19 @@ router.post('/bulk', async (req: Request, res: Response) => {
             if (!item.name || !item.name.trim()) {
               throw new Error(`Item name required in category "${cat.name}"`);
             }
-            const price = Number(item.price);
-            if (isNaN(price) || price < 0) {
+            const basePrice = item.basePrice != null ? Number(item.basePrice) : null;
+            if (basePrice !== null && (isNaN(basePrice) || basePrice < 0)) {
               throw new Error(`Invalid price for item "${item.name}" in category "${cat.name}"`);
             }
 
+            const hasOptions = Array.isArray(item.options) && item.options.length > 0;
             const menuItem = await tx.menuItem.create({
               data: {
                 name: item.name,
                 nameAr: item.nameAr,
                 description: item.description,
-                price,
+                basePrice,
+                hasOptions,
                 categoryId: category.id,
               },
             });
@@ -255,8 +257,9 @@ router.post('/items', upload.single('image'), async (req: Request, res: Response
       return res.status(400).json({ error: 'Category is required' });
     }
 
-    // Validate price
-    if (price === undefined || isNaN(Number(price)) || Number(price) < 0) {
+    // Validate price (optional — null means item is priced via options)
+    const basePrice = price !== undefined && price !== '' && price !== null ? Number(price) : null;
+    if (basePrice !== null && (isNaN(basePrice) || basePrice < 0)) {
       return res.status(400).json({ error: 'Invalid price: must be a non-negative number' });
     }
     
@@ -274,7 +277,8 @@ router.post('/items', upload.single('image'), async (req: Request, res: Response
         name,
         nameAr,
         description,
-        price: parseFloat(price),
+        basePrice,
+        hasOptions: false,
         categoryId: categoryId as string,
         available: available !== undefined ? available === 'true' || available === true : true,
         image: req.file ? '/uploads/' + req.file.filename : null,
@@ -303,7 +307,8 @@ router.put('/items/:id', upload.single('image'), async (req: Request, res: Respo
     }
 
     // Validate price if provided
-    if (price !== undefined && (isNaN(Number(price)) || Number(price) < 0)) {
+    const basePrice = price !== undefined && price !== '' && price !== null ? Number(price) : null;
+    if (basePrice !== null && (isNaN(basePrice) || basePrice < 0)) {
       return res.status(400).json({ error: 'Invalid price: must be a non-negative number' });
     }
     
@@ -335,7 +340,7 @@ router.put('/items/:id', upload.single('image'), async (req: Request, res: Respo
         name,
         nameAr,
         description,
-        price: price !== undefined ? parseFloat(price) : undefined,
+        basePrice: price !== undefined ? basePrice : undefined,
         categoryId: categoryId as string | undefined,
         available: available !== undefined ? available === 'true' || available === true : undefined,
         image: req.file
@@ -438,6 +443,11 @@ router.post('/items/:id/options', async (req: Request, res: Response) => {
       },
     });
 
+    await prisma.menuItem.update({
+      where: { id },
+      data: { hasOptions: true },
+    });
+
     res.status(201).json(option);
   } catch (error) {
     console.error('Create option error:', error);
@@ -501,7 +511,17 @@ router.delete('/options/:id', async (req: Request, res: Response) => {
       return res.status(404).json({ error: 'Option not found' });
     }
 
+    const { itemId } = option;
+
     await prisma.option.delete({ where: { id } });
+
+    const remaining = await prisma.option.count({ where: { itemId } });
+    if (remaining === 0) {
+      await prisma.menuItem.update({
+        where: { id: itemId },
+        data: { hasOptions: false },
+      });
+    }
 
     res.json({ success: true });
   } catch (error) {

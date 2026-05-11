@@ -277,14 +277,15 @@ model MenuItem {
   id          String       @id @default(cuid())
   name        String
   nameAr      String?
-  description String?
-  price       Float
-  image       String?
-  available   Boolean      @default(true)
-  categoryId  String
-  category    MenuCategory @relation(fields: [categoryId], references: [id], onDelete: Cascade)
-  orderItems  OrderItem[]
-  options     Option[]
+  description   String?
+  basePrice     Float?       @map("base_price")
+  hasOptions    Boolean      @default(false) @map("has_options")
+  image         String?
+  available     Boolean      @default(true)
+  categoryId    String
+  category      MenuCategory @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  orderItems    OrderItem[]
+  options       Option[]
 
   @@map("MenuItem")
 }

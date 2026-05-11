@@ -319,62 +319,62 @@ async function main() {
   // Create menu items for Sandwiches
   await Promise.all([
     prisma.menuItem.create({
-      data: { name: 'Shawarma Chicken', nameAr: 'شاورما دجاج', price: 5, categoryId: categories[0].id },
+      data: { name: 'Shawarma Chicken', nameAr: 'شاورما دجاج', basePrice: 5, categoryId: categories[0].id },
     }),
     prisma.menuItem.create({
-      data: { name: 'Shawarma Meat', nameAr: 'شاورما لحم', price: 6, categoryId: categories[0].id },
+      data: { name: 'Shawarma Meat', nameAr: 'شاورما لحم', basePrice: 6, categoryId: categories[0].id },
     }),
     prisma.menuItem.create({
-      data: { name: 'Falafel Wrap', nameAr: 'فلافل', price: 4, categoryId: categories[0].id },
+      data: { name: 'Falafel Wrap', nameAr: 'فلافل', basePrice: 4, categoryId: categories[0].id },
     }),
   ])
 
   // Create menu items for Meals
   await Promise.all([
     prisma.menuItem.create({
-      data: { name: 'Grilled Chicken Plate', nameAr: 'وجيه مشوي', price: 12, categoryId: categories[1].id },
+      data: { name: 'Grilled Chicken Plate', nameAr: 'وجيه مشوي', basePrice: 12, categoryId: categories[1].id },
     }),
     prisma.menuItem.create({
-      data: { name: 'Mixed Grill', nameAr: 'مشويات مشكلة', price: 18, categoryId: categories[1].id },
+      data: { name: 'Mixed Grill', nameAr: 'مشويات مشكلة', basePrice: 18, categoryId: categories[1].id },
     }),
     prisma.menuItem.create({
-      data: { name: 'Kabsa', nameAr: 'كبسة', price: 10, categoryId: categories[1].id },
+      data: { name: 'Kabsa', nameAr: 'كبسة', basePrice: 10, categoryId: categories[1].id },
     }),
   ])
 
   // Create menu items for Sides
   await Promise.all([
     prisma.menuItem.create({
-      data: { name: 'Hummus', nameAr: 'حمص', price: 3, categoryId: categories[2].id },
+      data: { name: 'Hummus', nameAr: 'حمص', basePrice: 3, categoryId: categories[2].id },
     }),
     prisma.menuItem.create({
-      data: { name: 'Fattoush Salad', nameAr: 'فتوش', price: 4, categoryId: categories[2].id },
+      data: { name: 'Fattoush Salad', nameAr: 'فتوش', basePrice: 4, categoryId: categories[2].id },
     }),
     prisma.menuItem.create({
-      data: { name: 'French Fries', nameAr: 'بطاطس', price: 3, categoryId: categories[2].id },
+      data: { name: 'French Fries', nameAr: 'بطاطس', basePrice: 3, categoryId: categories[2].id },
     }),
   ])
 
   // Create menu items for Drinks
   await Promise.all([
     prisma.menuItem.create({
-      data: { name: 'Pepsi', nameAr: 'بيبسي', price: 1.5, categoryId: categories[3].id },
+      data: { name: 'Pepsi', nameAr: 'بيبسي', basePrice: 1.5, categoryId: categories[3].id },
     }),
     prisma.menuItem.create({
-      data: { name: 'Lemon Mint', nameAr: 'ليمون بالنعناع', price: 3, categoryId: categories[3].id },
+      data: { name: 'Lemon Mint', nameAr: 'ليمون بالنعناع', basePrice: 3, categoryId: categories[3].id },
     }),
     prisma.menuItem.create({
-      data: { name: 'Arabic Coffee', nameAr: 'قهوة عربية', price: 2, categoryId: categories[3].id },
+      data: { name: 'Arabic Coffee', nameAr: 'قهوة عربية', basePrice: 2, categoryId: categories[3].id },
     }),
   ])
 
   // Create menu items for Desserts
   await Promise.all([
     prisma.menuItem.create({
-      data: { name: 'Kunafa', nameAr: 'كنافة', price: 5, categoryId: categories[4].id },
+      data: { name: 'Kunafa', nameAr: 'كنافة', basePrice: 5, categoryId: categories[4].id },
     }),
     prisma.menuItem.create({
-      data: { name: 'Baklava', nameAr: 'بقلاوة', price: 4, categoryId: categories[4].id },
+      data: { name: 'Baklava', nameAr: 'بقلاوة', basePrice: 4, categoryId: categories[4].id },
     }),
   ])
 

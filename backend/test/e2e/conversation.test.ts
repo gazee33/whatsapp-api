@@ -66,7 +66,7 @@ describe('E2E: Customer Conversation Flow', () => {
         name: 'Shawarma Chicken',
         nameAr: 'شاورما دجاج',
         description: 'Delicious chicken shawarma',
-        price: 25.00,
+        basePrice: 25.00,
         available: true,
       },
     });
@@ -128,7 +128,7 @@ describe('E2E: Customer Conversation Flow', () => {
         name: 'Shawarma Chicken',
         nameAr: 'شاورما دجاج',
         description: 'Delicious chicken shawarma',
-        price: 25.00,
+        basePrice: 25.00,
         available: true,
       },
     });
@@ -199,7 +199,7 @@ describe('E2E: Customer Conversation Flow', () => {
         name: 'Shawarma Chicken',
         nameAr: 'شاورما دجاج',
         description: 'Delicious chicken shawarma',
-        price: 25.00,
+        basePrice: 25.00,
         available: true,
       },
     });
@@ -260,7 +260,7 @@ describe('E2E: Customer Conversation Flow', () => {
         categoryId: category.id,
         name: 'Shawarma Chicken',
         nameAr: 'شاورما دجاج',
-        price: 25.00,
+        basePrice: 25.00,
         available: true,
       },
     });

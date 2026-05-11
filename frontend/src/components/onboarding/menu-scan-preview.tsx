@@ -245,10 +245,10 @@ export function MenuScanPreview({
                           </span>
                           <input
                             type="number"
-                            value={item.price}
+                            value={item.basePrice ?? ''}
                             onChange={(e) =>
                               updateItem(catIndex, itemIndex, {
-                                price: parseFloat(e.target.value) || 0,
+                                basePrice: e.target.value ? parseFloat(e.target.value) : null,
                               })
                             }
                             className="w-24 text-sm font-medium text-slate-700 bg-white border border-slate-200 rounded-md pl-5 pr-3 py-1.5 outline-none focus:ring-2 focus:ring-indigo-200 focus:border-indigo-300"

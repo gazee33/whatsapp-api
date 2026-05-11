@@ -74,11 +74,6 @@ export async function handleQueryMenu(
       category: true,
       options: true,
     },
-    orderBy: {
-      category: {
-        sortOrder: 'asc',
-      },
-    },
   });
 
   // Filter by query keyword if provided (post-filter for name search)
@@ -112,7 +107,7 @@ export async function handleQueryMenu(
   for (const [catName, items] of Object.entries(grouped)) {
     lines.push(`\n## ${catName}`);
     for (const item of items) {
-      const price = item.price.toFixed(2);
+      const price = (item.basePrice ?? 0).toFixed(2);
       let line = `- ${item.name}`;
       if (item.nameAr) {
         line += ` (${item.nameAr})`;

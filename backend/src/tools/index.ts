@@ -73,9 +73,10 @@ export const tools: ToolDefinition[] = [
               name: { type: 'string', description: 'Name of the menu item' },
               quantity: { type: 'number', description: 'How many of this item' },
               optionName: { type: 'string', description: 'The selected option name (e.g. "Large", "3 سيخ"). REQUIRED if item has options, otherwise omit.' },
-              notes: { type: 'string', description: 'Special instructions (optional)' }
+              notes: { type: 'string', description: 'Special instructions (optional)' },
+              totalPrice: { type: 'number', description: 'Total price of the item (item base price + option price) * quantity.' }
             },
-            required: ['name', 'quantity']
+            required: ['name', 'quantity', 'totalPrice']
           }
         },
         orderNotes: { type: 'string', description: 'Order notes (optional)' },

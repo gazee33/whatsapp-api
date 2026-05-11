@@ -37,7 +37,7 @@ export async function createOrder(
 
     for (const item of items) {
       const menuItem = menuItems.find(m => m.id === item.menuItemId)!;
-      totalPrice += menuItem.price * item.quantity;
+      totalPrice += (menuItem.basePrice ?? 0) * item.quantity;
       orderItems.push({
         menuItemId: menuItem.id,
         quantity: item.quantity,
@@ -88,7 +88,7 @@ export async function createOrder(
     items: createdOrderItems.map((oi) => ({
       name: oi.menuItem.name,
       quantity: oi.quantity,
-      price: oi.menuItem.price,
+      price: oi.menuItem.basePrice ?? 0,
       notes: oi.notes,
     })),
     totalPrice: order.totalPrice,

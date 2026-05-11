@@ -110,7 +110,7 @@ export interface MenuItem {
   name: string;
   nameAr?: string | null;
   description?: string | null;
-  price: number;
+  basePrice: number | null;
   image?: string | null;
   available: boolean;
   categoryId: string;
@@ -128,7 +128,7 @@ export interface MenuItemPayload {
   name: string;
   nameAr?: string;
   description?: string;
-  price: number;
+  basePrice: number | null;
   image?: string;
   categoryId: string;
   available?: boolean;
@@ -149,7 +149,7 @@ export interface ExtractedMenuItem {
   name: string;
   nameAr?: string | null;
   description?: string | null;
-  price: number;
+  basePrice: number | null;
   options: ExtractedItemOption[];
 }
 

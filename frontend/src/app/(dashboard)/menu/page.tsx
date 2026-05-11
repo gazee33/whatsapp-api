@@ -320,7 +320,7 @@ export default function MenuPage() {
                                       <div className="flex items-center gap-1 mt-0.5">
                                         <DollarSign className="h-3 w-3 text-muted-foreground" />
                                         <span className="text-sm text-muted-foreground">
-                                          {formatCurrency(item.price)}
+                                          {formatCurrency(item.basePrice ?? 0)}
                                         </span>
                                       </div>
                                       {item.options && item.options.length > 0 && (
@@ -456,7 +456,7 @@ export default function MenuPage() {
                           <div className="flex items-center gap-1">
                             <DollarSign className="h-3 w-3 text-muted-foreground" />
                             <span className="text-sm text-muted-foreground">
-                              {formatCurrency(item.price)}
+                              {formatCurrency(item.basePrice ?? 0)}
                             </span>
                           </div>
                           {item.category && (

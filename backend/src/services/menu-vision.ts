@@ -11,7 +11,7 @@ export interface ExtractedMenuItem {
   name: string;
   nameAr?: string | null;
   description?: string | null;
-  price: number;
+  basePrice: number | null;
   options: ExtractedMenuOption[];
 }
 
@@ -38,7 +38,7 @@ Return ONLY valid JSON matching this exact structure:
       "name": "Item name in English (or transliterated if only Arabic)",
       "nameAr": "Arabic item name if present on the menu, otherwise null",
       "description": "Item description if visible, otherwise null",
-      "price": 0.00,
+      "basePrice": null,
       "options": [{
         "name": "Option name (e.g. Large, Extra cheese)",
         "price": 0.00
@@ -66,7 +66,7 @@ function sanitizeCategories(raw: unknown): ExtractedMenuCategory[] {
           name: typeof item.name === 'string' ? item.name : '',
           nameAr: typeof item.nameAr === 'string' ? item.nameAr : null,
           description: typeof item.description === 'string' ? item.description : null,
-          price: typeof item.price === 'number' ? item.price : 0,
+          basePrice: typeof item.basePrice === 'number' ? item.basePrice : typeof item.price === 'number' ? item.price : null,
           options: Array.isArray(item.options)
             ? item.options.map((opt: Record<string, unknown>) => ({
                 name: typeof opt.name === 'string' ? opt.name : '',

@@ -138,7 +138,7 @@ async function main() {
           where: { id: existing.id },
           data: {
             description: product.description || existing.description,
-            price,
+            basePrice: price || null,
             image: imageUrl,
             available: true,
             categoryId: category.id,
@@ -150,7 +150,7 @@ async function main() {
           data: {
             name: product.name,
             description: product.description,
-            price,
+            basePrice: price || null,
             image: imageUrl,
             available: true,
             categoryId: category.id,

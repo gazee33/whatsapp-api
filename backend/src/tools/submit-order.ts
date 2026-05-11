@@ -9,6 +9,7 @@ export interface OrderItemInput {
   quantity: number;
   notes?: string;
   optionName?: string;
+  totalPrice: number;
 }
 
 export interface SubmitOrderParams {
@@ -67,7 +68,7 @@ interface MenuItemWithOptions {
   id: string;
   name: string;
   nameAr: string | null;
-  price: number;
+  basePrice: number | null;
   options?: Array<{
     id: string;
     name: string;
@@ -77,7 +78,7 @@ interface MenuItemWithOptions {
 
 function findBestMatch(
   itemName: string,
-  menuItems: Array<{ id: string; name: string; nameAr: string | null; price: number }>
+  menuItems: Array<{ id: string; name: string; nameAr: string | null; basePrice: number | null }>
 ): typeof menuItems[0] | undefined {
   const cleanedItem = stripParenthetical(itemName);
 
@@ -187,7 +188,7 @@ export async function handleSubmitOrder(
 
     for (const item of items) {
       // First find the best menu item match
-      const baseMenuItems = menuItems.map(({ options, ...mi }) => mi);
+      const baseMenuItems = menuItems.map(({ options, basePrice, ...mi }) => ({ ...mi, basePrice }));
       const matched = findBestMatch(item.name, baseMenuItems);
 
       if (matched) {
@@ -247,7 +248,7 @@ export async function handleSubmitOrder(
 
     // Calculate total price (menu item price + option price, if any)
     const totalPrice = matchedItems.reduce((sum, item) => {
-      const itemPrice = item.menuItem.price + (item.option?.price || 0);
+      const itemPrice = (item.menuItem.basePrice ?? 0) + (item.option?.price || 0);
       return sum + itemPrice * item.quantity;
     }, 0);
 
@@ -329,7 +330,7 @@ export async function handleSubmitOrder(
       items: orderItems.map((oi) => ({
         name: oi.menuItem.name,
         quantity: oi.quantity,
-        price: oi.menuItem.price,
+        price: oi.menuItem.basePrice ?? 0,
         optionName: oi.option?.name || null,
         optionPrice: oi.option?.price || 0,
         notes: oi.notes,
@@ -341,7 +342,7 @@ export async function handleSubmitOrder(
     // Format confirmation with option details
     const lines = [`Order ${order.referenceId} confirmed:`, ''];
     for (const oi of orderItems) {
-      const itemPrice = oi.menuItem.price + (oi.option?.price || 0);
+      const itemPrice = (oi.menuItem.basePrice ?? 0) + (oi.option?.price || 0);
       const subtotal = itemPrice * oi.quantity;
 
       if (oi.option) {

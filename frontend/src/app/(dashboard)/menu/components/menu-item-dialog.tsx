@@ -53,7 +53,7 @@ export function MenuItemDialog({
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const existingImageUrl = item?.image ?? null;
   const [imageRemoved, setImageRemoved] = useState(false);
-  const [price, setPrice] = useState(item ? String(item.price) : "");
+  const [price, setPrice] = useState(item ? (item.basePrice !== null ? String(item.basePrice) : "") : "");
   const [selectedCategoryId, setSelectedCategoryId] = useState(item?.categoryId ?? categoryId ?? "");
   const [available, setAvailable] = useState(item?.available ?? true);
 
@@ -106,9 +106,11 @@ export function MenuItemDialog({
     const errs: Record<string, string> = {};
     if (!name.trim()) errs.name = t("menu.name_required");
     if (!selectedCategoryId) errs.categoryId = t("menu.category_required");
-    const priceVal = Number(price);
-    if (price === "" || isNaN(priceVal)) errs.price = t("menu.price_required");
-    else if (priceVal < 0) errs.price = t("menu.price_min");
+    if (price !== "") {
+      const priceVal = Number(price);
+      if (isNaN(priceVal)) errs.price = t("menu.price_required");
+      else if (priceVal < 0) errs.price = t("menu.price_min");
+    }
     setErrors(errs);
     return Object.keys(errs).length === 0;
   };
@@ -140,7 +142,7 @@ export function MenuItemDialog({
       formData.append('name', name.trim());
       if (nameAr.trim()) formData.append('nameAr', nameAr.trim());
       if (description.trim()) formData.append('description', description.trim());
-      formData.append('price', String(Number(price)));
+      if (price !== "") formData.append('price', String(Number(price)));
       formData.append('categoryId', selectedCategoryId);
       formData.append('available', String(available));
       if (imageFile) {
