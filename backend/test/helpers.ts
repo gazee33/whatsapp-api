@@ -98,7 +98,7 @@ export async function createTestMenuItem(
     name: string;
     nameAr: string;
     description: string;
-    price: number;
+    basePrice: number;
     available: boolean;
     image: string;
   }>
@@ -109,7 +109,7 @@ export async function createTestMenuItem(
       name: data?.name || 'Shawarma Chicken',
       nameAr: data?.nameAr || 'شاورما دجاج',
       description: data?.description || 'Delicious chicken shawarma',
-      price: data?.price || 25.00,
+      basePrice: data?.basePrice ?? 0,
       available: data?.available ?? true,
       image: data?.image || null,
     },
@@ -208,28 +208,28 @@ export async function createTestFixture() {
     name: 'Shawarma Chicken',
     nameAr: 'شاورما دجاج',
     description: 'Chicken shawarma with garlic sauce',
-    price: 25.00,
+    basePrice: 25.00,
   });
   
   const shawarmaMeat = await createTestMenuItem(mainDishes.id, {
     name: 'Shawarma Meat',
     nameAr: 'شاورما لحم',
     description: 'Beef shawarma with tahini',
-    price: 30.00,
+    basePrice: 30.00,
   });
   
   const fries = await createTestMenuItem(appetizers.id, {
     name: 'French Fries',
     nameAr: 'بطاطس مقلية',
     description: 'Crispy golden fries',
-    price: 10.00,
+    basePrice: 10.00,
   });
   
   const cola = await createTestMenuItem(drinks.id, {
     name: 'Coca Cola',
     nameAr: 'كوكا كولا',
     description: 'Refreshing cola beverage',
-    price: 5.00,
+    basePrice: 5.00,
   });
 
   // Create options for shawarma chicken

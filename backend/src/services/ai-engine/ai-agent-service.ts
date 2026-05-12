@@ -55,12 +55,14 @@ export class AIAgentService {
   async processMessage(params: {
     customerId: string;
     message: string;
+    customerName?: string;
+    customerPhone?: string;
     locationData?: { latitude: number; longitude: number; name?: string; address?: string };
   }): Promise<{
     reply: string;
     orderId?: string;
   }> {
-    const { customerId, message, locationData } = params;
+    const { customerId, message, customerName, customerPhone, locationData } = params;
 
     const MAX_MESSAGE_LENGTH = 4000;
     if (message.length > MAX_MESSAGE_LENGTH) {
@@ -106,6 +108,8 @@ export class AIAgentService {
       language,
       cartState,
       context,
+      customerName,
+      customerPhone,
     });
 
     const userContent = locationData
@@ -249,6 +253,7 @@ export class AIAgentService {
           businessId: this.businessId,
           customerId,
           cartState,
+          customerPhone,
         });
         let timeoutHandle: ReturnType<typeof setTimeout>;
         const timeoutPromise = new Promise<never>((_, reject) => {

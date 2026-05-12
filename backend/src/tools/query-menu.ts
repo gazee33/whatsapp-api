@@ -124,7 +124,7 @@ export async function handleQueryMenu(
       if (item.options && item.options.length > 0) {
         const optionParts = item.options.map((opt) => {
           const priceStr = opt.price > 0 ? `+${opt.price.toFixed(2)}` : '0.00';
-          return `${opt.name} (${priceStr})`;
+          return `${opt.name} [${opt.id}] (${priceStr})`;
         });
         lines.push(`  🔹 Options: ${optionParts.join(', ')}`);
       }

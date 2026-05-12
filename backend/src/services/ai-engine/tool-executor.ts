@@ -5,12 +5,16 @@ import { handleCheckStatus } from '../../tools/check-status.js';
 import { handleFileComplaint } from '../../tools/file-complaint.js';
 import { handleCheckRestaurantInfo } from '../../tools/check-restaurant-info.js';
 import { handleSetDeliveryAddress } from '../../tools/set-delivery-address.js';
+import { handleAddToCart } from '../../tools/add-to-cart.js';
+import { handleUpdateCart } from '../../tools/update-cart.js';
 import type { QueryMenuParams } from '../../tools/query-menu.js';
 import type { SubmitOrderParams } from '../../tools/submit-order.js';
 import type { CheckStatusParams } from '../../tools/check-status.js';
 import type { FileComplaintParams } from '../../tools/file-complaint.js';
 import type { CheckRestaurantInfoParams } from '../../tools/check-restaurant-info.js';
 import type { SetDeliveryAddressParams } from '../../tools/set-delivery-address.js';
+import type { AddToCartParams } from '../../tools/add-to-cart.js';
+import type { UpdateCartParams } from '../../tools/update-cart.js';
 import { type CartState, emptyCartState } from './cart-state.js';
 
 export interface ToolExecutionResult {
@@ -41,14 +45,37 @@ export async function executeTool(params: {
   businessId: string;
   customerId: string;
   cartState: CartState;
+  customerPhone?: string;
 }): Promise<ToolExecutionResult> {
-  const { toolCall, businessId, customerId, cartState } = params;
+  const { toolCall, businessId, customerId, cartState, customerPhone } = params;
 
   switch (toolCall.name) {
     case 'query_menu': {
       const toolParams = normalizeToolArgs<QueryMenuParams>(toolCall.arguments);
       const result = await handleQueryMenu(businessId, toolParams);
       return { success: true, result };
+    }
+
+    case 'add_to_cart': {
+      const toolParams = normalizeToolArgs<AddToCartParams>(toolCall.arguments);
+      const execResult = await handleAddToCart(businessId, customerId, toolParams);
+      return {
+        success: execResult.success,
+        result: execResult.result,
+        errorCode: execResult.success ? undefined : 'ADD_TO_CART_FAILED',
+        cartState: execResult.success ? execResult.cartState : cartState,
+      };
+    }
+
+    case 'update_cart': {
+      const toolParams = normalizeToolArgs<UpdateCartParams>(toolCall.arguments);
+      const execResult = await handleUpdateCart(businessId, customerId, toolParams);
+      return {
+        success: execResult.success,
+        result: execResult.result,
+        errorCode: execResult.success ? undefined : 'UPDATE_CART_FAILED',
+        cartState: execResult.success ? execResult.cartState : cartState,
+      };
     }
 
     case 'submit_order': {
@@ -72,6 +99,27 @@ export async function executeTool(params: {
             errorCode: 'MALFORMED_ORDER_ITEMS',
           };
         }
+      }
+
+      if ((!toolParams.items || toolParams.items.length === 0) && cartState.items.length > 0) {
+        toolParams.items = cartState.items.map((item) => ({
+          itemId: item.menuItemId,
+          quantity: item.quantity,
+          optionName: item.optionName,
+          notes: item.notes,
+        }));
+      }
+
+      if (!toolParams.orderType && cartState.orderType) {
+        toolParams.orderType = cartState.orderType;
+      }
+
+      if (!toolParams.deliveryAddress && cartState.deliveryLocation?.address) {
+        toolParams.deliveryAddress = cartState.deliveryLocation.address;
+      }
+
+      if (!toolParams.contactPhone && customerPhone) {
+        toolParams.contactPhone = customerPhone;
       }
 
       const result = await handleSubmitOrder(businessId, customerId, toolParams);

@@ -11,13 +11,15 @@ export type AgentMode =
   | 'order_submitted';
 
 export interface CartItem {
-  menuItemId?: string;
+  cartItemId: string;
+  menuItemId: string;
   name: string;
   nameAr?: string | null;
   quantity: number;
   unitPrice: number;
   optionName?: string;
   optionPrice?: number;
+  optionId?: string;
   notes?: string;
 }
 
@@ -66,7 +68,7 @@ export function formatCartForPrompt(cart: CartState, currency: string): string {
     const itemPrice = item.unitPrice + (item.optionPrice || 0);
     const lineTotal = itemPrice * item.quantity;
     const optionStr = item.optionName ? ` (${item.optionName})` : '';
-    return `${index + 1}. ${item.quantity}x ${item.name}${optionStr} - ${lineTotal} ${currency}${item.notes ? ` - Notes: ${item.notes}` : ''}`;
+    return `[${index}] ${item.quantity}x ${item.name}${optionStr} - ${lineTotal} ${currency}${item.notes ? ` - Notes: ${item.notes}` : ''}`;
   });
 
   const sections: string[] = [lines.join('\n')];
@@ -78,10 +80,22 @@ export function formatCartForPrompt(cart: CartState, currency: string): string {
   }
 
   sections.push(`Total: ${calculateCartTotal(cart.items)} ${currency}`);
-  sections.push(`Mode: ${cart.mode}`);
   if (cart.orderType) sections.push(`Order type: ${cart.orderType}`);
 
   return sections.join('\n');
+}
+
+interface RawCartItem {
+  cartItemId?: string;
+  menuItemId?: string;
+  name?: string;
+  nameAr?: string | null;
+  quantity?: number;
+  unitPrice?: number;
+  optionName?: string;
+  optionPrice?: number;
+  optionId?: string;
+  notes?: string;
 }
 
 export async function getCartState(customerId: string): Promise<CartState> {
@@ -96,7 +110,20 @@ export async function getCartState(customerId: string): Promise<CartState> {
     return {
       mode: parsed.mode ?? 'browsing',
       language: parsed.language,
-      items: Array.isArray(parsed.items) ? parsed.items : [],
+      items: Array.isArray(parsed.items)
+        ? parsed.items.map((i: RawCartItem, idx: number) => ({
+            cartItemId: i.cartItemId || `cart_legacy_${idx}`,
+            menuItemId: i.menuItemId || '',
+            name: i.name || '',
+            nameAr: i.nameAr ?? null,
+            quantity: i.quantity || 1,
+            unitPrice: i.unitPrice || 0,
+            optionName: i.optionName,
+            optionPrice: i.optionPrice,
+            optionId: i.optionId,
+            notes: i.notes,
+          }))
+        : [],
       orderType: parsed.orderType,
       deliveryLocation: parsed.deliveryLocation,
       updatedAt: parsed.updatedAt ?? new Date().toISOString(),
@@ -104,6 +131,11 @@ export async function getCartState(customerId: string): Promise<CartState> {
   } catch {
     return emptyCartState();
   }
+}
+
+export function generateCartItemId(): string {
+  const rand = Math.random().toString(36).substring(2, 8);
+  return `ci_${Date.now().toString(36)}_${rand}`;
 }
 
 export async function saveCartState(customerId: string, state: CartState): Promise<void> {

@@ -116,7 +116,7 @@ export class OpencodeProvider implements LLMProvider {
       throw new Error('OpenCode API returned no choices');
     }
 
-    const content = choice.message.content || null;
+    const content = choice.message.content || choice.message.reasoning_content || null;
     const reasoningContent = choice.message.reasoning_content || undefined;
     const toolCalls = choice.message.tool_calls?.map(tc => {
       let parsedArgs: Record<string, unknown>;

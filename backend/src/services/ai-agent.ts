@@ -22,6 +22,8 @@ export async function processMessage(
   const result = await agent.processMessage({
     customerId: customer.id,
     message: text,
+    customerName: customer.name || undefined,
+    customerPhone: customer.phone,
     locationData,
   });
   return result.reply;
