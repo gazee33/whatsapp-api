@@ -7,6 +7,8 @@ import { handleCheckRestaurantInfo } from '../../tools/check-restaurant-info.js'
 import { handleSetDeliveryAddress } from '../../tools/set-delivery-address.js';
 import { handleAddToCart } from '../../tools/add-to-cart.js';
 import { handleUpdateCart } from '../../tools/update-cart.js';
+import { handleRemoveFromCart } from '../../tools/remove-from-cart.js';
+import type { RemoveFromCartParams } from '../../tools/remove-from-cart.js';
 import type { QueryMenuParams } from '../../tools/query-menu.js';
 import type { SubmitOrderParams } from '../../tools/submit-order.js';
 import type { CheckStatusParams } from '../../tools/check-status.js';
@@ -74,6 +76,17 @@ export async function executeTool(params: {
         success: execResult.success,
         result: execResult.result,
         errorCode: execResult.success ? undefined : 'UPDATE_CART_FAILED',
+        cartState: execResult.success ? execResult.cartState : cartState,
+      };
+    }
+
+    case 'remove_from_cart': {
+      const toolParams = normalizeToolArgs<RemoveFromCartParams>(toolCall.arguments);
+      const execResult = await handleRemoveFromCart(businessId, customerId, toolParams);
+      return {
+        success: execResult.success,
+        result: execResult.result,
+        errorCode: execResult.success ? undefined : 'REMOVE_FROM_CART_FAILED',
         cartState: execResult.success ? execResult.cartState : cartState,
       };
     }

@@ -71,6 +71,17 @@ export const tools: ToolDefinition[] = [
     }
   },
   {
+    name: 'remove_from_cart',
+    description: 'Remove an item from the cart at a specific index. Use when customer says "remove", "delete", "cancel", "take out", or wants to drop an item. The index is shown in [brackets] in CURRENT CART (0-based).',
+    parameters: {
+      type: 'object',
+      properties: {
+        index: { type: 'number', description: '0-based index of the cart item to remove (shown as [N] in CURRENT CART)' },
+      },
+      required: ['index']
+    }
+  },
+  {
     name: 'submit_order',
     description: 'Create a new order with items from the cart. Call this only when the customer explicitly says yes to "shall I place the order?". REQUIRED: customer must confirm verbally first. The order type, delivery address, and contact phone will be auto-filled from cart state — you can override them if needed.',
     parameters: {
