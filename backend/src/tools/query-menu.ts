@@ -105,7 +105,9 @@ export async function handleQueryMenu(
   // Format results
   const lines: string[] = [];
   for (const [catName, items] of Object.entries(grouped)) {
-    lines.push(`\n## ${catName}`);
+    const catNameAr = items[0].category.nameAr;
+    const header = catNameAr ? `${catName} / ${catNameAr}` : catName;
+    lines.push(`\n## ${header}`);
     for (const item of items) {
       const price = (item.basePrice ?? 0).toFixed(2);
       let line = `- ${item.name}`;
