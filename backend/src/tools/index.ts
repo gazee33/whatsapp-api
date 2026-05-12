@@ -1,18 +1,7 @@
 import { ToolDefinition } from '../llm/types.js';
 
 export const tools: ToolDefinition[] = [
-  {
-    name: 'query_menu',
-    description: 'Search menu items by keyword or category. Use when customer asks "what do you have?" or wants to browse the menu.',
-    parameters: {
-      type: 'object',
-      properties: {
-        query: { type: 'string', description: 'Search keyword (optional)' },
-        category: { type: 'string', description: 'Category name (optional)' }
-      },
-      required: []
-    }
-  },
+  
   {
     name: 'check_restaurant_info',
     description: 'Get restaurant information like address, hours, payment methods, delivery info. Use when customer asks "where are you?", "are you open?", "what payments do you accept?", "how much is delivery?".',

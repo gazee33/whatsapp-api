@@ -5,6 +5,17 @@ export interface DeliveryTierInfo {
   fee: number;
 }
 
+export interface MenuItemInfo {
+  id: string;
+  name: string;
+  nameAr: string | null;
+  description: string | null;
+  basePrice: number | null;
+  categoryName: string;
+  categoryNameAr: string | null;
+  options: { id: string; name: string; price: number }[];
+}
+
 export interface RestaurantContext {
   restaurantName: string;
   currency: string;
@@ -24,12 +35,17 @@ export interface RestaurantContext {
   isTemporarilyClosed: boolean;
   deliveryTiers: DeliveryTierInfo[];
   maxDeliveryDistanceKm: number | null;
+  menuItems: MenuItemInfo[];
 }
 
 export async function getRestaurantContext(businessId: string): Promise<RestaurantContext> {
-  const [settings, business] = await Promise.all([
+  const [settings, business, menuItemsRaw] = await Promise.all([
     prisma.restaurantSettings.findUnique({ where: { businessId } }),
     prisma.business.findUnique({ where: { id: businessId } }),
+    prisma.menuItem.findMany({
+      where: { category: { businessId }, available: true },
+      include: { category: true, options: true },
+    }),
   ]);
 
   let paymentMethods: string[] = ['cash', 'card'];
@@ -45,6 +61,21 @@ export async function getRestaurantContext(businessId: string): Promise<Restaura
       deliveryTiers = JSON.parse(settings.deliveryTiers);
     } catch {}
   }
+
+  const menuItems: MenuItemInfo[] = (menuItemsRaw || []).map(item => ({
+    id: item.id,
+    name: item.name,
+    nameAr: item.nameAr,
+    description: item.description,
+    basePrice: item.basePrice,
+    categoryName: item.category.name,
+    categoryNameAr: item.category.nameAr,
+    options: item.options.map(opt => ({
+      id: opt.id,
+      name: opt.name,
+      price: opt.price,
+    })),
+  }));
 
   return {
     restaurantName: settings?.name || business?.name || 'the restaurant',
@@ -65,5 +96,6 @@ export async function getRestaurantContext(businessId: string): Promise<Restaura
     isTemporarilyClosed: settings?.isTemporarilyClosed ?? false,
     deliveryTiers,
     maxDeliveryDistanceKm: settings?.maxDeliveryDistanceKm || null,
+    menuItems,
   };
 }

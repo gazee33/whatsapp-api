@@ -1,5 +1,5 @@
 import { type CartState, type SupportedLanguage, formatCartForPrompt, calculateCartTotal } from './cart-state.js';
-import type { RestaurantContext } from './restaurant-context.js';
+import type { RestaurantContext, MenuItemInfo } from './restaurant-context.js';
 
 const CACHE_TTL_MS = 600000; // 10 minutes
 const systemPromptCache = new Map<string, { template: string; expires: number }>();
@@ -31,6 +31,39 @@ function formatDeliveryTiers(context: RestaurantContext): string {
     result += `Max delivery distance: ${context.maxDeliveryDistanceKm} km\n`;
   }
   return result;
+}
+
+function formatMenuForPrompt(items: MenuItemInfo[], currency: string): string {
+  if (items.length === 0) return '';
+
+  const grouped = new Map<string, { nameAr: string | null; items: MenuItemInfo[] }>();
+  for (const item of items) {
+    const key = item.categoryName;
+    if (!grouped.has(key)) {
+      grouped.set(key, { nameAr: item.categoryNameAr, items: [] });
+    }
+    grouped.get(key)!.items.push(item);
+  }
+
+  const lines: string[] = [];
+  for (const [catName, group] of grouped) {
+    const header = group.nameAr ? `### ${catName} / ${group.nameAr}` : `### ${catName}`;
+    lines.push(`\n${header}`);
+    for (const item of group.items) {
+      const price = (item.basePrice ?? 0).toFixed(2);
+      const nameDisplay = item.nameAr ? `${item.name} (${item.nameAr})` : item.name;
+      lines.push(`- [${item.id}] ${nameDisplay} | ${price} ${currency}${item.description ? ` | ${item.description}` : ''}`);
+      if (item.options.length > 0) {
+        const opts = item.options.map(opt => {
+          const priceStr = opt.price > 0 ? `+${opt.price.toFixed(2)}` : '0.00';
+          return `${opt.id}=${opt.name}(${priceStr})`;
+        }).join(', ');
+        lines.push(`  Options: ${opts}`);
+      }
+    }
+  }
+
+  return lines.join('\n');
 }
 
 export function buildSystemPrompt(params: {
@@ -78,7 +111,7 @@ export function buildSystemPrompt(params: {
     workflowSteps.push(context.deliveryEnabled
       ? `${step++}. IF delivery AND no address set yet: ask customer to share location or type address. When location is shared, you'll receive [Location shared: lat,lng]. Call set_delivery_address with coordinates. When address is typed, call set_delivery_address with the address text.`
       : `${step++}. IF delivery: unavailable for this restaurant. Say so.`);
-    workflowSteps.push(`${step++}. query_menu to browse items. When customer picks items, use add_to_cart.`);
+    workflowSteps.push(`${step++}. Use the FULL MENU section to browse items. When customer picks items, use add_to_cart.`);
     workflowSteps.push(`${step++}. If customer wants to change quantity/option/notes of an existing item, use update_cart with the 0-based [index] from CURRENT CART.`);
     workflowSteps.push(`${step++}. Customer done → ask: "shall I place the order?". Review cart items with customer.`);
     workflowSteps.push(`${step++}. Customer explicitly says yes → call submit_order. Items, orderType, address and phone are auto-filled from cart state.`);
@@ -92,21 +125,22 @@ WhatsApp ordering assistant for ${context.restaurantName}. Be warm, casual, conc
 ## CONTEXT
 ${contextBlock}
 
+## FULL MENU (use exact IDs from this section — do NOT guess or make up items)
+${formatMenuForPrompt(context.menuItems, context.currency)}
+
 ## WORKFLOW (only do steps not yet completed)
 ${workflowSteps.join('\n')}
 
 ## GUARDRAILS
 - Do NOT call submit_order until customer EXPLICITLY says yes to "shall I place the order?". A bare "yes"/"ok"/"تمام" during browsing means general acknowledgment — NOT order confirmation.
-- Use item names AND option IDs from query_menu results EXACTLY as shown. Do NOT substitute or guess.
+- Use item IDs AND option IDs from FULL MENU section EXACTLY — do NOT guess or make up items.
 - If options exist on an item: MUST ask customer which option, then pass optionId in add_to_cart.
 - Customer changes mind / removes / hesitates: do NOT submit.
 - upsell at most once. If customer says no or ignores: proceed to confirmation.
-- query_menu again if customer wants to browse or you need correct names/IDs.
 - check_restaurant_info for address/hours/payment/delivery questions — do NOT make up info.
 - After submit: done with this order. If customer wants more, they start fresh.
 
 ## TOOLS
-- query_menu: "what do you have?" or specific item search — returns item IDs and option IDs
 - add_to_cart: add selected items to cart (bulk — pass all items at once). Use optionId from query_menu.
 - update_cart: modify a cart item at a specific [index]. Pass FULL updated values.
 - check_restaurant_info: "where are you?", "are you open?", "what payments?", "how much is delivery?"
