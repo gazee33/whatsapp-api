@@ -6,7 +6,7 @@ import type { Business, Customer } from '@prisma/client';
 import { logDebugEntry } from '../debug.js';
 import { logError } from '../error-log.js';
 import { DebugStep } from '../../debug/types.js';
-import { getCartState, saveCartState } from './cart-state.js';
+import { getCartState, saveCartState, formatCartForPrompt } from './cart-state.js';
 import type { CartState } from './cart-state.js';
 import { getRestaurantContext } from './restaurant-context.js';
 import type { RestaurantContext } from './restaurant-context.js';
@@ -296,6 +296,12 @@ export class AIAgentService {
         if (execution.cartState) {
           cartState = execution.cartState;
           await saveCartState(customerId, cartState);
+
+          const newCartSection = `\n## CURRENT CART\n${formatCartForPrompt(cartState, context.currency)}`;
+          const systemMsg = messages[0];
+          if (systemMsg && typeof systemMsg.content === 'string') {
+            systemMsg.content = systemMsg.content.replace(/## CURRENT CART[\s\S]*$/, newCartSection);
+          }
         }
 
         if (execution.createdOrderId) {

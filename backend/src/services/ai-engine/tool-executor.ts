@@ -33,7 +33,7 @@ function normalizeToolArgs<T>(args: unknown): T {
 }
 
 function extractCreatedOrderId(toolResult: string): string | undefined {
-  return toolResult.match(/Order #([a-f0-9-]+)/i)?.[1];
+  return toolResult.match(/Order (ORD-\d+-[A-F0-9]+)/)?.[1];
 }
 
 export async function executeTool(params: {

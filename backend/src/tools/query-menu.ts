@@ -114,7 +114,7 @@ export async function handleQueryMenu(
       if (item.nameAr) {
         line += ` (${item.nameAr})`;
       }
-      line += `: ${price} SAR`;
+      line += ` [${item.id}]: ${price} SAR`;
       if (item.description) {
         line += ` - ${item.description}`;
       }
