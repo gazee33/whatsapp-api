@@ -44,48 +44,32 @@ export const tools: ToolDefinition[] = [
     }
   },
   {
-    name: 'request_confirmation',
-    description: 'Request explicit customer confirmation before submitting an order. Call this when the customer has finished adding items and indicates they are ready to order. You MUST provide the orderType — if you don\'t know it yet, ask the customer first. This will save the order type and put the cart in awaiting_confirmation mode. After the customer confirms, call submit_order.',
-    parameters: {
-      type: 'object',
-      properties: {
-        orderType: {
-          type: 'string',
-          enum: ['delivery', 'dine_in', 'pickup'],
-          description: 'Order type: delivery, dine_in, or pickup. REQUIRED — ask the customer if not yet known.'
-        }
-      },
-      required: ['orderType']
-    }
-  },
-  {
     name: 'submit_order',
-    description: 'Create a new order with items. Use when customer confirms they want to order. Extract items from conversation history — include name and quantity for each item. If the item has options (shown after "Options:" in query_menu results), you MUST include optionName. If the item has NO options, do NOT include optionName.',
+    description: 'Create a new order with items. Call this only when the customer explicitly confirms they want to order. Pass itemId from query_menu results — do NOT guess IDs. If the item has options (shown after "Options:" in query_menu results), you MUST include optionName. If the item has NO options, do NOT include optionName. The orderType is required — if you don\'t know it yet, ask the customer first.',
     parameters: {
       type: 'object',
       properties: {
         items: {
           type: 'array',
-          description: 'List of items to order. Each item must include name and quantity. If the item has options (shown in menu results), you MUST include optionName.',
+          description: 'List of items to order. Each item must include itemId and quantity. If the item has options (shown in menu results), you MUST include optionName.',
           items: {
             type: 'object',
             properties: {
-              name: { type: 'string', description: 'Name of the menu item' },
+              itemId: { type: 'string', description: 'ID of the menu item from query_menu results' },
               quantity: { type: 'number', description: 'How many of this item' },
               optionName: { type: 'string', description: 'The selected option name (e.g. "Large", "3 سيخ"). REQUIRED if item has options, otherwise omit.' },
               notes: { type: 'string', description: 'Special instructions (optional)' },
-              totalPrice: { type: 'number', description: 'Total price of the item (item base price + option price) * quantity.' }
             },
-            required: ['name', 'quantity', 'totalPrice']
+            required: ['itemId', 'quantity']
           }
         },
         orderNotes: { type: 'string', description: 'Order notes (optional)' },
-        orderType: { type: 'string', enum: ['delivery', 'dine_in', 'pickup'], description: 'Order type (optional — already saved from request_confirmation step).' },
+        orderType: { type: 'string', enum: ['delivery', 'dine_in', 'pickup'], description: 'Order type: delivery, dine_in, or pickup. REQUIRED — ask the customer if not yet known.' },
         deliveryAddress: { type: 'string', description: 'Full delivery address. REQUIRED if orderType is delivery.' },
         deliveryNotes: { type: 'string', description: 'Delivery instructions like gate code (optional)' },
         contactPhone: { type: 'string', description: 'Contact number for delivery driver (optional)' }
       },
-      required: ['items']
+      required: ['items', 'orderType']
     }
   },
   {

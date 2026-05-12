@@ -5,11 +5,10 @@ import { generateOrderReferenceId } from '../lib/order-ref.js';
 import { getCartState } from '../services/ai-engine/cart-state.js';
 
 export interface OrderItemInput {
-  name: string;
+  itemId: string;
   quantity: number;
   notes?: string;
   optionName?: string;
-  totalPrice: number;
 }
 
 export interface SubmitOrderParams {
@@ -21,112 +20,21 @@ export interface SubmitOrderParams {
   contactPhone?: string;
 }
 
-// Arabic-aware normalization for fuzzy matching
-function normalizeArabic(s: string): string {
-  return s
-    .toLowerCase()
-    .replace(/[أإآ]/g, 'ا')
-    .replace(/ة/g, 'ه')
-    .replace(/ى/g, 'ي')
-    .replace(/[^\u0600-\u06FFa-z0-9\s]/g, '')
-    .replace(/\s+/g, ' ')
-    .trim();
-}
-
-function fuzzyMatch(itemName: string | undefined, menuName: string): boolean {
-  if (!itemName) return false;
-  const normalize = (s: string) => normalizeArabic(s);
-
-  const a = normalize(itemName);
-  const b = normalize(menuName);
-
-  if (!a || !b) return false;
-
-  // Exact match
-  if (a === b) return true;
-
-  // Contains match
-  if (a.includes(b) || b.includes(a)) return true;
-
-  // Word overlap match
-  const wordsA = a.split(/\s+/).filter(Boolean);
-  const wordsB = b.split(/\s+/).filter(Boolean);
-  const overlap = wordsA.filter((w) => wordsB.some((wb) => wb.includes(w) || w.includes(wb)));
-
-  return overlap.length > 0;
-}
-
-// Strip parenthetical translations like "Mixed Grill (مشويات مشكلة)" → "مشويات مشكلة"
-function stripParenthetical(s: string): string {
-  return s
-    .replace(/\([^)]*\)/g, '')
-    .replace(/\s+/g, ' ')
-    .trim();
-}
-
-interface MenuItemWithOptions {
-  id: string;
-  name: string;
-  nameAr: string | null;
-  basePrice: number | null;
-  options?: Array<{
-    id: string;
-    name: string;
-    price: number;
-  }>;
-}
-
-function findBestMatch(
-  itemName: string,
-  menuItems: Array<{ id: string; name: string; nameAr: string | null; basePrice: number | null }>
-): typeof menuItems[0] | undefined {
-  const cleanedItem = stripParenthetical(itemName);
-
-  // 1. Exact match on name or nameAr (with cleaned item name)
-  const exact = menuItems.find(
-    (mi) => mi.name === cleanedItem || mi.name === itemName || mi.nameAr === cleanedItem || mi.nameAr === itemName
-  );
-  if (exact) return exact;
-
-  // 2. Fuzzy match against both name and nameAr (with cleaned item name)
-  for (const mi of menuItems) {
-    if (fuzzyMatch(cleanedItem, mi.name)) return mi;
-    if (fuzzyMatch(itemName, mi.name)) return mi;
-    if (mi.nameAr && fuzzyMatch(cleanedItem, mi.nameAr)) return mi;
-    if (mi.nameAr && fuzzyMatch(itemName, mi.nameAr)) return mi;
-  }
-
-  return undefined;
-}
-
-// Find an option by name using fuzzy matching
 function findOption(
   optionName: string,
-  options: MenuItemWithOptions['options']
+  options: Array<{ id: string; name: string; price: number }>
 ): { id: string; name: string; price: number } | undefined {
   if (!options || options.length === 0) return undefined;
 
-  const cleanedOptionName = stripParenthetical(optionName);
+  const exact = options.find((opt) => opt.name === optionName);
+  if (exact) return exact;
 
-  // First try exact match on name
-  for (const opt of options) {
-    if (opt.name === cleanedOptionName || opt.name === optionName) {
-      return opt;
-    }
-  }
-
-  // Then try fuzzy match
-  for (const opt of options) {
-    if (fuzzyMatch(cleanedOptionName, opt.name)) return opt;
-    if (fuzzyMatch(optionName, opt.name)) return opt;
-  }
-
-  return undefined;
+  const lowered = optionName.toLowerCase().trim();
+  return options.find((opt) => opt.name.toLowerCase().trim() === lowered);
 }
 
-// Get available options as a formatted string
 function getAvailableOptions(
-  options: MenuItemWithOptions['options']
+  options: Array<{ id: string; name: string; price: number }>
 ): string {
   if (!options || options.length === 0) return '';
 
@@ -159,86 +67,68 @@ export async function handleSubmitOrder(
       }
     }
 
-    // Get all available menu items for matching, including options
+    // Fetch menu items by ID
+    const itemIds = items.map((i) => i.itemId);
     const menuItems = await prisma.menuItem.findMany({
       where: {
-        category: {
-          businessId,
-        },
+        id: { in: itemIds },
+        category: { businessId },
         available: true,
       },
-      include: {
-        options: true,
-      },
+      include: { options: true },
     });
 
-    // Match items to menu
-    const matchedItems: Array<{
-      menuItem: MenuItemWithOptions;
-      quantity: number;
-      notes?: string;
-      option?: {
-        id: string;
-        name: string;
-        price: number;
-      };
-    }> = [];
-
-    const unmatched: string[] = [];
-
-    for (const item of items) {
-      // First find the best menu item match
-      const baseMenuItems = menuItems.map(({ options, basePrice, ...mi }) => ({ ...mi, basePrice }));
-      const matched = findBestMatch(item.name, baseMenuItems);
-
-      if (matched) {
-        // Find the full menu item with options
-        const fullMenuItem = menuItems.find((mi) => mi.id === matched.id);
-        if (!fullMenuItem) {
-          unmatched.push(item.name);
-          continue;
-        }
-
-        // If option name is provided, try to match it
-        let option: { id: string; name: string; price: number } | undefined;
-
-        if (item.optionName) {
-          // Check if menu item has options
-          if (!fullMenuItem.options || fullMenuItem.options.length === 0) {
-            console.error('[SubmitOrder] Option requested for item with no options', { businessId, customerId, itemName: item.name, optionName: item.optionName });
-            return `Item '${item.name}' does not have options. Please remove the option '${item.optionName}' and try again.`;
-          }
-
-          option = findOption(
-            item.optionName,
-            fullMenuItem.options
-          );
-
-          if (!option) {
-            const availableOptions = getAvailableOptions(fullMenuItem.options);
-            console.error('[SubmitOrder] Option not found', { businessId, customerId, itemName: item.name, optionName: item.optionName, availableOptions });
-            return `Could not find option '${item.optionName}' for item '${item.name}'. Available options: ${availableOptions}`;
-          }
-        } else if (fullMenuItem.options && fullMenuItem.options.length > 0) {
-          const availableOptions = getAvailableOptions(fullMenuItem.options);
-          console.error('[SubmitOrder] Option required but not provided', { businessId, customerId, itemName: item.name, availableOptions });
-          return `Please specify an option for '${item.name}'. Available options: ${availableOptions}`;
-        }
-
-        matchedItems.push({
-          menuItem: fullMenuItem,
-          quantity: item.quantity,
-          notes: item.notes,
-          option,
-        });
-      } else {
-        unmatched.push(item.name);
-      }
+    if (menuItems.length !== itemIds.length) {
+      const foundIds = new Set(menuItems.map((m) => m.id));
+      const missingIds = itemIds.filter((id) => !foundIds.has(id));
+      console.error('[SubmitOrder] Items not found or unavailable', { businessId, customerId, missingIds });
+      return `Some items were not found or are unavailable. Please check the menu and try again (IDs: ${missingIds.join(', ')}).`;
     }
 
-    if (unmatched.length > 0) {
-      console.error('[SubmitOrder] Items not found in menu', { businessId, customerId, unmatched, items });
-      return `Could not find: ${unmatched.join(', ')}. Please check the menu and try again.`;
+    // Map menu items by ID for O(1) lookup
+    const menuItemById = new Map(menuItems.map((m) => [m.id, m]));
+
+    const matchedItems: Array<{
+      menuItem: typeof menuItems[0];
+      quantity: number;
+      notes?: string;
+      option?: { id: string; name: string; price: number };
+    }> = [];
+
+    for (const item of items) {
+      const menuItem = menuItemById.get(item.itemId);
+      if (!menuItem) {
+        console.error('[SubmitOrder] Item not found in fetched set', { businessId, customerId, itemId: item.itemId });
+        return `Item was not found. Please check the menu and try again.`;
+      }
+
+      let option: { id: string; name: string; price: number } | undefined;
+
+      if (item.optionName) {
+        if (!menuItem.options || menuItem.options.length === 0) {
+          console.error('[SubmitOrder] Option requested for item with no options', { businessId, customerId, itemId: item.itemId, optionName: item.optionName });
+          return `Item '${menuItem.name}' does not have options. Please remove the option '${item.optionName}' and try again.`;
+        }
+
+        option = findOption(item.optionName, menuItem.options);
+
+        if (!option) {
+          const availableOptions = getAvailableOptions(menuItem.options);
+          console.error('[SubmitOrder] Option not found', { businessId, customerId, itemId: item.itemId, optionName: item.optionName, availableOptions });
+          return `Could not find option '${item.optionName}' for item '${menuItem.name}'. Available options: ${availableOptions}`;
+        }
+      } else if (menuItem.options && menuItem.options.length > 0) {
+        const availableOptions = getAvailableOptions(menuItem.options);
+        console.error('[SubmitOrder] Option required but not provided', { businessId, customerId, itemId: item.itemId, availableOptions });
+        return `Please specify an option for '${menuItem.name}'. Available options: ${availableOptions}`;
+      }
+
+      matchedItems.push({
+        menuItem,
+        quantity: item.quantity,
+        notes: item.notes,
+        option,
+      });
     }
 
     if (matchedItems.length === 0) {

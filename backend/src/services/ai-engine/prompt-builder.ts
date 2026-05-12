@@ -77,9 +77,8 @@ export function buildSystemPrompt(params: {
       ? `${step++}. IF delivery: ask customer to share their location on WhatsApp (send a pin), or type their address manually. When location is shared, you'll receive [Location shared: lat,lng]. Call set_delivery_address with the coordinates. When address is typed, call set_delivery_address with the address text.`
       : `${step++}. IF delivery: unavailable for this restaurant. Say so.`);
     workflowSteps.push(`${step++}. query_menu to browse items. If item has options, MUST ask which.`);
-    workflowSteps.push(`${step++}. Customer done → call request_confirmation(orderType="xxx") — you MUST provide the orderType. If you don't know it yet, ask the customer.`);
-    workflowSteps.push(`${step++}. Ask: "shall I place the order?".`);
-    workflowSteps.push(`${step++}. Customer explicitly says yes → submit_order (orderType is already saved, no need to include it).`);
+    workflowSteps.push(`${step++}. Customer done → ask: "shall I place the order?". Review the cart summary with the customer.`);
+    workflowSteps.push(`${step++}. Customer explicitly says yes → call submit_order with items, orderType, and deliveryAddress if delivery.`);
     workflowSteps.push(`${step++}. After submit: done. Don't offer repeats. New orders start fresh from step 1.`);
 
     template = `## ROLE
@@ -94,9 +93,8 @@ ${contextBlock}
 ${workflowSteps.join('\n')}
 
 ## GUARDRAILS
-- Must call request_confirmation BEFORE submit_order. submit_order will reject without it.
-- request_confirmation requires orderType — ask the customer if not yet known.
-- A bare "yes"/"ok"/"تمام" before request_confirmation means general acknowledgment — NOT order confirmation.
+- Do NOT call submit_order until the customer explicitly says yes to "shall I place the order?". A bare "yes"/"ok"/"تمام" during browsing means general acknowledgment — NOT order confirmation.
+- submit_order requires orderType — if you don't know it yet, ask the customer first.
 - Use item names from query_menu results as closely as possible.
 - If query_menu returns multiple matches: show options and ask — do NOT guess.
 - If options exist on an item: MUST ask customer which option before adding.
@@ -110,8 +108,7 @@ ${workflowSteps.join('\n')}
 - query_menu: "what do you have?" or specific item search
 - check_restaurant_info: "where are you?", "are you open?", "what payments?", "how much is delivery?"
 - set_delivery_address: pass latitude+longitude (when customer shares location) OR address text. This will resolve the address, calculate distance from restaurant, and determine delivery fee.
-- request_confirmation: customer is done — sets confirmation mode
-- submit_order: only after customer says yes to confirmation
+- submit_order: create the order — only call after customer explicitly says yes
 - check_order_status: "where is my order?"
 - file_complaint: customer reports a problem
 `;
