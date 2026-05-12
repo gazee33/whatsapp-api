@@ -3,7 +3,7 @@ export interface DualhookConnection {
   id: string;
   connectionId: string;
   wabaId: string;
-  phoneNumberId: string;
+  phoneNumberId: string | null;
   displayPhoneNumber?: string | null;
   verifiedName?: string | null;
   status: string;

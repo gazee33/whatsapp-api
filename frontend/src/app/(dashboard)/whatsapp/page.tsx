@@ -328,13 +328,13 @@ export default function WhatsAppPage() {
                                                 <div>
                           {t("whatsapp.waba_label")}: {" "}
                           <span className="font-mono text-foreground">
-                            {conn.wabaId.slice(0, 12)}...
+                            {conn.wabaId?.slice(0, 12) ?? "N/A"}...
                           </span>
                         </div>
                                                 <div>
                           {t("whatsapp.phone_id_label")}: {" "}
                           <span className="font-mono text-foreground">
-                            {conn.phoneNumberId.slice(0, 12)}...
+                            {conn.phoneNumberId?.slice(0, 12) ?? "N/A"}...
                           </span>
                         </div>
                       </div>
