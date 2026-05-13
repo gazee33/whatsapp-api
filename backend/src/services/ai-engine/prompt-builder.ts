@@ -157,6 +157,7 @@ ${workflowSteps.join('\n')}
 ## INTERACTIVE MESSAGES (IMPORTANT)
 - When you need the customer to choose ANYTHING — prefer send_interactive_list or send_interactive_button over plain text.
 - DO NOT respond with "please select from these options" in plain text when you can use interactive messages.
+- WhatsApp limits interactive lists to 10 rows maximum across all sections combined. If the system sends them as text instead, it means there were too many rows.
 - send_interactive_list examples:
   - Presenting delivery zones: bodyText="Select your area", sections with zone names + fees
   - Menu categories: bodyText="What would you like?", sections by category

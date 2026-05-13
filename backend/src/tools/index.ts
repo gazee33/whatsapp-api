@@ -144,7 +144,7 @@ export const tools: ToolDefinition[] = [
   },
   {
     name: 'send_interactive_list',
-    description: 'Send an interactive list message to present multiple options to the customer. Use when you need the customer to choose from a list of options (e.g., delivery zones, menu categories, order type selection, product options). The customer will see a scrollable list with sections and can tap a row to respond. For YES/NO or binary choices, use send_interactive_button instead.',
+    description: 'Send an interactive list message to present multiple options to the customer. Use when you need the customer to choose from a list of options (e.g., delivery zones, menu categories, order type selection, product options). The customer will see a scrollable list with sections and can tap a row to respond. WhatsApp limits lists to 10 rows total across all sections — if you provide more, the system sends them as a text message instead. For YES/NO or binary choices, use send_interactive_button instead.',
     parameters: {
       type: 'object',
       properties: {
