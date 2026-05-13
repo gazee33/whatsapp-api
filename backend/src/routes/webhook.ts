@@ -140,17 +140,19 @@ router.post('/', async (req: Request, res: Response) => {
     const text = message.text?.body || '';
     const location = message.location;
 
-    // Extract contact name from the contacts array (not from message object)
-    const contacts = changes.contacts || [];
-    const contact = contacts.find((c: any) => c.wa_id === from);
-    const name = contact?.profile?.name || 'Customer';
-
-    if (!text && !location) {
-      return res.sendStatus(200);
+    let effectiveText = text;
+    const interactive = (message as any).interactive;
+    if (interactive) {
+      if (interactive.type === 'button_reply') {
+        effectiveText = `[BUTTON: ${interactive.button_reply.id}] ${interactive.button_reply.title}`;
+      } else if (interactive.type === 'list_reply') {
+        effectiveText = `[LIST: ${interactive.list_reply.id}] ${interactive.list_reply.title}`;
+      } else {
+        console.warn(`[Webhook] Unknown interactive type: ${interactive.type} — falling back to empty, will be skipped`);
+        effectiveText = '';
+      }
     }
 
-    // Build text from location message if no text is provided
-    let effectiveText = text;
     let locationData: { latitude: number; longitude: number; name?: string; address?: string } | undefined;
 
     if (location) {
@@ -161,7 +163,13 @@ router.post('/', async (req: Request, res: Response) => {
         address: location.address,
       };
       effectiveText = text || '📍 Share my location';
+    } else if (!effectiveText && !interactive) {
+      return res.sendStatus(200);
     }
+
+    const contacts = changes.contacts || [];
+    const contact = contacts.find((c: any) => c.wa_id === from);
+    const name = contact?.profile?.name || 'Customer';
 
     // Find business by API key (simulator) or phone_number_id (real webhook)
     let business;

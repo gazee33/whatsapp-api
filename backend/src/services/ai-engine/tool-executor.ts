@@ -9,6 +9,9 @@ import { handleAddToCart } from '../../tools/add-to-cart.js';
 import { handleUpdateCart } from '../../tools/update-cart.js';
 import { handleRemoveFromCart } from '../../tools/remove-from-cart.js';
 import { handleFlagCustomer } from '../../tools/flag-customer.js';
+import { sendInteractiveList } from '../../tools/send-interactive-list.js';
+import { sendInteractiveButton } from '../../tools/send-interactive-button.js';
+import { sendTemplateMessage } from '../../tools/send-template-message.js';
 import type { RemoveFromCartParams } from '../../tools/remove-from-cart.js';
 import type { QueryMenuParams } from '../../tools/query-menu.js';
 import type { SubmitOrderParams } from '../../tools/submit-order.js';
@@ -190,6 +193,63 @@ export async function executeTool(params: {
         success: execResult.success,
         result: execResult.result,
         errorCode: execResult.success ? undefined : 'FLAG_CUSTOMER_FAILED',
+      };
+    }
+
+    case 'send_interactive_list': {
+      const { headerText, bodyText, footerText, buttonText, sections } = toolCall.arguments as any;
+      const result = await sendInteractiveList({
+        businessId,
+        customerId,
+        headerText,
+        bodyText,
+        footerText,
+        buttonText,
+        sections,
+      });
+      return {
+        success: result.success,
+        result: result.success
+          ? `Interactive list sent successfully. Customer will receive the options and can select from the list.`
+          : `Failed to send interactive list: ${result.error}`,
+        errorCode: result.success ? undefined : 'INTERACTIVE_LIST_FAILED',
+      };
+    }
+
+    case 'send_interactive_button': {
+      const { headerText, bodyText, footerText, buttons } = toolCall.arguments as any;
+      const result = await sendInteractiveButton({
+        businessId,
+        customerId,
+        headerText,
+        bodyText,
+        footerText,
+        buttons,
+      });
+      return {
+        success: result.success,
+        result: result.success
+          ? `Interactive buttons sent successfully. Customer will see the options and can tap to respond.`
+          : `Failed to send interactive button: ${result.error}`,
+        errorCode: result.success ? undefined : 'INTERACTIVE_BUTTON_FAILED',
+      };
+    }
+
+    case 'send_template_message': {
+      const { templateName, languageCode, components } = toolCall.arguments as any;
+      const result = await sendTemplateMessage({
+        businessId,
+        customerId,
+        templateName,
+        languageCode,
+        components,
+      });
+      return {
+        success: result.success,
+        result: result.success
+          ? `Template message sent successfully.`
+          : `Failed to send template message: ${result.error}`,
+        errorCode: result.success ? undefined : 'TEMPLATE_MESSAGE_FAILED',
       };
     }
 

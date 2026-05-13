@@ -20,7 +20,7 @@ model Business {
   whatsappVerifyToken   String?  @unique
   apiKey              String   @unique
   createdAt           DateTime @default(now())
-  
+
   customers    Customer[]
   categories   MenuCategory[]
   orders       Order[]
@@ -30,6 +30,7 @@ model Business {
   roles       Role[]
   auditLogs   AuditLog[]
   dualhookConnections DualhookConnection[]
+  whatsappTemplates   WhatsAppTemplate[]
 
   @@map("Business")
 }
@@ -38,23 +39,23 @@ model Business {
 
 model User {
   id           String    @id @default(cuid())
-  businessId   String?   // null = platform-level user
+  businessId   String?
   business     Business? @relation(fields: [businessId], references: [id], onDelete: Cascade)
-  
+
   email        String
   passwordHash String
   name         String?
   avatarUrl    String?
   isActive     Boolean   @default(true)
-  attributes   String?   // JSON: custom attributes for ABAC
-  
+  attributes   String?
+
   failedLoginAttempts Int  @default(0)
   lockedUntil         DateTime?
-  
+
   createdAt    DateTime  @default(now())
   updatedAt    DateTime  @updatedAt
   lastLoginAt  DateTime?
-  
+
   sessions     Session[]
   roles        UserRole[]
   auditLogs    AuditLog[]
@@ -65,12 +66,12 @@ model User {
   @@map("User")
 }
 
-// ─── PLATFORM SETTINGS ───────────────────────────────────────────────────────
+// ─── PLATFORM SETTINGS ──────────────────────────────────────────────────────
 
 model PlatformSetting {
   id          String   @id @default(cuid())
   key         String   @unique
-  value       String   // JSON-encoded value
+  value       String
   description String?
   updatedAt   DateTime @updatedAt
 
@@ -81,17 +82,17 @@ model PlatformSetting {
 
 model Role {
   id          String    @id @default(cuid())
-  businessId  String?   // NULL = global/system role; non-NULL = tenant-specific
+  businessId  String?
   business    Business? @relation(fields: [businessId], references: [id], onDelete: Cascade)
-  
+
   name        String
   description String?
   isSystem    Boolean   @default(false)
-  conditions  String?   // JSON: ABAC conditions for future use
-  
+  conditions  String?
+
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
-  
+
   users       UserRole[]
   permissions RolePermission[]
 
@@ -109,7 +110,7 @@ model Permission {
   description String?
   category    String
   createdAt   DateTime @default(now())
-  
+
   roles       RolePermission[]
 
   @@map("Permission")
@@ -153,12 +154,12 @@ model Session {
   id           String    @id @default(cuid())
   userId       String
   user         User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  
+
   refreshToken String    @unique
   deviceInfo   String?
   ipAddress    String?
   expiresAt    DateTime
-  
+
   createdAt    DateTime  @default(now())
   revokedAt    DateTime?
 
@@ -175,15 +176,15 @@ model AuditLog {
   business    Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
   userId      String?
   user        User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
-  
+
   action      String
   resource    String?
   resourceId  String?
   details     String?
-  
+
   ipAddress   String?
   userAgent   String?
-  
+
   createdAt   DateTime @default(now())
 
   @@index([businessId])
@@ -206,20 +207,17 @@ model DualhookConnection {
   displayPhoneNumber String?
   verifiedName     String?
 
-  status           String   @default("active")        // active, disconnected
-  connectionMode   String?                             // coexistence, cloud_api, unknown
+  status           String   @default("active")
+  connectionMode   String?
 
-  // Coexistence heartbeat
-  heartbeatStatus  String?                             // OK, DUE_SOON, OVERDUE
+  heartbeatStatus  String?
   heartbeatLastConfirmedAt DateTime?
   heartbeatNextDueAt      DateTime?
 
-  // Webhook config
   webhookUrl       String?
   webhookVerifyToken String?
 
-  // Onboarding session metadata (round-tripped)
-  metadata         String?                             // JSON
+  metadata         String?
 
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt
@@ -229,7 +227,30 @@ model DualhookConnection {
   @@map("DualhookConnection")
 }
 
-// ─── EXISTING MODELS (unchanged) ────────────────────────────────────────────
+// ─── WHATSAPP TEMPLATE ──────────────────────────────────────────────────────
+
+model WhatsAppTemplate {
+  id           String   @id @default(cuid())
+  businessId   String
+  business     Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+
+  metaTemplateId String?
+  name         String
+  category     String
+  language     String
+  status       String   @default("PENDING")
+  components   String?
+
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@unique([businessId, name])
+  @@index([businessId])
+  @@index([status])
+  @@map("WhatsAppTemplate")
+}
+
+// ─── EXISTING MODELS ────────────────────────────────────────────────────────
 
 model Customer {
   id                 String   @id @default(cuid())
@@ -368,22 +389,18 @@ model RestaurantSettings {
   aiRules     String  @default("")
   currency    String  @default("SAR")
 
-  // Location
   address      String?
   latitude     Float?
   longitude    Float?
   phoneNumber  String?
 
-  // Order types
   deliveryEnabled Boolean @default(false)
   dineInEnabled    Boolean @default(true)
   pickupEnabled    Boolean @default(true)
 
-  // Delivery pricing (distance-based)
-  deliveryTiers          String?   // JSON: [{"maxKm":3,"fee":5},{"maxKm":7,"fee":10},{"maxKm":10,"fee":15}]
+  deliveryTiers          String?
   maxDeliveryDistanceKm  Float?
 
-  // Operations
   estimatedPrepTimeMinutes Int?
   paymentMethods           String  @default("[\"cash\",\"card\"]")
   isTemporarilyClosed      Boolean @default(false)

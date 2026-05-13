@@ -202,6 +202,54 @@ async function handleHeartbeatEvent(
   console.log(`[DualhookEvent] Heartbeat ${event} for ${connectionId}: ${heartbeatStatus}`);
 }
 
+async function handleTemplateStatusUpdate(data: Record<string, unknown>) {
+  const wabaId = data.wabaId as string | undefined;
+  const templateId = data.templateId as string | undefined;
+  const templateName = data.templateName as string | undefined;
+  const event = data.event as string | undefined;
+
+  if (!wabaId || !templateName) {
+    console.warn('[DualhookEvent] Missing wabaId or templateName in template status update');
+    return;
+  }
+
+  const statusMap: Record<string, string> = {
+    'template_submitted': 'PENDING',
+    'template_approved': 'APPROVED',
+    'template_rejected': 'REJECTED',
+    'template_disabled': 'DISABLED',
+    'template_flagged': 'FLAGGED',
+    'template_in_appeal': 'IN_APPEAL',
+  };
+
+  const newStatus = event ? (statusMap[event] || 'PENDING') : 'PENDING';
+
+  if (templateId) {
+    await prisma.whatsAppTemplate.updateMany({
+      where: { metaTemplateId: templateId },
+      data: { status: newStatus },
+    });
+  } else if (templateName) {
+    const conn = await prisma.dualhookConnection.findFirst({
+      where: { wabaId },
+    });
+    if (conn) {
+      await prisma.whatsAppTemplate.updateMany({
+        where: { businessId: conn.businessId, name: templateName },
+        data: { status: newStatus },
+      });
+    }
+  }
+
+  console.log(`[DualhookEvent] Template status update: ${templateName} -> ${newStatus}`);
+}
+
+async function handleTemplateQualityUpdate(data: Record<string, unknown>) {
+  const templateName = data.templateName as string | undefined;
+  const qualityScore = data.qualityScore as string | undefined;
+  console.log(`[DualhookEvent] Template quality update: ${templateName}, score: ${qualityScore}`);
+}
+
 // ─── Route ───────────────────────────────────────────────────────────────────
 
 router.post('/', async (req: Request, res: Response) => {
@@ -259,6 +307,12 @@ router.post('/', async (req: Request, res: Response) => {
       case 'connection.heartbeat.overdue':
       case 'connection.heartbeat.confirmed':
         await handleHeartbeatEvent(event, data);
+        break;
+      case 'message_template_status_update':
+        await handleTemplateStatusUpdate(data);
+        break;
+      case 'message_template_quality_update':
+        await handleTemplateQualityUpdate(data);
         break;
       default:
         console.log(`[DualhookEvent] Unhandled event type: ${event}`);

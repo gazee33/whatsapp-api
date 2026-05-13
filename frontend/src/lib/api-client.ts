@@ -123,3 +123,33 @@ export function initApiClients() {
 }
 
 export { tenantClient, platformClient, API_BASE };
+
+export class ApiClient {
+  async listTemplates(status?: string) {
+    const params = status ? `?status=${status}` : "";
+    const res = await tenantClient.get(`/templates${params}`);
+    return res.data;
+  }
+
+  async getTemplate(id: string) {
+    const res = await tenantClient.get(`/templates/${id}`);
+    return res.data;
+  }
+
+  async createTemplate(data: {
+    name: string;
+    category: string;
+    language: string;
+    components: any[];
+  }) {
+    const res = await tenantClient.post("/templates", data);
+    return res.data;
+  }
+
+  async deleteTemplate(id: string) {
+    const res = await tenantClient.delete(`/templates/${id}`);
+    return res.data;
+  }
+}
+
+export const apiClient = new ApiClient();

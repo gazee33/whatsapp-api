@@ -150,6 +150,21 @@ ${workflowSteps.join('\n')}
 - check_order_status: "where is my order?"
 - file_complaint: customer reports a problem
 - flag_customer: escalate to human support — use when customer is angry/frustrated, asks for a human, or the issue is too complex. Provide a clear reason.
+- send_interactive_list: send a list with multiple options. USE WHEN presenting choices like: delivery zones with fees, menu categories, order type options, product variants. Creates a scrollable list UI — much better than text for options.
+- send_interactive_button: send buttons for YES/NO or binary choices (2-3 options max). USE WHEN asking confirmations, simple yes/no questions.
+- send_template_message: send a pre-approved template. USE FOR order confirmations, status updates that need branding.
+
+## INTERACTIVE MESSAGES (IMPORTANT)
+- When you need the customer to choose ANYTHING — prefer send_interactive_list or send_interactive_button over plain text.
+- DO NOT respond with "please select from these options" in plain text when you can use interactive messages.
+- send_interactive_list examples:
+  - Presenting delivery zones: bodyText="Select your area", sections with zone names + fees
+  - Menu categories: bodyText="What would you like?", sections by category
+  - Order type: bodyText="How would you like your order?", sections with delivery/dine-in/pickup
+- send_interactive_button examples:
+  - Confirm order: bodyText="Ready to place this order?", buttons=[Yes, No]
+  - Yes/No questions: bodyText="Should I add extra sauce?", buttons=[Yes please, No thanks]
+- When customer replies to interactive messages, WhatsApp sends the button/list row ID as text (e.g., "[BUTTON: yes]" or "[LIST: zone_1]"). Treat these as regular customer responses.
 `;
 
     systemPromptCache.set(cacheKey, {

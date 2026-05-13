@@ -133,13 +133,109 @@ export const tools: ToolDefinition[] = [
   },
   {
     name: 'flag_customer',
-    description: 'Flag this customer for human support. Use when: the customer is angry, frustrated, or explicitly asks to speak to a human; the issue is too complex for the AI (billing disputes, unresolved refunds, safety concerns); or the AI has exhausted its ability to help. Once flagged, the AI will stop responding to this customer — all future messages go to human agents. Call this and then tell the customer a support agent will follow up shortly.',
+    description: 'Flag this customer for human support. Use when: the customer is angry, frustrated, or explicitly asks to speak to a human/manager; the issue is too complex for the AI (billing disputes, unresolved refunds, safety concerns); or the AI has exhausted its ability to help. Once flagged, the AI will stop responding to this customer — all future messages go to human agents. Call this and then tell the customer a support agent will follow up shortly.',
     parameters: {
       type: 'object',
       properties: {
         reason: { type: 'string', description: 'Brief reason this customer needs human support (e.g., "customer frustrated with delivery delay", "customer asked to speak to a manager", "complex billing dispute the AI cannot resolve")' }
       },
       required: ['reason']
+    }
+  },
+  {
+    name: 'send_interactive_list',
+    description: 'Send an interactive list message to present multiple options to the customer. Use when you need the customer to choose from a list of options (e.g., delivery zones, menu categories, order type selection, product options). The customer will see a scrollable list with sections and can tap a row to respond. For YES/NO or binary choices, use send_interactive_button instead.',
+    parameters: {
+      type: 'object',
+      properties: {
+        headerText: { type: 'string', description: 'Optional header text above the list' },
+        bodyText: { type: 'string', description: 'Body text describing the list (required)' },
+        footerText: { type: 'string', description: 'Optional footer text below the list' },
+        buttonText: { type: 'string', description: 'Text on the button that opens the list (e.g., "Select option", "Choose here")' },
+        sections: {
+          type: 'array',
+          description: 'Array of sections, each with a title and rows',
+          items: {
+            type: 'object',
+            properties: {
+              title: { type: 'string', description: 'Section title' },
+              rows: {
+                type: 'array',
+                items: {
+                  type: 'object',
+                  properties: {
+                    id: { type: 'string', description: 'Unique ID for this row (will be sent back when customer taps)' },
+                    title: { type: 'string', description: 'Row title' },
+                    description: { type: 'string', description: 'Optional row description' }
+                  },
+                  required: ['id', 'title']
+                }
+              }
+            },
+            required: ['title', 'rows']
+          }
+        }
+      },
+      required: ['bodyText', 'buttonText', 'sections']
+    }
+  },
+  {
+    name: 'send_interactive_button',
+    description: 'Send an interactive button message for simple YES/NO or binary choices. Use for confirmations, yes/no questions, or choosing between 2-3 options. Shows 1-3 buttons the customer can tap. For lists with more than 3 options or hierarchical choices, use send_interactive_list instead.',
+    parameters: {
+      type: 'object',
+      properties: {
+        headerText: { type: 'string', description: 'Optional header text' },
+        bodyText: { type: 'string', description: 'Body text describing the choice (required)' },
+        footerText: { type: 'string', description: 'Optional footer text' },
+        buttons: {
+          type: 'array',
+          description: 'Array of buttons (1-3 buttons)',
+          items: {
+            type: 'object',
+            properties: {
+              id: { type: 'string', description: 'Unique ID (will be sent back when customer taps)' },
+              title: { type: 'string', description: 'Button title (max 25 chars)' }
+            },
+            required: ['id', 'title']
+          }
+        }
+      },
+      required: ['bodyText', 'buttons']
+    }
+  },
+  {
+    name: 'send_template_message',
+    description: 'Send a pre-approved WhatsApp template message. Use for order confirmations, status updates, and branded notifications. Template must be pre-approved in Meta Business Manager. Returns error if template is not approved or language is not supported.',
+    parameters: {
+      type: 'object',
+      properties: {
+        templateName: { type: 'string', description: 'Name of the template (e.g., "order_confirmation", "order_ready")' },
+        languageCode: { type: 'string', description: 'Template language code (default: "en_US")' },
+        components: {
+          type: 'array',
+          description: 'Template components with parameters',
+          items: {
+            type: 'object',
+            properties: {
+              type: { type: 'string', enum: ['header', 'body', 'footer', 'buttons'] },
+              parameters: {
+                type: 'array',
+                items: {
+                  type: 'object',
+                  properties: {
+                    type: { type: 'string', const: 'text' },
+                    text: { type: 'string' }
+                  },
+                  required: ['type', 'text']
+                }
+              }
+            },
+            required: ['type']
+          }
+        }
+      },
+      required: ['templateName']
     }
   }
 ];
