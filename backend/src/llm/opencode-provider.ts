@@ -77,64 +77,79 @@ export class OpencodeProvider implements LLMProvider {
       }));
     }
 
-    console.log(`[Opencode] Calling model=${this.model}, messages=${messages.length}, tools=${tools.length}`);
+    const MAX_ATTEMPTS = 2;
+    const TIMEOUT_MS = 60000;
 
-    const response = await fetch(`${this.baseUrl}/chat/completions`, {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${this.apiKey}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(requestBody),
-      signal: AbortSignal.timeout(30000),
-    });
+    for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
+      try {
+        console.log(`[Opencode] Calling model=${this.model}, messages=${messages.length}, tools=${tools.length} (attempt ${attempt}/${MAX_ATTEMPTS})`);
 
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error(`[Opencode] API error (model=${this.model}, status=${response.status}): ${errorText}`);
-      throw new Error(`OpenCode API error ${response.status} (model=${this.model}): ${errorText.substring(0, 300)}`);
-    }
+        const response = await fetch(`${this.baseUrl}/chat/completions`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${this.apiKey}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(requestBody),
+          signal: AbortSignal.timeout(TIMEOUT_MS),
+        });
 
-    const data = await response.json() as {
-      choices: Array<{
-        message: {
-          content: string | null;
-          reasoning_content?: string;
-          tool_calls?: Array<{
-            id: string;
-            function: {
-              name: string;
-              arguments: string;
+        if (!response.ok) {
+          const errorText = await response.text();
+          console.error(`[Opencode] API error (model=${this.model}, status=${response.status}): ${errorText}`);
+          throw new Error(`OpenCode API error ${response.status} (model=${this.model}): ${errorText.substring(0, 300)}`);
+        }
+
+        const data = await response.json() as {
+          choices: Array<{
+            message: {
+              content: string | null;
+              reasoning_content?: string;
+              tool_calls?: Array<{
+                id: string;
+                function: {
+                  name: string;
+                  arguments: string;
+                };
+              }>;
             };
           }>;
         };
-      }>;
-    };
 
-    const choice = data.choices?.[0];
-    if (!choice) {
-      throw new Error('OpenCode API returned no choices');
+        const choice = data.choices?.[0];
+        if (!choice) {
+          throw new Error('OpenCode API returned no choices');
+        }
+
+        const content = choice.message.content || null;
+        const reasoningContent = choice.message.reasoning_content || undefined;
+        const toolCalls = choice.message.tool_calls?.map(tc => {
+          let parsedArgs: Record<string, unknown>;
+          try {
+            parsedArgs = typeof tc.function.arguments === 'string'
+              ? JSON.parse(tc.function.arguments)
+              : tc.function.arguments;
+          } catch {
+            parsedArgs = {};
+          }
+
+          return {
+            id: tc.id,
+            name: tc.function.name,
+            arguments: parsedArgs,
+          };
+        }) || [];
+
+        return { content, toolCalls, reasoningContent };
+      } catch (error: any) {
+        const isTimeout = error?.name === 'TimeoutError' || error?.name === 'AbortError';
+        if (!isTimeout || attempt === MAX_ATTEMPTS) {
+          throw error;
+        }
+        console.warn(`[Opencode] Timeout on attempt ${attempt}/${MAX_ATTEMPTS}, retrying... (messages=${messages.length}, tools=${tools.length})`);
+      }
     }
 
-    const content = choice.message.content || null;
-    const reasoningContent = choice.message.reasoning_content || undefined;
-    const toolCalls = choice.message.tool_calls?.map(tc => {
-      let parsedArgs: Record<string, unknown>;
-      try {
-        parsedArgs = typeof tc.function.arguments === 'string'
-          ? JSON.parse(tc.function.arguments)
-          : tc.function.arguments;
-      } catch {
-        parsedArgs = {};
-      }
-
-      return {
-        id: tc.id,
-        name: tc.function.name,
-        arguments: parsedArgs,
-      };
-    }) || [];
-
-    return { content, toolCalls, reasoningContent };
+    throw new Error('Unreachable');
   }
 }
