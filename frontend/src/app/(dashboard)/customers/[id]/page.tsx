@@ -20,6 +20,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { SkeletonBlock, ChatSkeleton } from "@/components/shared/skeletons";
 import { EmptyState } from "@/components/shared/empty-state";
 import { StatusBadge } from "@/components/shared/status-badge";
+import { Switch } from "@/components/ui/switch";
 import { cn, formatCurrency, formatDate, formatDateShort, formatTimeAgo } from "@/lib/utils";
 import type { TimelineEntry } from "@/lib/types";
 
@@ -121,6 +122,7 @@ export default function CustomerDetailPage() {
     isLoadingTimeline,
     fetchCustomer,
     fetchTimeline,
+    toggleSupportFlag,
   } = useCrmStore();
   const [activeTab, setActiveTab] = useState("timeline");
 
@@ -352,10 +354,16 @@ export default function CustomerDetailPage() {
                       <dt className="text-muted-foreground">{t("crm.info_member_since")}</dt>
                       <dd className="font-medium">{formatDate(customer.createdAt)}</dd>
                     </div>
-                    <div className="flex justify-between">
+                    <div className="flex justify-between items-center">
                       <dt className="text-muted-foreground">{t("crm.info_flagged")}</dt>
-                      <dd className="font-medium">
-                        {customer.flaggedForSupport ? t("common.yes") : t("common.no")}
+                      <dd className="flex items-center gap-2">
+                        <Switch
+                          checked={customer.flaggedForSupport}
+                          onCheckedChange={() => toggleSupportFlag(customer.id)}
+                        />
+                        <span className="text-xs text-muted-foreground">
+                          {customer.flaggedForSupport ? t("common.yes") : t("common.no")}
+                        </span>
                       </dd>
                     </div>
                   </dl>

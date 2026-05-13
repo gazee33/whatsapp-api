@@ -214,6 +214,31 @@ router.get('/:id', async (req: Request, res: Response) => {
   }
 });
 
+router.patch('/:id/support-toggle', async (req: Request, res: Response) => {
+  try {
+    const businessId = (req as any).business.id;
+    const id = req.params.id as string;
+
+    const customer = await prisma.customer.findFirst({
+      where: { id, businessId },
+    });
+
+    if (!customer) {
+      return res.status(404).json({ error: 'Customer not found' });
+    }
+
+    const updated = await prisma.customer.update({
+      where: { id },
+      data: { flaggedForSupport: !customer.flaggedForSupport },
+    });
+
+    res.json({ flaggedForSupport: updated.flaggedForSupport });
+  } catch (error) {
+    console.error('Toggle support flag error:', error);
+    res.status(500).json({ error: 'Failed to toggle support flag' });
+  }
+});
+
 router.get('/:id/timeline', async (req: Request, res: Response) => {
   try {
     const businessId = (req as any).business.id;

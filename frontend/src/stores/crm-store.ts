@@ -19,6 +19,7 @@ interface CrmState {
   fetchCustomers: (params?: { search?: string; sort?: string }) => Promise<void>;
   fetchCustomer: (id: string) => Promise<void>;
   fetchTimeline: (id: string) => Promise<void>;
+  toggleSupportFlag: (customerId: string) => Promise<boolean>;
   setSearch: (search: string) => void;
   setSort: (sort: string) => void;
 }
@@ -66,6 +67,30 @@ export const useCrmStore = create<CrmState>((set, get) => ({
       set({ timeline: res.data, isLoadingTimeline: false });
     } catch {
       set({ isLoadingTimeline: false });
+    }
+  },
+
+  toggleSupportFlag: async (customerId: string) => {
+    try {
+      const res = await tenantClient.patch(`/customers/${customerId}/support-toggle`);
+      const { flaggedForSupport } = res.data;
+      set((state) => ({
+        selectedCustomer: state.selectedCustomer
+          ? {
+              ...state.selectedCustomer,
+              customer: {
+                ...state.selectedCustomer.customer,
+                flaggedForSupport,
+              },
+            }
+          : null,
+        customers: state.customers.map((c) =>
+          c.id === customerId ? { ...c, flaggedForSupport } : c
+        ),
+      }));
+      return flaggedForSupport;
+    } catch {
+      return false;
     }
   },
 
