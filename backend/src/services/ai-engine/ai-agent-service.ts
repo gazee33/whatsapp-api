@@ -61,6 +61,7 @@ export class AIAgentService {
   }): Promise<{
     reply: string;
     orderId?: string;
+    didSendMessage?: boolean;
   }> {
     const { customerId, message, customerName, customerPhone, locationData } = params;
 
@@ -88,6 +89,7 @@ export class AIAgentService {
     const language = cartState.language ?? (context.defaultLanguage === 'ar' ? 'ar' : 'en') as SupportedLanguage;
 
     let createdOrderId: string | undefined;
+    let didSendMessage = false;
 
     await logDebugEntry(customerId, sessionId, DebugStep.Decision, {
       timestamp: new Date().toISOString(),
@@ -313,6 +315,10 @@ export class AIAgentService {
           createdOrderId = execution.createdOrderId;
         }
 
+        if (execution.success && ['send_interactive_list', 'send_interactive_button', 'send_template_message'].includes(toolCall.name)) {
+          didSendMessage = true;
+        }
+
         await logDebugEntry(
           customerId,
           sessionId,
@@ -387,6 +393,7 @@ export class AIAgentService {
     return {
       reply: finalResponse,
       orderId: createdOrderId,
+      didSendMessage,
     };
   }
 }

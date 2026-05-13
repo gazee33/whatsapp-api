@@ -16,7 +16,7 @@ export async function processMessage(
   customer: Customer,
   text: string,
   locationData?: LocationData,
-): Promise<string> {
+): Promise<{ reply: string; orderId?: string; didSendMessage?: boolean }> {
   const llmProvider = createLLMProvider();
   const agent = new AIAgentService(llmProvider, business.id);
   const result = await agent.processMessage({
@@ -26,5 +26,5 @@ export async function processMessage(
     customerPhone: customer.phone,
     locationData,
   });
-  return result.reply;
+  return { reply: result.reply, orderId: result.orderId, didSendMessage: result.didSendMessage };
 }

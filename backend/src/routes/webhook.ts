@@ -325,6 +325,7 @@ router.post('/', async (req: Request, res: Response) => {
 
     // Process message with AI agent
     let reply: string;
+    let didSendMessage = false;
     let sessionId: string | undefined;
     try {
       const lastMsg = await prisma.message.findFirst({
@@ -334,8 +335,10 @@ router.post('/', async (req: Request, res: Response) => {
       sessionId = lastMsg?.sessionId;
 
       console.log(`[Webhook] Calling AI agent for customer ${customer.id}...`);
-      reply = await processMessage(business, customer, effectiveText, locationData);
-      console.log(`[Webhook] AI reply: ${reply.substring(0, 100)}`);
+      const result = await processMessage(business, customer, effectiveText, locationData);
+      reply = result.reply;
+      didSendMessage = result.didSendMessage ?? false;
+      console.log(`[Webhook] AI reply: ${reply.substring(0, 100)}${didSendMessage ? ' (message already sent via tool)' : ''}`);
     } catch (error: any) {
       const isRateLimit = error?.message?.includes('rate limit');
       console.error(`[Webhook] AI agent error: ${error?.message}`);
@@ -362,17 +365,21 @@ router.post('/', async (req: Request, res: Response) => {
       }
     }
 
-    // Send the reply back to WhatsApp (only if onboarding is complete)
-    console.log(`[Webhook] Sending WhatsApp reply to ${from} (onboardingComplete=${onboardingOK})`);
+    // Send the reply back to WhatsApp (only if onboarding is complete and AI didn't already send via a tool)
+    console.log(`[Webhook] Sending WhatsApp reply to ${from} (onboardingComplete=${onboardingOK}, alreadySentViaTool=${didSendMessage})`);
     if (onboardingOK) {
-      await sendWhatsAppText({
-        business,
-        phoneNumberId,
-        to: from,
-        body: reply,
-      });
-      console.log(`[Webhook] WhatsApp send completed for customer ${customer.id}`);
-      // Record dedup only after successful processing + send, so transient failures allow retries
+      if (!didSendMessage) {
+        await sendWhatsAppText({
+          business,
+          phoneNumberId,
+          to: from,
+          body: reply,
+        });
+        console.log(`[Webhook] WhatsApp send completed for customer ${customer.id}`);
+      } else {
+        console.log(`[Webhook] AI already sent message via tool — skipping text reply`);
+      }
+      // Record dedup only after successful processing, so transient failures allow retries
       if (dedupKey) {
         processedMessages.set(dedupKey, Date.now());
       }
