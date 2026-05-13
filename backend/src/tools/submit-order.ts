@@ -78,9 +78,10 @@ export async function handleSubmitOrder(
       include: { options: true },
     });
 
-    if (menuItems.length !== itemIds.length) {
-      const foundIds = new Set(menuItems.map((m) => m.id));
-      const missingIds = itemIds.filter((id) => !foundIds.has(id));
+    const foundIds = new Set(menuItems.map((m) => m.id));
+    const missingIds = itemIds.filter((id) => !foundIds.has(id));
+
+    if (missingIds.length > 0) {
       console.error('[SubmitOrder] Items not found or unavailable', { businessId, customerId, missingIds });
       return `Some items were not found or are unavailable. Please check the menu and try again (IDs: ${missingIds.join(', ')}).`;
     }
