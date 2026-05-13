@@ -8,6 +8,7 @@ import { handleSetDeliveryAddress } from '../../tools/set-delivery-address.js';
 import { handleAddToCart } from '../../tools/add-to-cart.js';
 import { handleUpdateCart } from '../../tools/update-cart.js';
 import { handleRemoveFromCart } from '../../tools/remove-from-cart.js';
+import { handleFlagCustomer } from '../../tools/flag-customer.js';
 import type { RemoveFromCartParams } from '../../tools/remove-from-cart.js';
 import type { QueryMenuParams } from '../../tools/query-menu.js';
 import type { SubmitOrderParams } from '../../tools/submit-order.js';
@@ -17,6 +18,7 @@ import type { CheckRestaurantInfoParams } from '../../tools/check-restaurant-inf
 import type { SetDeliveryAddressParams } from '../../tools/set-delivery-address.js';
 import type { AddToCartParams } from '../../tools/add-to-cart.js';
 import type { UpdateCartParams } from '../../tools/update-cart.js';
+import type { FlagCustomerParams } from '../../tools/flag-customer.js';
 import { type CartState, emptyCartState } from './cart-state.js';
 
 export interface ToolExecutionResult {
@@ -178,6 +180,16 @@ export async function executeTool(params: {
         result: execResult.result,
         errorCode: execResult.success ? undefined : 'INVALID_DELIVERY_ADDRESS',
         cartState: execResult.success ? execResult.cartState : cartState,
+      };
+    }
+
+    case 'flag_customer': {
+      const toolParams = normalizeToolArgs<FlagCustomerParams>(toolCall.arguments);
+      const execResult = await handleFlagCustomer(businessId, customerId, toolParams);
+      return {
+        success: execResult.success,
+        result: execResult.result,
+        errorCode: execResult.success ? undefined : 'FLAG_CUSTOMER_FAILED',
       };
     }
 

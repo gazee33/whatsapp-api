@@ -130,5 +130,16 @@ export const tools: ToolDefinition[] = [
       },
       required: ['content']
     }
+  },
+  {
+    name: 'flag_customer',
+    description: 'Flag this customer for human support. Use when: the customer is angry, frustrated, or explicitly asks to speak to a human; the issue is too complex for the AI (billing disputes, unresolved refunds, safety concerns); or the AI has exhausted its ability to help. Once flagged, the AI will stop responding to this customer — all future messages go to human agents. Call this and then tell the customer a support agent will follow up shortly.',
+    parameters: {
+      type: 'object',
+      properties: {
+        reason: { type: 'string', description: 'Brief reason this customer needs human support (e.g., "customer frustrated with delivery delay", "customer asked to speak to a manager", "complex billing dispute the AI cannot resolve")' }
+      },
+      required: ['reason']
+    }
   }
 ];

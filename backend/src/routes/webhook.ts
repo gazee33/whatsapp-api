@@ -293,6 +293,20 @@ router.post('/', async (req: Request, res: Response) => {
     customerLocks.add(customer.id);
     lockedCustomerId = customer.id;
 
+    // Skip AI processing if customer is flagged for human support
+    if (customer.flaggedForSupport) {
+      console.log(`[Webhook] Customer ${customer.id} is flagged for human support — skipping AI`);
+      const io = getIO();
+      if (io) {
+        io.to(`business:${business.id}`).emit('flagged-customer-message', {
+          customerId: customer.id,
+          message: effectiveText,
+          timestamp: new Date().toISOString(),
+        });
+      }
+      return res.sendStatus(200);
+    }
+
     const onboardingOK = isOnboardingComplete(business);
     console.log(`[Webhook] Onboarding complete: ${onboardingOK} (hasPhoneId=${!!business.whatsappPhoneNumberId}, hasToken=${!!business.whatsappAccessToken})`);
 

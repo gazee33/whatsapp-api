@@ -232,16 +232,17 @@ model DualhookConnection {
 // ─── EXISTING MODELS (unchanged) ────────────────────────────────────────────
 
 model Customer {
-  id         String   @id @default(cuid())
-  businessId String
-  business   Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
-  phone      String
-  name       String?
-  cartState  String?
-  createdAt  DateTime @default(now())
-  messages   Message[]
-  orders    Order[]
-  complaints Complaint[]
+  id                 String   @id @default(cuid())
+  businessId         String
+  business           Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  phone              String
+  name               String?
+  cartState          String?
+  flaggedForSupport  Boolean  @default(false)
+  createdAt          DateTime @default(now())
+  messages           Message[]
+  orders             Order[]
+  complaints         Complaint[]
 
   @@unique([businessId, phone])
   @@index([businessId])

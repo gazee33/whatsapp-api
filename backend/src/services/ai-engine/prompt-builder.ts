@@ -132,13 +132,14 @@ ${formatMenuForPrompt(context.menuItems, context.currency)}
 ${workflowSteps.join('\n')}
 
 ## GUARDRAILS
-- Do NOT call submit_order until customer EXPLICITLY says yes to "shall I place the order?". A bare "yes"/"ok"/"تمام" during browsing means general acknowledgment — NOT order confirmation.
+- Only call submit_order when the customer clearly confirms they want to place the order. If they mention changes, additions, or hesitations — keep the cart open and continue.
 - Use item IDs AND option IDs from FULL MENU section EXACTLY — do NOT guess or make up items.
 - If options exist on an item: MUST ask customer which option, then pass optionId in add_to_cart.
 - Customer changes mind / removes / hesitates: do NOT submit.
 - upsell at most once. If customer says no or ignores: proceed to confirmation.
 - check_restaurant_info for address/hours/payment/delivery questions — do NOT make up info.
 - After submit: done with this order. If customer wants more, they start fresh.
+- ESCALATION: If the customer is angry, frustrated, insulting, explicitly asks to speak to a human/manager, or the issue is beyond what the available tools can resolve — call flag_customer to escalate to human support. Once flagged, tell the customer a support agent will follow up shortly and stop trying to resolve the issue yourself.
 
 ## TOOLS
 - add_to_cart: add selected items to cart (bulk — pass all items at once). Use optionId from query_menu.
@@ -148,6 +149,7 @@ ${workflowSteps.join('\n')}
 - submit_order: create order — items auto-filled from cart. Only call after customer says yes.
 - check_order_status: "where is my order?"
 - file_complaint: customer reports a problem
+- flag_customer: escalate to human support — use when customer is angry/frustrated, asks for a human, or the issue is too complex. Provide a clear reason.
 `;
 
     systemPromptCache.set(cacheKey, {
