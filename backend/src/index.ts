@@ -19,6 +19,7 @@ import usersRouter from './routes/users.js';
 import rolesRouter from './routes/roles.js';
 import permissionsRouter from './routes/permissions.js';
 import authRouter from './routes/auth.js';
+import customersRouter from './routes/customers.js';
 
 // Platform routes
 import platformBusinessesRouter from './routes/platform/businesses.js';
@@ -137,6 +138,7 @@ app.use('/api/debug', debugRouter);
 app.use('/api/users', businessContext, usersRouter);
 app.use('/api/roles', businessContext, rolesRouter);
 app.use('/api/permissions', businessContext, permissionsRouter);
+app.use('/api/customers', businessContext, customersRouter);
 
 // Platform routes (requires JWT + platform-level access)
 app.use('/api/platform/businesses', platformContext, platformBusinessesRouter);

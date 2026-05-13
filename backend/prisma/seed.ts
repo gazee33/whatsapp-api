@@ -46,6 +46,7 @@ async function main() {
     { code: 'settings:read', name: 'View Settings', description: 'View business settings', category: 'settings' },
     { code: 'settings:update', name: 'Update Settings', description: 'Edit business settings', category: 'settings' },
     { code: 'conversations:read', name: 'View Conversations', description: 'View chat conversations', category: 'conversations' },
+    { code: 'crm:read', name: 'View CRM', description: 'View customer profiles and timeline', category: 'crm' },
     { code: 'conversations:send', name: 'Send Messages', description: 'Send messages to customers', category: 'conversations' },
     { code: 'conversations:delete', name: 'Delete Conversations', description: 'Remove conversations', category: 'conversations' },
     { code: 'audit:read', name: 'View Audit Logs', description: 'View audit trail', category: 'audit' },

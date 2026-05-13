@@ -379,3 +379,72 @@ export interface PlatformHealth {
     totalBusinesses: number;
   };
 }
+
+// ── CRM ──
+export interface CustomerStats {
+  totalOrders: number;
+  totalSpent: number;
+  lastOrderDate: string | null;
+  favoriteItem: string | null;
+  totalMessages: number;
+  openComplaints: number;
+}
+
+export interface CustomerListItem {
+  id: string;
+  phone: string;
+  name: string | null;
+  flaggedForSupport: boolean;
+  createdAt: string;
+  stats: CustomerStats;
+}
+
+export interface CustomerProfile {
+  id: string;
+  businessId: string;
+  phone: string;
+  name: string | null;
+  flaggedForSupport: boolean;
+  cartState: string | null;
+  createdAt: string;
+}
+
+export interface CustomerDetailStats {
+  totalOrders: number;
+  totalSpent: number;
+  avgOrderValue: number;
+  lastOrderDate: string | null;
+  firstOrderDate: string | null;
+  favoriteItems: Array<{ name: string; count: number }>;
+  orderTypeBreakdown: Record<string, number>;
+  totalMessages: number;
+  lastMessageDate: string | null;
+  openComplaints: number;
+  completedOrders: number;
+}
+
+export interface TimelineEntry {
+  type: "order" | "message" | "complaint";
+  date: string;
+  data: Record<string, unknown>;
+}
+
+export interface CustomerDetailResponse {
+  customer: CustomerProfile;
+  stats: CustomerDetailStats;
+  recentOrders: Array<{
+    id: string;
+    referenceId: string;
+    status: string;
+    totalPrice: number;
+    orderType: string | null;
+    items: Array<{ name: string; quantity: number; option: { name: string; price: number } | null }>;
+    createdAt: string;
+  }>;
+  complaints: Array<{
+    id: string;
+    content: string;
+    status: string;
+    createdAt: string;
+  }>;
+}

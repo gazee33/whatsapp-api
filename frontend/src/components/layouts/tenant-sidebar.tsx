@@ -42,6 +42,7 @@ function getNavItems(t: (key: string) => string) {
     {
       section: t("sidebar.management"),
       items: [
+        { href: "/customers", label: t("sidebar.customers"), icon: Users },
         { href: "/whatsapp", label: t("sidebar.whatsapp"), icon: Radio },
         { href: "/settings", label: t("sidebar.settings"), icon: Settings },
         { href: "/users", label: t("sidebar.users"), icon: Users },
