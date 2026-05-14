@@ -1,5 +1,6 @@
 import { PrismaClient } from '@prisma/client'
 import { hashPassword } from '../dist/lib/auth.js'
+import { DEFAULT_TEMPLATE } from '../src/services/default-template.js'
 
 const prisma = new PrismaClient()
 
@@ -409,6 +410,33 @@ async function main() {
   })
 
   console.log('Created restaurant settings')
+
+  // ─────────────────────────────────────────────────────────────────────────────
+  // Platform Config
+  // ─────────────────────────────────────────────────────────────────────────────
+  console.log('Creating platform config...')
+
+  await prisma.platformConfig.deleteMany()
+
+  await prisma.platformConfig.create({
+    data: {
+      promptTemplate: DEFAULT_TEMPLATE,
+      promptVersion: '1.0',
+      defaultLLMProvider: 'gemini',
+      defaultLLMModel: 'llama-3.3-70b-versatile',
+      maxTokens: 4096,
+      temperature: 0.7,
+      maxToolIterations: 6,
+      interactiveListMessagesEnabled: true,
+      interactiveButtonsMessagesEnabled: true,
+      complaintToolEnabled: true,
+      orderStatusToolEnabled: true,
+      flagCustomerToolEnabled: true,
+      autoUpsellEnabled: false,
+    },
+  })
+
+  console.log('Created platform config')
 
   console.log('\n✅ Full seed completed successfully!')
 }

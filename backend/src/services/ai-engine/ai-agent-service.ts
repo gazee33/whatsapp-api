@@ -1,7 +1,8 @@
 import { prisma } from '../../lib/prisma.js';
 import { getHistory, saveMessage, getOrCreateSession } from '../conversation.js';
-import { tools } from '../../tools/index.js';
+import { tools as allTools } from '../../tools/index.js';
 import type { ChatMessage, LLMProvider } from '../../llm/types.js';
+import type { ToolDefinition } from '../../llm/types.js';
 import type { Business, Customer } from '@prisma/client';
 import { logDebugEntry } from '../debug.js';
 import { logError } from '../error-log.js';
@@ -14,8 +15,31 @@ import { detectLanguage, buildSystemPrompt, sanitizeToolOutput } from './prompt-
 import type { SupportedLanguage } from './cart-state.js';
 import { executeTool } from './tool-executor.js';
 import type { ToolExecutionResult } from './tool-executor.js';
+import { getPlatformConfig } from '../platform-config.js';
 
-const MAX_TOOL_ITERATIONS = 6;
+const DEFAULT_MAX_TOOL_ITERATIONS = 6;
+
+const FEATURE_FLAG_TOOLS: Record<string, string> = {
+  interactiveListMessagesEnabled: 'send_interactive_list',
+  interactiveButtonsMessagesEnabled: 'send_interactive_button',
+  complaintToolEnabled: 'file_complaint',
+  orderStatusToolEnabled: 'check_order_status',
+  flagCustomerToolEnabled: 'flag_customer',
+};
+
+function filterToolsByFeatureFlags(
+  tools: ToolDefinition[],
+  config: { [key: string]: any },
+): ToolDefinition[] {
+  return tools.filter(tool => {
+    for (const [flag, toolName] of Object.entries(FEATURE_FLAG_TOOLS)) {
+      if (tool.name === toolName && config[flag] === false) {
+        return false;
+      }
+    }
+    return true;
+  });
+}
 const MAX_HISTORY_MESSAGES = 20;
 const MAX_HISTORY_TOKENS = 3000;
 const TOOL_TIMEOUT_MS = 15000;
@@ -74,11 +98,15 @@ export class AIAgentService {
 
     const sessionId = await getOrCreateSession(customerId);
 
-    let [cartState, history, context] = await Promise.all([
+    let [cartState, history, context, platformConfig] = await Promise.all([
       getCartState(customerId),
       getHistory(customerId, sessionId),
       getRestaurantContext(this.businessId),
+      getPlatformConfig(),
     ]);
+
+    const tools = filterToolsByFeatureFlags(allTools, platformConfig);
+    const maxToolIterations = platformConfig.maxToolIterations || DEFAULT_MAX_TOOL_ITERATIONS;
 
     if (!cartState.language) {
       const seedLanguage = (context.defaultLanguage === 'ar' ? 'ar' : 'en') as SupportedLanguage;
@@ -105,7 +133,7 @@ export class AIAgentService {
     });
 
     const historyMessages = trimHistoryToBudget(history, MAX_HISTORY_TOKENS, MAX_HISTORY_MESSAGES);
-    const systemPrompt = buildSystemPrompt({
+    const systemPrompt = await buildSystemPrompt({
       businessId: this.businessId,
       language,
       cartState,
@@ -157,7 +185,7 @@ export class AIAgentService {
 
     let iterationsUsed = 0;
 
-    for (let iteration = 1; iteration <= MAX_TOOL_ITERATIONS; iteration++) {
+    for (let iteration = 1; iteration <= maxToolIterations; iteration++) {
       iterationsUsed = iteration;
       let llmResponse;
       const llmCallStartTime = Date.now();
@@ -373,8 +401,8 @@ export class AIAgentService {
       if (repeatedTotal > 0) {
         console.warn(`[Metrics] Repeated tool calls detected: ${repeatedTotal}`);
       }
-      if (iterationsUsed >= MAX_TOOL_ITERATIONS) {
-        console.warn(`[Metrics] Iteration budget exhausted (${MAX_TOOL_ITERATIONS}) after ${toolMetrics.length} tool calls`);
+      if (iterationsUsed >= maxToolIterations) {
+        console.warn(`[Metrics] Iteration budget exhausted (${maxToolIterations}) after ${toolMetrics.length} tool calls`);
       }
       console.log(`[Metrics] Tools: ${toolMetrics.length} calls, ${totalDuration}ms total, ${avgLatency}ms avg, ${failures.length} failures, ${repeatedTotal} repeated`);
     }

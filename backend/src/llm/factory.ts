@@ -6,13 +6,29 @@ import { GroqProvider } from './groq-provider.js';
 import { MockProvider } from './mock-provider.js';
 import { OpencodeProvider } from './opencode-provider.js';
 import { config } from '../config.js';
+import { getPlatformConfig } from '../services/platform-config.js';
 
-export function createLLMProvider(
+export async function createLLMProvider(
   provider?: string,
   model?: string
-): LLMProvider {
-  const p = provider || config.llmProvider;
-  const m = model || config.llmModel;
+): Promise<LLMProvider> {
+  let p = provider;
+  let m = model;
+
+  if (!p || !m) {
+    try {
+      const platformConfig = await getPlatformConfig();
+      if (!p) p = platformConfig.defaultLLMProvider;
+      if (!m) m = platformConfig.defaultLLMModel;
+    } catch {
+      // Fall back to config defaults if platform config fails
+      if (!p) p = config.llmProvider;
+      if (!m) m = config.llmModel;
+    }
+  }
+
+  if (!p) p = config.llmProvider;
+  if (!m) m = config.llmModel;
 
   switch (p) {
     case 'gemini': {

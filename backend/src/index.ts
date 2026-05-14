@@ -29,6 +29,7 @@ import platformSettingsRouter from './routes/platform/settings.js';
 import platformUsersRouter from './routes/platform/users.js';
 import platformAuditLogsRouter from './routes/platform/audit-logs.js';
 import platformHealthRouter from './routes/platform/health.js';
+import platformConfigRouter from './routes/platform/config.js';
 
 // Middleware
 import { businessContext } from './middleware/business-context.js';
@@ -149,6 +150,7 @@ app.use('/api/platform/settings', platformContext, platformSettingsRouter);
 app.use('/api/platform/users', platformContext, platformUsersRouter);
 app.use('/api/platform/audit-logs', platformContext, platformAuditLogsRouter);
 app.use('/api/platform/health', platformContext, platformHealthRouter);
+app.use('/api/platform/config', platformContext, platformConfigRouter);
 
 // API Documentation
 app.get('/api/openapi.yaml', (req, res) => {

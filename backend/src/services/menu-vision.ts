@@ -91,7 +91,7 @@ export async function analyzeMenuImage(
     throw new Error('OPENAI_API_KEY is not configured. Menu image analysis requires an OpenAI API key.');
   }
 
-  const llm = createLLMProvider('openai', 'gpt-4o');
+  const llm = await createLLMProvider('openai', 'gpt-4o');
 
   const base64Data = imageBuffer.toString('base64');
 

@@ -83,7 +83,7 @@ describe('E2E: Customer Conversation Flow', () => {
       },
     });
 
-    const llmProvider = createLLMProvider();
+    const llmProvider = await createLLMProvider();
     const aiAgent = new AIAgentService(llmProvider, business.id);
 
     const response = await aiAgent.processMessage({
@@ -145,7 +145,7 @@ describe('E2E: Customer Conversation Flow', () => {
       },
     });
 
-    const llmProvider = createLLMProvider();
+    const llmProvider = await createLLMProvider();
     const aiAgent = new AIAgentService(llmProvider, business.id);
 
     // Try explicit order message with tool directive
@@ -216,7 +216,7 @@ describe('E2E: Customer Conversation Flow', () => {
       },
     });
 
-    const llmProvider = createLLMProvider();
+    const llmProvider = await createLLMProvider();
     const aiAgent = new AIAgentService(llmProvider, business.id);
 
     // Ask for status
@@ -277,7 +277,7 @@ describe('E2E: Customer Conversation Flow', () => {
       },
     });
 
-    const llmProvider = createLLMProvider();
+    const llmProvider = await createLLMProvider();
     const aiAgent = new AIAgentService(llmProvider, business.id);
 
     // Turn 1: Query menu

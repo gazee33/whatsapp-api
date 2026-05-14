@@ -366,6 +366,27 @@ export interface PaginatedResponse<T> {
   };
 }
 
+export interface PlatformConfig {
+  id: string;
+  promptTemplate: string;
+  promptVersion: string;
+  enableCustomPrompt: boolean;
+  defaultLLMProvider: string | null;
+  defaultLLMModel: string | null;
+  maxTokens: number | null;
+  temperature: number | null;
+  maxToolIterations: number;
+  interactiveListMessagesEnabled: boolean;
+  interactiveButtonsMessagesEnabled: boolean;
+  complaintToolEnabled: boolean;
+  orderStatusToolEnabled: boolean;
+  flagCustomerToolEnabled: boolean;
+  autoUpsellEnabled: boolean;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface PlatformHealth {
   server: {
     status: string;

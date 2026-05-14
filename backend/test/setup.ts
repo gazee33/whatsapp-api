@@ -30,6 +30,43 @@ beforeAll(async () => {
   process.env.LLM_PROVIDER = 'ollama';
   process.env.LLM_MODEL = 'gemma3:4b';
   process.env.OLLAMA_BASE_URL = 'http://localhost:11434';
+
+  // Ensure PlatformConfig exists
+  const existing = await globalForPrisma.prisma!.platformConfig.findFirst();
+  if (!existing) {
+    await globalForPrisma.prisma!.platformConfig.create({
+      data: {
+        promptTemplate: JSON.stringify({
+          version: '1.0',
+          template: `## ROLE
+{languageInstruction}
+
+{roleDescription}
+
+## CONTEXT
+{contextBlock}
+
+## FULL MENU (use exact IDs from this section — do NOT guess or make up items)
+{menuBlock}
+
+## WORKFLOW (only do steps not yet completed)
+{workflowBlock}
+
+## GUARDRAILS
+{guardrailsBlock}
+
+## TOOLS
+{toolsBlock}
+
+## INTERACTIVE MESSAGES (MANDATORY RULES)
+{interactiveBlock}`,
+        }),
+        promptVersion: '1.0',
+        defaultLLMProvider: process.env.LLM_PROVIDER || 'ollama',
+        defaultLLMModel: process.env.LLM_MODEL || 'gemma3:4b',
+      },
+    });
+  }
 });
 
 beforeAll(async () => {

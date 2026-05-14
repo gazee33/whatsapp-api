@@ -78,6 +78,39 @@ model PlatformSetting {
   @@map("PlatformSetting")
 }
 
+// ─── PLATFORM CONFIG ───────────────────────────────────────────────────────
+
+model PlatformConfig {
+  id                    String   @id @default(cuid())
+
+  // Prompt Configuration
+  promptTemplate        String   @default("")
+  promptVersion         String   @default("1.0")
+  enableCustomPrompt    Boolean  @default(false)
+
+  // LLM Settings
+  defaultLLMProvider    String   @default("gemini")
+  defaultLLMModel       String   @default("llama-3.3-70b-versatile")
+  maxTokens            Int       @default(4096)
+  temperature          Float     @default(0.7)
+  maxToolIterations    Int       @default(6)
+
+  // Feature Flags
+  interactiveListMessagesEnabled    Boolean @default(true)
+  interactiveButtonsMessagesEnabled Boolean @default(true)
+  complaintToolEnabled               Boolean @default(true)
+  orderStatusToolEnabled             Boolean @default(true)
+  flagCustomerToolEnabled            Boolean @default(true)
+  autoUpsellEnabled                  Boolean @default(false)
+
+  // Metadata
+  isActive             Boolean  @default(true)
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+
+  @@map("PlatformConfig")
+}
+
 // ─── IAM: ROLES ─────────────────────────────────────────────────────────────
 
 model Role {

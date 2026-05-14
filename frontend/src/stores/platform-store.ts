@@ -5,6 +5,7 @@ import type {
   PlatformAnalytics,
   BusinessStats,
   AuditLog,
+  PlatformConfig,
   PaginatedResponse,
 } from "@/lib/types";
 
@@ -17,6 +18,11 @@ interface PlatformState {
   pagination: { total: number; page: number; limit: number; totalPages: number };
   isLoading: boolean;
 
+  // Platform config
+  config: PlatformConfig | null;
+  configLoading: boolean;
+  configSaving: boolean;
+
   fetchBusinesses: (params?: { q?: string; page?: number; limit?: number }) => Promise<void>;
   fetchBusiness: (id: string) => Promise<void>;
   createBusiness: (data: { name: string; whatsappPhoneNumber?: string }) => Promise<PlatformBusiness>;
@@ -25,6 +31,8 @@ interface PlatformState {
   fetchBusinessStats: (id: string, days?: number) => Promise<void>;
   fetchAnalytics: (days?: number) => Promise<void>;
   fetchAuditLogs: (params?: Record<string, string | number>) => Promise<void>;
+  fetchConfig: () => Promise<void>;
+  updateConfig: (data: Partial<PlatformConfig>) => Promise<void>;
 }
 
 export const usePlatformStore = create<PlatformState>((set) => ({
@@ -35,6 +43,11 @@ export const usePlatformStore = create<PlatformState>((set) => ({
   auditLogs: null,
   pagination: { total: 0, page: 1, limit: 20, totalPages: 0 },
   isLoading: false,
+
+  // Platform config
+  config: null,
+  configLoading: false,
+  configSaving: false,
 
   fetchBusinesses: async (params) => {
     set({ isLoading: true });
@@ -96,6 +109,31 @@ export const usePlatformStore = create<PlatformState>((set) => ({
       set({ auditLogs: res.data, pagination: res.data.meta, isLoading: false });
     } catch {
       set({ isLoading: false });
+    }
+  },
+
+  fetchConfig: async () => {
+    set({ configLoading: true });
+    try {
+      const res = await platformClient.get("/platform/config");
+      set({ config: res.data, configLoading: false });
+    } catch {
+      set({ configLoading: false });
+    }
+  },
+
+  updateConfig: async (data) => {
+    set({ configSaving: true });
+    try {
+      const res = await platformClient.put("/platform/config", data);
+      set({ config: res.data, configSaving: false });
+    } catch (err) {
+      set({ configSaving: false });
+      const message =
+        (err as { response?: { data?: { error?: string } } })?.response?.data?.error ||
+        (err as Error)?.message ||
+        "Failed to update platform config";
+      throw new Error(message);
     }
   },
 }));

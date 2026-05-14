@@ -1,5 +1,6 @@
 import { type CartState, type SupportedLanguage, formatCartForPrompt, calculateCartTotal } from './cart-state.js';
 import type { RestaurantContext, MenuItemInfo } from './restaurant-context.js';
+import { getPlatformConfig } from '../../services/platform-config.js';
 
 const CACHE_TTL_MS = 600000; // 10 minutes
 const systemPromptCache = new Map<string, { template: string; expires: number }>();
@@ -66,83 +67,19 @@ function formatMenuForPrompt(items: MenuItemInfo[], currency: string): string {
   return lines.join('\n');
 }
 
-export function buildSystemPrompt(params: {
-  businessId: string;
-  language: SupportedLanguage;
-  cartState: CartState;
-  context: RestaurantContext;
-  customerName?: string;
-  customerPhone?: string;
-}): string {
-  const { businessId, language, cartState, context, customerName, customerPhone } = params;
-  const cacheKey = `${businessId}:${language}`;
-
-  const cached = systemPromptCache.get(cacheKey);
-  let template: string;
-
-  if (cached && cached.expires > Date.now()) {
-    template = cached.template;
-  } else {
-    const orderTypes: string[] = [];
-    if (context.deliveryEnabled) orderTypes.push('delivery');
-    if (context.dineInEnabled) orderTypes.push('dine-in');
-    if (context.pickupEnabled) orderTypes.push('pickup');
-    const orderTypeStr = orderTypes.join(', ');
-
-    const contextLines: string[] = [
-      `${context.restaurantName} | ${context.isTemporarilyClosed ? 'CLOSED' : `${context.openingTime}-${context.closingTime}`} | ${context.currency}`,
-      `Payment: ${context.paymentMethods.join(', ')}`,
-    ];
-    if (orderTypes.length > 0) contextLines.push(`Types: ${orderTypeStr}`);
-    if (context.estimatedPrepTimeMinutes) contextLines.push(`Prep: ~${context.estimatedPrepTimeMinutes} min`);
-    if (context.deliveryEnabled) {
-      contextLines.push(formatDeliveryTiers(context));
-    }
-    const contextBlock = contextLines.join('\n');
-
-    const langInstr =
-      language === 'ar'
-        ? 'Respond only in Arabic (Saudi casual dialect).'
-        : 'Respond only in English.';
-
-    const workflowSteps: string[] = [];
-    let step = 1;
-    workflowSteps.push(`${step++}. IF order type not set yet: ask customer (${orderTypeStr}).`);
-    workflowSteps.push(context.deliveryEnabled
-      ? `${step++}. IF delivery AND no address set yet: ask customer to share location or type address. When location is shared, you'll receive [Location shared: lat,lng]. Call set_delivery_address with coordinates. When address is typed, call set_delivery_address with the address text.`
-      : `${step++}. IF delivery: unavailable for this restaurant. Say so.`);
-    workflowSteps.push(`${step++}. Use the FULL MENU section to browse items. When customer picks items, use add_to_cart.`);
-    workflowSteps.push(`${step++}. If customer wants to change quantity/option/notes of an existing item, use update_cart with the 0-based [index] from CURRENT CART.`);
-    workflowSteps.push(`${step++}. Customer done → ask: "shall I place the order?". Review cart items with customer.`);
-    workflowSteps.push(`${step++}. Customer explicitly says yes → call submit_order. Items, orderType, address and phone are auto-filled from cart state.`);
-    workflowSteps.push(`${step++}. After submit: done. Don't offer repeats. New orders start fresh from step 1.`);
-
-    template = `## ROLE
-${langInstr}
-
-WhatsApp ordering assistant for ${context.restaurantName}. Be warm, casual, concise. Vary phrasing naturally. Don't repeat greetings/closings. Keep replies under 3 lines when using plain text — interactive messages (send_interactive_list/button) handle their own display and replace your text entirely (system detects them and won't send your text). Match customer energy. Use 1-2 emojis naturally but sparingly. do not repeatly use laughing emoji.
-
-## CONTEXT
-${contextBlock}
-
-## FULL MENU (use exact IDs from this section — do NOT guess or make up items)
-${formatMenuForPrompt(context.menuItems, context.currency)}
-
-## WORKFLOW (only do steps not yet completed)
-${workflowSteps.join('\n')}
-
-## GUARDRAILS
-- Only call submit_order when the customer clearly confirms they want to place the order. If they mention changes, additions, or hesitations — keep the cart open and continue.
+function getGuardrailsBlock(): string {
+  return `- Only call submit_order when the customer clearly confirms they want to place the order. If they mention changes, additions, or hesitations — keep the cart open and continue.
 - Use item IDs AND option IDs from FULL MENU section EXACTLY — do NOT guess or make up items.
 - If options exist on an item: MUST ask customer which option, then pass optionId in add_to_cart.
 - Customer changes mind / removes / hesitates: do NOT submit.
 - upsell at most once. If customer says no or ignores: proceed to confirmation.
 - check_restaurant_info for address/hours/payment/delivery questions — do NOT make up info.
 - After submit: done with this order. If customer wants more, they start fresh.
-- ESCALATION: If the customer is angry, frustrated, insulting, asks to speak to a human/manager, asking questions that are not related to the menu or the order more than 3 times, or the issue is beyond what the available tools can resolve — call flag_customer to escalate to human support. Once flagged, tell the customer a support agent will follow up shortly and stop trying to resolve the issue yourself.
+- ESCALATION: If the customer is angry, frustrated, insulting, asks to speak to a human/manager, asking questions that are not related to the menu or the order more than 3 times, or the issue is beyond what the available tools can resolve — call flag_customer to escalate to human support. Once flagged, tell the customer a support agent will follow up shortly and stop trying to resolve the issue yourself.`;
+}
 
-## TOOLS
-- add_to_cart: add selected items to cart (bulk — pass all items at once). Use optionId from query_menu.
+function getToolsBlock(): string {
+  return `- add_to_cart: add selected items to cart (bulk — pass all items at once). Use optionId from query_menu.
 - update_cart: modify a cart item at a specific [index]. Pass FULL updated values.
 - check_restaurant_info: "where are you?", "are you open?", "what payments?", "how much is delivery?"
 - set_delivery_address: save delivery location + calculate fee
@@ -152,10 +89,11 @@ ${workflowSteps.join('\n')}
 - flag_customer: escalate to human support — use when customer is angry/frustrated, asks for a human, or the issue is too complex. Provide a clear reason.
 - send_interactive_list: send a list with multiple options. USE WHEN presenting choices like: delivery zones with fees, menu categories, order type options, product variants. Creates a scrollable list UI — much better than text for options.
 - send_interactive_button: send buttons for YES/NO or binary choices (2-3 options max). USE WHEN asking confirmations, simple yes/no questions.
-- send_template_message: send a pre-approved template. USE FOR order confirmations, status updates that need branding.
+- send_template_message: send a pre-approved template. USE FOR order confirmations, status updates that need branding.`;
+}
 
-## INTERACTIVE MESSAGES (MANDATORY RULES)
-These rules are MANDATORY — not suggestions. When you send an interactive message, it REPLACES your text reply (the system detects it and does not send your text). You do not need to write extra text alongside an interactive tool call.
+function getInteractiveBlock(): string {
+  return `These rules are MANDATORY — not suggestions. When you send an interactive message, it REPLACES your text reply (the system detects it and does not send your text). You do not need to write extra text alongside an interactive tool call.
 
 ### You MUST call send_interactive_list when:
 - Presenting 2-10 items for the customer to choose from (menu items, delivery zones, order types, product variants)
@@ -179,8 +117,158 @@ These rules are MANDATORY — not suggestions. When you send an interactive mess
 ### Technical limits:
 - Interactive lists: max 10 rows total across all sections. Exceeding this triggers auto-fallback to text (the tool will tell you).
 - Interactive buttons: max 3 buttons only.
-- When customer replies to interactive messages, WhatsApp sends the button/list row ID as text (e.g., "[BUTTON: confirm]" or "[LIST: zone_1]"). Treat these as regular customer responses.
-`;
+- When customer replies to interactive messages, WhatsApp sends the button/list row ID as text (e.g., "[BUTTON: confirm]" or "[LIST: zone_1]"). Treat these as regular customer responses.`;
+}
+
+function getRoleDescription(restaurantName: string): string {
+  return `WhatsApp ordering assistant for ${restaurantName}. Be warm, casual, concise. Vary phrasing naturally. Don't repeat greetings/closings. Keep replies under 3 lines when using plain text — interactive messages (send_interactive_list/button) handle their own display and replace your text entirely (system detects them and won't send your text). Match customer energy. Use 1-2 emojis naturally but sparingly. do not repeatly use laughing emoji.`;
+}
+
+function replacePlaceholders(
+  template: string,
+  values: Record<string, string>,
+): string {
+  let result = template;
+  for (const [key, value] of Object.entries(values)) {
+    result = result.replaceAll(`{${key}}`, value);
+  }
+  return result;
+}
+
+function buildTemplateSections(params: {
+  language: SupportedLanguage;
+  context: RestaurantContext;
+}): {
+  languageInstruction: string;
+  contextBlock: string;
+  menuBlock: string;
+  workflowBlock: string;
+  orderTypeStr: string;
+} {
+  const { language, context } = params;
+
+  const orderTypes: string[] = [];
+  if (context.deliveryEnabled) orderTypes.push('delivery');
+  if (context.dineInEnabled) orderTypes.push('dine-in');
+  if (context.pickupEnabled) orderTypes.push('pickup');
+  const orderTypeStr = orderTypes.join(', ');
+
+  const contextLines: string[] = [
+    `${context.restaurantName} | ${context.isTemporarilyClosed ? 'CLOSED' : `${context.openingTime}-${context.closingTime}`} | ${context.currency}`,
+    `Payment: ${context.paymentMethods.join(', ')}`,
+  ];
+  if (orderTypes.length > 0) contextLines.push(`Types: ${orderTypeStr}`);
+  if (context.estimatedPrepTimeMinutes) contextLines.push(`Prep: ~${context.estimatedPrepTimeMinutes} min`);
+  if (context.deliveryEnabled) {
+    contextLines.push(formatDeliveryTiers(context));
+  }
+  const contextBlock = contextLines.join('\n');
+
+  const languageInstruction =
+    language === 'ar'
+      ? 'Respond only in Arabic (Saudi casual dialect).'
+      : 'Respond only in English.';
+
+  const workflowSteps: string[] = [];
+  let step = 1;
+  workflowSteps.push(`${step++}. IF order type not set yet: ask customer (${orderTypeStr}).`);
+  workflowSteps.push(context.deliveryEnabled
+    ? `${step++}. IF delivery AND no address set yet: ask customer to share location or type address. When location is shared, you'll receive [Location shared: lat,lng]. Call set_delivery_address with coordinates. When address is typed, call set_delivery_address with the address text.`
+    : `${step++}. IF delivery: unavailable for this restaurant. Say so.`);
+  workflowSteps.push(`${step++}. Use the FULL MENU section to browse items. When customer picks items, use add_to_cart.`);
+  workflowSteps.push(`${step++}. If customer wants to change quantity/option/notes of an existing item, use update_cart with the 0-based [index] from CURRENT CART.`);
+  workflowSteps.push(`${step++}. Customer done → ask: "shall I place the order?". Review cart items with customer.`);
+  workflowSteps.push(`${step++}. Customer explicitly says yes → call submit_order. Items, orderType, address and phone are auto-filled from cart state.`);
+  workflowSteps.push(`${step++}. After submit: done. Don't offer repeats. New orders start fresh from step 1.`);
+
+  const menuBlock = formatMenuForPrompt(context.menuItems, context.currency);
+
+  return {
+    languageInstruction,
+    contextBlock,
+    menuBlock,
+    workflowBlock: workflowSteps.join('\n'),
+    orderTypeStr,
+  };
+}
+
+function buildHardcodedTemplate(sections: ReturnType<typeof buildTemplateSections>, context: RestaurantContext): string {
+  return `## ROLE
+${sections.languageInstruction}
+
+${getRoleDescription(context.restaurantName)}
+
+## CONTEXT
+${sections.contextBlock}
+
+## FULL MENU (use exact IDs from this section — do NOT guess or make up items)
+${sections.menuBlock}
+
+## WORKFLOW (only do steps not yet completed)
+${sections.workflowBlock}
+
+## GUARDRAILS
+${getGuardrailsBlock()}
+
+## TOOLS
+${getToolsBlock()}
+
+## INTERACTIVE MESSAGES (MANDATORY RULES)
+${getInteractiveBlock()}`;
+}
+
+function buildPlatformPromptTemplate(
+  platformTemplate: string,
+  sections: ReturnType<typeof buildTemplateSections>,
+  context: RestaurantContext,
+): string {
+  const parsed = JSON.parse(platformTemplate);
+  const template = parsed.template as string;
+
+  return replacePlaceholders(template, {
+    languageInstruction: sections.languageInstruction,
+    restaurantName: context.restaurantName,
+    contextBlock: sections.contextBlock,
+    menuBlock: sections.menuBlock,
+    workflowBlock: sections.workflowBlock,
+    guardrailsBlock: getGuardrailsBlock(),
+    toolsBlock: getToolsBlock(),
+    interactiveBlock: getInteractiveBlock(),
+    roleDescription: getRoleDescription(context.restaurantName),
+  });
+}
+
+export async function buildSystemPrompt(params: {
+  businessId: string;
+  language: SupportedLanguage;
+  cartState: CartState;
+  context: RestaurantContext;
+  customerName?: string;
+  customerPhone?: string;
+}): Promise<string> {
+  const { businessId, language, cartState, context, customerName, customerPhone } = params;
+
+  const sections = buildTemplateSections({ language, context });
+
+  const platformConfig = await getPlatformConfig();
+
+  const cacheKey = `${businessId}:${language}:${platformConfig.promptVersion}`;
+
+  const cached = systemPromptCache.get(cacheKey);
+  let template: string;
+
+  if (cached && cached.expires > Date.now()) {
+    template = cached.template;
+  } else {
+    if (platformConfig.promptTemplate) {
+      try {
+        template = buildPlatformPromptTemplate(platformConfig.promptTemplate, sections, context);
+      } catch {
+        template = buildHardcodedTemplate(sections, context);
+      }
+    } else {
+      template = buildHardcodedTemplate(sections, context);
+    }
 
     systemPromptCache.set(cacheKey, {
       template,

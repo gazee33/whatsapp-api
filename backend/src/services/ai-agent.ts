@@ -17,7 +17,7 @@ export async function processMessage(
   text: string,
   locationData?: LocationData,
 ): Promise<{ reply: string; orderId?: string; didSendMessage?: boolean }> {
-  const llmProvider = createLLMProvider();
+  const llmProvider = await createLLMProvider();
   const agent = new AIAgentService(llmProvider, business.id);
   const result = await agent.processMessage({
     customerId: customer.id,
