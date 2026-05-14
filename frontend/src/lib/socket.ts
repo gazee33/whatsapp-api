@@ -1,9 +1,11 @@
 import { io, Socket } from "socket.io-client";
+import { toast } from "sonner";
 import { useBusinessStore } from "@/stores/business-store";
 import { useOrderStore } from "@/stores/order-store";
 import { useConversationStore } from "@/stores/conversation-store";
 import { useAuthStore } from "@/stores/auth-store";
 import { SOCKET_URL } from "@/lib/config";
+import { playOrderNotification } from "@/lib/sound";
 
 let socket: Socket | null = null;
 
@@ -27,6 +29,8 @@ export function connectSocket(businessId: string): Socket {
   });
 
   socket.on("new-order", (order) => {
+    playOrderNotification();
+    toast.success(`New order #${order.referenceId} received`);
     useOrderStore.getState().addOrUpdateOrder(order);
   });
 
