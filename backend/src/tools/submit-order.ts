@@ -215,8 +215,10 @@ export async function handleSubmitOrder(
 
     // Emit Socket.io event with option info
     emitToBusinessRoom(businessId, 'new-order', {
-      orderId: order.id,
+      id: order.id,
       referenceId: order.referenceId,
+      status: order.status,
+      businessId,
       customerId,
       items: orderItems.map((oi) => ({
         name: oi.menuItem.name,
@@ -228,6 +230,7 @@ export async function handleSubmitOrder(
       })),
       totalPrice: order.totalPrice,
       createdAt: order.createdAt,
+      updatedAt: order.updatedAt,
     });
 
     // Format confirmation with option details

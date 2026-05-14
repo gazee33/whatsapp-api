@@ -18,6 +18,10 @@ export function initSocket(server: Http2Server): Server {
   
   io.on('connection', (socket) => {
     console.log('Client connected:', socket.id);
+    socket.on('join', ({ businessId }: { businessId: string }) => {
+      joinBusinessRoom(socket, businessId);
+      console.log(`Socket ${socket.id} joined business:${businessId}`);
+    });
   });
   
   return io;
