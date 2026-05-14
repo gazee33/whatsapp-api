@@ -6,6 +6,7 @@ import {
   updatePlatformConfig,
   validatePromptTemplate,
 } from '../../services/platform-config.js';
+import { clearSystemPromptCache } from '../../services/ai-engine/prompt-builder.js';
 
 function serializeConfig(config: PlatformConfig) {
   return {
@@ -116,6 +117,7 @@ router.put(
         isActive,
       });
 
+      clearSystemPromptCache();
       res.json(serializeConfig(config));
     } catch (error) {
       console.error('Update platform config error:', error);

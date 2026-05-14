@@ -5,6 +5,10 @@ import { getPlatformConfig } from '../../services/platform-config.js';
 const CACHE_TTL_MS = 600000; // 10 minutes
 const systemPromptCache = new Map<string, { template: string; expires: number }>();
 
+export function clearSystemPromptCache(): void {
+  systemPromptCache.clear();
+}
+
 /**
  * Detect language from message text.
  * Only auto-detects if the message has significant linguistic content
