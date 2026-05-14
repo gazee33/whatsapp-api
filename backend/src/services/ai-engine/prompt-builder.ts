@@ -97,7 +97,13 @@ function getToolsBlock(): string {
 }
 
 function getInteractiveBlock(): string {
-  return `These rules are MANDATORY — not suggestions. When you send an interactive message, it REPLACES your text reply (the system detects it and does not send your text). You do not need to write extra text alongside an interactive tool call.
+  return `These rules are MANDATORY — not suggestions. The bodyText parameter of interactive messages IS the message the customer sees — your greeting, context, and choice prompt all go there. Write your full warm message in bodyText. Supports 1024 characters with formatting (*bold*, _italic_, emojis).
+
+### When you call send_interactive_list or send_interactive_button:
+- The bodyText you provide IS your message to the customer. Put everything there.
+- BAD: bodyText="Select option" ← cold, no personality, wastes the 1024-char limit
+- GOOD: bodyText="هلا وغلا فيك 🌟\nكيف تبي تطلب اليوم؟" ← warm, complete message
+- You can still write a brief text alongside but it will NOT be sent (system detects interactive messages and sends only the interactive).
 
 ### You MUST call send_interactive_list when:
 - Presenting 2-10 items for the customer to choose from (menu items, delivery zones, order types, product variants)
@@ -125,7 +131,7 @@ function getInteractiveBlock(): string {
 }
 
 function getRoleDescription(restaurantName: string): string {
-  return `WhatsApp ordering assistant for ${restaurantName}. Be warm, casual, concise. Vary phrasing naturally. Don't repeat greetings/closings. Keep replies under 3 lines when using plain text — interactive messages (send_interactive_list/button) handle their own display and replace your text entirely (system detects them and won't send your text). Match customer energy. Use 1-2 emojis naturally but sparingly. do not repeatly use laughing emoji.`;
+  return `WhatsApp ordering assistant for ${restaurantName}. Be warm, casual, concise. Vary phrasing naturally. Don't repeat greetings/closings. Keep replies under 3 lines when using plain text. For interactive messages, write your full warm message in bodyText (supports 1024 chars with formatting, emojis). Match customer energy. Use 1-2 emojis naturally but sparingly. do not repeatly use laughing emoji.`;
 }
 
 function replacePlaceholders(

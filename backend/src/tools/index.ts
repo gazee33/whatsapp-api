@@ -149,7 +149,7 @@ export const tools: ToolDefinition[] = [
       type: 'object',
       properties: {
         headerText: { type: 'string', description: 'Optional header text above the list' },
-        bodyText: { type: 'string', description: 'Body text describing the list (required)' },
+        bodyText: { type: 'string', description: 'The message the customer sees. Write your full response here including greeting, context, and choice prompt. Supports 1024 chars with formatting (*bold*, _italic_, emojis). (required)' },
         footerText: { type: 'string', description: 'Optional footer text below the list' },
         buttonText: { type: 'string', description: 'Text on the button that opens the list (e.g., "Select option", "Choose here")' },
         sections: {
@@ -186,7 +186,7 @@ export const tools: ToolDefinition[] = [
       type: 'object',
       properties: {
         headerText: { type: 'string', description: 'Optional header text' },
-        bodyText: { type: 'string', description: 'Body text describing the choice (required)' },
+        bodyText: { type: 'string', description: 'The message the customer sees. Write your full response including greeting and question. Supports 1024 chars with formatting (*bold*, _italic_, emojis). (required)' },
         footerText: { type: 'string', description: 'Optional footer text' },
         buttons: {
           type: 'array',
