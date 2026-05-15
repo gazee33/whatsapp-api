@@ -178,6 +178,10 @@ export interface Order {
   status: OrderStatus;
   totalPrice: number;
   notes?: string | null;
+  orderType?: string | null;
+  deliveryAddress?: string | null;
+  deliveryNotes?: string | null;
+  contactPhone?: string | null;
   createdAt: string;
   updatedAt: string;
   customer?: Customer;

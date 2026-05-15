@@ -10,8 +10,10 @@ import {
   Phone,
   Package,
   FileText,
+  Printer,
 } from "lucide-react";
 import { useOrderStore } from "@/stores/order-store";
+import { printReceipt } from "@/lib/receipt-print";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
@@ -86,6 +88,15 @@ export default function OrderDetailPage() {
             {t("order_detail.subtitle")}
           </p>
         </div>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => printReceipt(order.id)}
+          className="gap-2"
+        >
+          <Printer className="h-4 w-4" />
+          Print Receipt
+        </Button>
       </div>
 
       <div className="grid gap-6 lg:grid-cols-3">

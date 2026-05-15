@@ -6,6 +6,7 @@ import { useConversationStore } from "@/stores/conversation-store";
 import { useAuthStore } from "@/stores/auth-store";
 import { SOCKET_URL } from "@/lib/config";
 import { playOrderNotification } from "@/lib/sound";
+import { printReceipt } from "@/lib/receipt-print";
 
 let socket: Socket | null = null;
 
@@ -32,6 +33,7 @@ export function connectSocket(businessId: string): Socket {
     playOrderNotification();
     toast.success(`New order #${order.referenceId} received`);
     useOrderStore.getState().addOrUpdateOrder(order);
+    printReceipt(order.orderId);
   });
 
   socket.on("order-updated", (order) => {
