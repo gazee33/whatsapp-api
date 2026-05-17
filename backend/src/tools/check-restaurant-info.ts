@@ -1,4 +1,5 @@
 import { prisma } from '../lib/prisma.js';
+import { computeIsCurrentlyOpen, getCurrentTimeString } from '../services/ai-engine/restaurant-context.js';
 
 export interface CheckRestaurantInfoParams {
   topic?: 'address' | 'hours' | 'payment' | 'delivery' | 'all';
@@ -41,9 +42,14 @@ export async function handleCheckRestaurantInfo(
     if (settings.isTemporarilyClosed) {
       lines.push('🕐 Status: Temporarily closed');
     } else {
-      lines.push(
-        `🕐 Hours: ${settings.openingTime} - ${settings.closingTime}`
-      );
+      const currentlyOpen = computeIsCurrentlyOpen(settings.openingTime, settings.closingTime);
+      const timeStr = getCurrentTimeString();
+      const hoursLine = `🕐 Hours: ${settings.openingTime} - ${settings.closingTime}`;
+      if (currentlyOpen) {
+        lines.push(`${hoursLine} (open now, current time: ${timeStr})`);
+      } else {
+        lines.push(`${hoursLine} (currently closed, current time: ${timeStr})`);
+      }
     }
   }
 

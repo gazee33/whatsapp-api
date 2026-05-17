@@ -101,28 +101,13 @@ function getInteractiveBlock(): string {
 
 ### When you call send_interactive_list or send_interactive_button:
 - The bodyText you provide IS your message to the customer. Put everything there.
-- BAD: bodyText="Select option" ← cold, no personality, wastes the 1024-char limit
-- GOOD: bodyText="هلا وغلا فيك 🌟\nكيف تبي تطلب اليوم؟" ← warm, complete message
 - You can still write a brief text alongside but it will NOT be sent (system detects interactive messages and sends only the interactive).
-
-### You MUST call send_interactive_list when:
-- Presenting 2-10 items for the customer to choose from (menu items, delivery zones, order types, product variants)
-- BAD (will be penalized): "عرايس محمرة 7 ريال, عرايس لحم 9 ريال — أي واحد تبي؟" ← plain text list
-- GOOD: send_interactive_list with section title="عرايس", rows for each type with prices in descriptions
 
 ### You MUST call send_interactive_button when:
 - Asking the customer to confirm an order or action
-- Asking "how many?" or any quantity choice (1-3 options)
 - Any yes/no or binary choice (max 3 buttons)
 - BAD (will be penalized): "تأكد خلاص؟" ← plain text confirmation
 - GOOD: send_interactive_button with buttons=["تأكيد الطلب", "تعديل"]
-- BAD (will be penalized): "كم حبة؟ 1 ولا 2؟" ← plain text quantity question
-- GOOD: send_interactive_button with buttons=["1", "2", "3+"]
-
-### When plain text is OK (no interactive tool needed):
-- Informational replies without a choice (e.g., "تمت الإضافة ✅", "المجموع 80 ريال")
-- Answering factual questions ("ما عندنا بطاطس اليوم", "الفاتورة ٨٠ ريال")
-- Status updates ("جاري تجهيز الطلب")
 
 ### Technical limits:
 - Interactive lists: max 10 rows total across all sections. Exceeding this triggers auto-fallback to text (the tool will tell you).
@@ -165,8 +150,17 @@ function buildTemplateSections(params: {
 
   const contextLines: string[] = [
     `${context.restaurantName} | ${context.isTemporarilyClosed ? 'CLOSED' : `${context.openingTime}-${context.closingTime}`} | ${context.currency}`,
-    `Payment: ${context.paymentMethods.join(', ')}`,
   ];
+
+  if (context.isTemporarilyClosed) {
+    contextLines.push('🕐 Status: TEMPORARILY CLOSED');
+  } else if (context.isCurrentlyOpen) {
+    contextLines.push(`🕐 Status: OPEN NOW (current time: ${context.currentTime})`);
+  } else {
+    contextLines.push(`🕐 Status: CLOSED NOW (current time: ${context.currentTime})`);
+  }
+
+  contextLines.push(`Payment: ${context.paymentMethods.join(', ')}`);
   if (orderTypes.length > 0) contextLines.push(`Types: ${orderTypeStr}`);
   if (context.estimatedPrepTimeMinutes) contextLines.push(`Prep: ~${context.estimatedPrepTimeMinutes} min`);
   if (context.deliveryEnabled) {

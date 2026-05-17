@@ -36,6 +36,32 @@ export interface RestaurantContext {
   deliveryTiers: DeliveryTierInfo[];
   maxDeliveryDistanceKm: number | null;
   menuItems: MenuItemInfo[];
+  isCurrentlyOpen: boolean;
+  currentTime: string;
+}
+
+/**
+ * Check if the current server time falls within operating hours.
+ * Handles cross-midnight hours (e.g., 20:00-02:00).
+ */
+export function computeIsCurrentlyOpen(openingTime: string, closingTime: string): boolean {
+  const now = new Date();
+  const cur = now.getHours() * 60 + now.getMinutes();
+
+  const [oh, om] = openingTime.split(':').map(Number);
+  const [ch, cm] = closingTime.split(':').map(Number);
+  const open = oh * 60 + om;
+  const close = ch * 60 + cm;
+
+  if (close <= open) {
+    return cur >= open || cur < close;
+  }
+  return cur >= open && cur < close;
+}
+
+export function getCurrentTimeString(): string {
+  const now = new Date();
+  return now.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', hour12: false });
 }
 
 export async function getRestaurantContext(businessId: string): Promise<RestaurantContext> {
@@ -77,11 +103,15 @@ export async function getRestaurantContext(businessId: string): Promise<Restaura
     })),
   }));
 
+  const openingTime = settings?.openingTime || '09:00';
+  const closingTime = settings?.closingTime || '23:00';
+  const isTemporarilyClosed = settings?.isTemporarilyClosed ?? false;
+
   return {
     restaurantName: settings?.name || business?.name || 'the restaurant',
     currency: settings?.currency || 'SAR',
-    openingTime: settings?.openingTime || '09:00',
-    closingTime: settings?.closingTime || '23:00',
+    openingTime,
+    closingTime,
     aiRules: settings?.aiRules || '',
     defaultLanguage: settings?.defaultLanguage || 'en',
     address: settings?.address || null,
@@ -93,9 +123,11 @@ export async function getRestaurantContext(businessId: string): Promise<Restaura
     pickupEnabled: settings?.pickupEnabled ?? true,
     estimatedPrepTimeMinutes: settings?.estimatedPrepTimeMinutes || null,
     paymentMethods,
-    isTemporarilyClosed: settings?.isTemporarilyClosed ?? false,
+    isTemporarilyClosed,
     deliveryTiers,
     maxDeliveryDistanceKm: settings?.maxDeliveryDistanceKm || null,
     menuItems,
+    isCurrentlyOpen: isTemporarilyClosed ? false : computeIsCurrentlyOpen(openingTime, closingTime),
+    currentTime: getCurrentTimeString(),
   };
 }
