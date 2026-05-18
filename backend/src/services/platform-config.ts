@@ -9,6 +9,13 @@ export interface UpdatePlatformConfigData {
   promptTemplate?: string;
   promptVersion?: string;
   enableCustomPrompt?: boolean;
+  identityTemplate?: string;
+  workflowTemplate?: string;
+  guardrailsTemplate?: string;
+  toolsTemplate?: string;
+  interactiveTemplate?: string;
+  forbiddenPatterns?: string;
+  maxCustomRuleLength?: number;
   defaultLLMProvider?: string;
   defaultLLMModel?: string;
   maxTokens?: number;
@@ -20,6 +27,8 @@ export interface UpdatePlatformConfigData {
   orderStatusToolEnabled?: boolean;
   flagCustomerToolEnabled?: boolean;
   autoUpsellEnabled?: boolean;
+  providerFailoverOrder?: string;
+  globalForbiddenWords?: string;
   isActive?: boolean;
 }
 

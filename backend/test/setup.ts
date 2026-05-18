@@ -52,7 +52,9 @@ beforeAll(async () => {
 ## WORKFLOW (only do steps not yet completed)
 {workflowBlock}
 
-## GUARDRAILS
+{businessRulesBlock}
+
+## GUARDRAILS (non-overridable platform rules)
 {guardrailsBlock}
 
 ## TOOLS

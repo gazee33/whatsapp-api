@@ -6,6 +6,7 @@ import type {
   BusinessStats,
   AuditLog,
   PlatformConfig,
+  OnboardingPreset,
   PaginatedResponse,
 } from "@/lib/types";
 
@@ -23,6 +24,10 @@ interface PlatformState {
   configLoading: boolean;
   configSaving: boolean;
 
+  // Onboarding presets
+  presets: OnboardingPreset[];
+  presetsLoading: boolean;
+
   fetchBusinesses: (params?: { q?: string; page?: number; limit?: number }) => Promise<void>;
   fetchBusiness: (id: string) => Promise<void>;
   createBusiness: (data: { name: string; whatsappPhoneNumber?: string }) => Promise<PlatformBusiness>;
@@ -33,6 +38,12 @@ interface PlatformState {
   fetchAuditLogs: (params?: Record<string, string | number>) => Promise<void>;
   fetchConfig: () => Promise<void>;
   updateConfig: (data: Partial<PlatformConfig>) => Promise<void>;
+
+  // Preset CRUD
+  fetchPresets: () => Promise<OnboardingPreset[]>;
+  createPreset: (data: Partial<OnboardingPreset>) => Promise<OnboardingPreset>;
+  updatePreset: (id: string, data: Partial<OnboardingPreset>) => Promise<OnboardingPreset>;
+  deletePreset: (id: string) => Promise<void>;
 }
 
 export const usePlatformStore = create<PlatformState>((set) => ({
@@ -48,6 +59,10 @@ export const usePlatformStore = create<PlatformState>((set) => ({
   config: null,
   configLoading: false,
   configSaving: false,
+
+  // Onboarding presets
+  presets: [],
+  presetsLoading: false,
 
   fetchBusinesses: async (params) => {
     set({ isLoading: true });
@@ -135,5 +150,40 @@ export const usePlatformStore = create<PlatformState>((set) => ({
         "Failed to update platform config";
       throw new Error(message);
     }
+  },
+
+  fetchPresets: async () => {
+    set({ presetsLoading: true });
+    try {
+      const res = await platformClient.get("/platform/presets");
+      set({ presets: res.data, presetsLoading: false });
+      return res.data;
+    } catch {
+      set({ presetsLoading: false });
+      return [];
+    }
+  },
+
+  createPreset: async (data) => {
+    const res = await platformClient.post("/platform/presets", data);
+    set((state) => ({ presets: [res.data, ...state.presets] }));
+    return res.data;
+  },
+
+  updatePreset: async (id, data) => {
+    const res = await platformClient.put(`/platform/presets/${id}`, data);
+    set((state) => ({
+      presets: state.presets.map((p) => (p.id === id ? res.data : p)),
+    }));
+    return res.data;
+  },
+
+  deletePreset: async (id) => {
+    await platformClient.delete(`/platform/presets/${id}`);
+    set((state) => ({
+      presets: state.presets.map((p) =>
+        p.id === id ? { ...p, isActive: false } : p
+      ),
+    }));
   },
 }));

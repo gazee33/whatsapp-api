@@ -13,6 +13,7 @@ import {
   Shield,
   Activity,
   X,
+  Layers,
 } from "lucide-react";
 import { useLanguage } from "@/i18n/language-context";
 
@@ -36,6 +37,7 @@ function getNavItems(t: (key: string) => string) {
     {
       section: t("platform_sidebar.system"),
       items: [
+        { href: "/platform/presets", label: t("platform_sidebar.presets"), icon: Layers },
         { href: "/platform/users", label: t("platform_sidebar.platform_users"), icon: Users },
         { href: "/platform/settings", label: t("sidebar.settings"), icon: Settings },
       ],

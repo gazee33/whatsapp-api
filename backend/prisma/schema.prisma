@@ -8,6 +8,20 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+// ─── ONBOARDING PRESET ──────────────────────────────────────────────────────
+
+model OnboardingPreset {
+  id                        String     @id @default(cuid())
+  name                      String
+  description               String     @default("")
+  tonePreset                String     @default("casual")
+  defaultCustomInstructions String     @default("")
+  isActive                  Boolean    @default(true)
+  createdAt                 DateTime   @default(now())
+  updatedAt                 DateTime   @updatedAt
+  businesses                Business[]
+}
+
 // ─── TENANT (existing Business model) ───────────────────────────────────────
 
 model Business {
@@ -20,6 +34,12 @@ model Business {
   whatsappVerifyToken   String?  @unique
   apiKey              String   @unique
   createdAt           DateTime @default(now())
+
+  onboardingPresetId     String?
+  onboardingPreset       OnboardingPreset? @relation(fields: [onboardingPresetId], references: [id])
+  messagesPerMinute      Int @default(30)      // enforced in webhook route (fixed window)
+  tokensPerDay           Int @default(100000)  // stored, not yet enforced — reserved for future token metering
+  maxToolCallsPerSession Int @default(10)      // stored, not yet enforced — reserved for future tool-call cap
 
   customers    Customer[]
   categories   MenuCategory[]
@@ -83,10 +103,21 @@ model PlatformSetting {
 model PlatformConfig {
   id                    String   @id @default(cuid())
 
-  // Prompt Configuration
+  // Prompt Configuration — monolithic (legacy, kept for backward compat)
   promptTemplate        String   @default("")
   promptVersion         String   @default("1.0")
   enableCustomPrompt    Boolean  @default(false)
+
+  // Prompt Section Overrides — per-section editors (priority over promptTemplate when any are set)
+  identityTemplate    String   @default("")
+  workflowTemplate    String   @default("")
+  guardrailsTemplate  String   @default("")
+  toolsTemplate       String   @default("")
+  interactiveTemplate String   @default("")
+
+  // Tenant Rule Validation — applied to RestaurantSettings.customInstructions
+  forbiddenPatterns    String   @default("[]")  // JSON regex[] denylist
+  maxCustomRuleLength  Int      @default(500)
 
   // LLM Settings
   defaultLLMProvider    String   @default("gemini")
@@ -94,6 +125,10 @@ model PlatformConfig {
   maxTokens            Int       @default(4096)
   temperature          Float     @default(0.7)
   maxToolIterations    Int       @default(6)
+
+  // LLM Failover and Global Safety
+  providerFailoverOrder String @default("[]")   // JSON: ["opencode","gemini","groq"]
+  globalForbiddenWords  String @default("[]")   // JSON: ["word1","word2"]
 
   // Feature Flags
   interactiveListMessagesEnabled    Boolean @default(true)
@@ -438,6 +473,31 @@ model RestaurantSettings {
   paymentMethods           String  @default("[\"cash\",\"card\"]")
   isTemporarilyClosed      Boolean @default(false)
   defaultLanguage          String  @default("en")
+
+  // AI Behavior — Phase 3 (structured replacements for `aiRules` free-text)
+  tonePreset         String  @default("casual")   // formal | casual | playful | professional
+  upsellEnabled      Boolean @default(false)
+  upsellMaxPerOrder  Int     @default(1)
+  customInstructions String  @default("")         // free-form, capped + validated
+  escalationKeywords String  @default("[]")       // JSON string[] — extra trigger phrases
+  aiRulesVersion     Int     @default(1)          // bump on any AI-config save → busts prompt cache
+
+  // Phase 5 — Operational must-haves
+  weeklySchedule     String  @default("[]")        // JSON: [{day:"mon",open:true,from:"09:00",to:"22:00"},...]
+  closureExceptions  String  @default("[]")        // JSON: ["2025-12-25","2026-01-01",...]
+  afterHoursPolicy   String  @default("inform_only") // "collect_order"|"inform_only"|"silence"
+  minOrderValue      Float   @default(0)
+  maxOrderItemCount  Int?
+  featuredItems      String  @default("[]")        // JSON array of MenuItem IDs (strings)
+  hiddenItems        String  @default("[]")        // JSON array of MenuItem IDs (strings)
+
+  // Phase 6 — UX polish
+  logoUrl            String?
+  coverUrl           String?
+  mapsUrl            String?
+  showAddressByName  Boolean @default(false)
+  confirmationStyle  String  @default("summary")   // "summary"|"itemized"|"minimal"
+  cancellationPolicy String  @default("")
 
   @@map("RestaurantSettings")
 }

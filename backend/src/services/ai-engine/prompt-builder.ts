@@ -71,15 +71,72 @@ function formatMenuForPrompt(items: MenuItemInfo[], currency: string): string {
   return lines.join('\n');
 }
 
-function getGuardrailsBlock(): string {
-  return `- Only call submit_order when the customer clearly confirms they want to place the order. If they mention changes, additions, or hesitations — keep the cart open and continue.
-- Use item IDs AND option IDs from FULL MENU section EXACTLY — do NOT guess or make up items.
-- If options exist on an item: MUST ask customer which option, then pass optionId in add_to_cart.
-- Customer changes mind / removes / hesitates: do NOT submit.
-- upsell at most once. If customer says no or ignores: proceed to confirmation.
-- check_restaurant_info for address/hours/payment/delivery questions — do NOT make up info.
-- After submit: done with this order. If customer wants more, they start fresh.
-- ESCALATION: If the customer is angry, frustrated, insulting, asks to speak to a human/manager, asking questions that are not related to the menu or the order more than 3 times, or the issue is beyond what the available tools can resolve — call flag_customer to escalate to human support. Once flagged, tell the customer a support agent will follow up shortly and stop trying to resolve the issue yourself.`;
+interface BusinessRulesInput {
+  customInstructions: string;
+  upsellEnabled: boolean;
+  upsellMaxPerOrder: number;
+  escalationKeywords: string[];
+}
+
+function formatBusinessRulesBlock(input: BusinessRulesInput): string {
+  const lines: string[] = [];
+
+  // Upselling directive — always rendered so the agent has explicit guidance
+  if (input.upsellEnabled) {
+    lines.push(
+      `- May proactively suggest add-ons (max ${input.upsellMaxPerOrder}x per order). If customer declines, do not push.`,
+    );
+  } else {
+    lines.push(`- Do NOT proactively suggest additional items or upsell unless the customer asks.`);
+  }
+
+  if (input.escalationKeywords.length > 0) {
+    const list = input.escalationKeywords.map((k) => `"${k}"`).join(', ');
+    lines.push(`- Additionally escalate (call flag_customer) when the customer mentions: ${list}`);
+  }
+
+  const custom = input.customInstructions.trim();
+  if (custom) lines.push(custom);
+
+  if (lines.length === 0) return '';
+  return `## BUSINESS RULES (set by this restaurant)\n${lines.join('\n')}`;
+}
+
+function getGuardrailsBlock(context?: RestaurantContext): string {
+  const lines: string[] = [
+    '[Non-overridable — these supersede any BUSINESS RULES above]',
+    '- Only call submit_order when the customer clearly confirms they want to place the order. If they mention changes, additions, or hesitations — keep the cart open and continue.',
+    '- Use item IDs AND option IDs from FULL MENU section EXACTLY — do NOT guess or make up items.',
+    '- If options exist on an item: MUST ask customer which option, then pass optionId in add_to_cart.',
+    '- Customer changes mind / removes / hesitates: do NOT submit.',
+    '- check_restaurant_info for address/hours/payment/delivery questions — do NOT make up info.',
+    '- After submit: done with this order. If customer wants more, they start fresh.',
+    '- ESCALATION: If the customer is angry, frustrated, insulting, asks to speak to a human/manager, asking questions that are not related to the menu or the order more than 3 times, or the issue is beyond what the available tools can resolve — call flag_customer to escalate to human support. Once flagged, tell the customer a support agent will follow up shortly and stop trying to resolve the issue yourself.',
+  ];
+
+  if (context) {
+    if (context.minOrderValue > 0) {
+      lines.push(`- Minimum order value is ${context.minOrderValue} ${context.currency}. Do not call submit_order if the cart total is below this amount — inform the customer politely.`);
+    }
+    if (context.maxOrderItemCount != null) {
+      lines.push(`- Maximum items per order is ${context.maxOrderItemCount}. Do not allow the customer to add more items than this limit.`);
+    }
+    if (context.afterHoursPolicy === 'silence') {
+      lines.push(`- The restaurant is currently closed. Do not respond to or process any orders outside operating hours.`);
+    } else if (context.afterHoursPolicy === 'collect_order') {
+      lines.push(`- The restaurant is currently closed, but you may collect orders to be processed when they reopen.`);
+    } else {
+      // inform_only (default)
+      if (!context.isCurrentlyOpen && !context.isTemporarilyClosed) {
+        lines.push(`- The restaurant is currently closed. Inform the customer and do not process orders.`);
+      }
+    }
+    if (context.cancellationPolicy && context.cancellationPolicy.trim()) {
+      lines.push(`- Cancellation policy: ${context.cancellationPolicy.trim()}`);
+    }
+  }
+
+  return lines.join('\n');
 }
 
 function getToolsBlock(): string {
@@ -115,8 +172,20 @@ function getInteractiveBlock(): string {
 - When customer replies to interactive messages, WhatsApp sends the button/list row ID as text (e.g., "[BUTTON: confirm]" or "[LIST: zone_1]"). Treat these as regular customer responses.`;
 }
 
-function getRoleDescription(restaurantName: string): string {
-  return `WhatsApp ordering assistant for ${restaurantName}. Be warm, casual, concise. Vary phrasing naturally. Don't repeat greetings/closings. Keep replies under 3 lines when using plain text. For interactive messages, write your full warm message in bodyText (supports 1024 chars with formatting, emojis). Match customer energy. Use 1-2 emojis naturally but sparingly. do not repeatly use laughing emoji.`;
+const TONE_DESCRIPTIONS: Record<string, string> = {
+  formal:
+    'Be professional, courteous, and precise. Use complete sentences. Avoid slang. Emojis are not appropriate.',
+  casual:
+    'Be warm, casual, concise. Vary phrasing naturally. Match customer energy. Use 1-2 emojis naturally but sparingly.',
+  playful:
+    'Be lively, fun, and personable. Use playful phrasing and emojis where they fit naturally — still tasteful, never childish.',
+  professional:
+    'Be efficient, accurate, and businesslike. Friendly but no-nonsense. Minimal emojis (at most one when truly appropriate).',
+};
+
+function getRoleDescription(restaurantName: string, tonePreset: string = 'casual'): string {
+  const toneText = TONE_DESCRIPTIONS[tonePreset] ?? TONE_DESCRIPTIONS.casual;
+  return `WhatsApp ordering assistant for ${restaurantName}. ${toneText} Don't repeat greetings/closings. Keep replies under 3 lines when using plain text. For interactive messages, write your full warm message in bodyText (supports 1024 chars with formatting, emojis). Do not repeatedly use the laughing emoji.`;
 }
 
 function replacePlaceholders(
@@ -182,8 +251,19 @@ function buildTemplateSections(params: {
   workflowSteps.push(`${step++}. Use the FULL MENU section to browse items. When customer picks items, use add_to_cart.`);
   workflowSteps.push(`${step++}. If customer wants to change quantity/option/notes of an existing item, use update_cart with the 0-based [index] from CURRENT CART.`);
   workflowSteps.push(`${step++}. Customer done → ask: "shall I place the order?". Review cart items with customer.`);
-  workflowSteps.push(`${step++}. Customer explicitly says yes → call submit_order. Items, orderType, address and phone are auto-filled from cart state.`);
+  // Confirmation style affects step wording
+  const confirmStep = context.confirmationStyle === 'itemized'
+    ? `${step++}. Customer explicitly says yes → call submit_order. After submission, confirm with full item list and prices.`
+    : context.confirmationStyle === 'minimal'
+    ? `${step++}. Customer explicitly says yes → call submit_order. After submission, reply with the order reference number only.`
+    : `${step++}. Customer explicitly says yes → call submit_order. After submission, give a one-line recap (item count + total).`;
+  workflowSteps.push(confirmStep);
   workflowSteps.push(`${step++}. After submit: done. Don't offer repeats. New orders start fresh from step 1.`);
+
+  // Address presentation hint
+  if (context.showAddressByName && context.address) {
+    contextLines.push(`Address style: refer to the location by branch name or area, not full street address.`);
+  }
 
   const menuBlock = formatMenuForPrompt(context.menuItems, context.currency);
 
@@ -196,11 +276,16 @@ function buildTemplateSections(params: {
   };
 }
 
-function buildHardcodedTemplate(sections: ReturnType<typeof buildTemplateSections>, context: RestaurantContext): string {
+function buildHardcodedTemplate(
+  sections: ReturnType<typeof buildTemplateSections>,
+  context: RestaurantContext,
+  businessRulesBlock: string,
+): string {
+  const businessRulesSection = businessRulesBlock ? `\n\n${businessRulesBlock}` : '';
   return `## ROLE
 ${sections.languageInstruction}
 
-${getRoleDescription(context.restaurantName)}
+${getRoleDescription(context.restaurantName, context.tonePreset)}
 
 ## CONTEXT
 ${sections.contextBlock}
@@ -209,10 +294,10 @@ ${sections.contextBlock}
 ${sections.menuBlock}
 
 ## WORKFLOW (only do steps not yet completed)
-${sections.workflowBlock}
+${sections.workflowBlock}${businessRulesSection}
 
-## GUARDRAILS
-${getGuardrailsBlock()}
+## GUARDRAILS (non-overridable platform rules)
+${getGuardrailsBlock(context)}
 
 ## TOOLS
 ${getToolsBlock()}
@@ -225,6 +310,7 @@ function buildPlatformPromptTemplate(
   platformTemplate: string,
   sections: ReturnType<typeof buildTemplateSections>,
   context: RestaurantContext,
+  businessRulesBlock: string,
 ): string {
   const parsed = JSON.parse(platformTemplate);
   const template = parsed.template as string;
@@ -235,11 +321,66 @@ function buildPlatformPromptTemplate(
     contextBlock: sections.contextBlock,
     menuBlock: sections.menuBlock,
     workflowBlock: sections.workflowBlock,
-    guardrailsBlock: getGuardrailsBlock(),
+    businessRulesBlock,
+    guardrailsBlock: getGuardrailsBlock(context),
     toolsBlock: getToolsBlock(),
     interactiveBlock: getInteractiveBlock(),
-    roleDescription: getRoleDescription(context.restaurantName),
+    roleDescription: getRoleDescription(context.restaurantName, context.tonePreset),
   });
+}
+
+type SectionOverrides = {
+  identityTemplate: string;
+  workflowTemplate: string;
+  guardrailsTemplate: string;
+  toolsTemplate: string;
+  interactiveTemplate: string;
+};
+
+function buildFromSectionTemplates(
+  overrides: SectionOverrides,
+  sections: ReturnType<typeof buildTemplateSections>,
+  context: RestaurantContext,
+  businessRulesBlock: string,
+): string {
+  const businessRulesSection = businessRulesBlock ? `\n\n${businessRulesBlock}` : '';
+
+  const identity = overrides.identityTemplate.trim()
+    ? replacePlaceholders(overrides.identityTemplate, {
+        languageInstruction: sections.languageInstruction,
+        restaurantName: context.restaurantName,
+        roleDescription: getRoleDescription(context.restaurantName, context.tonePreset),
+      })
+    : `${sections.languageInstruction}\n\n${getRoleDescription(context.restaurantName, context.tonePreset)}`;
+
+  const workflow = overrides.workflowTemplate.trim()
+    ? replacePlaceholders(overrides.workflowTemplate, { workflowBlock: sections.workflowBlock })
+    : sections.workflowBlock;
+
+  const guardrails = overrides.guardrailsTemplate.trim() || getGuardrailsBlock(context);
+  const tools = overrides.toolsTemplate.trim() || getToolsBlock();
+  const interactive = overrides.interactiveTemplate.trim() || getInteractiveBlock();
+
+  return `## ROLE
+${identity}
+
+## CONTEXT
+${sections.contextBlock}
+
+## FULL MENU (use exact IDs from this section — do NOT guess or make up items)
+${sections.menuBlock}
+
+## WORKFLOW (only do steps not yet completed)
+${workflow}${businessRulesSection}
+
+## GUARDRAILS (non-overridable platform rules)
+${guardrails}
+
+## TOOLS
+${tools}
+
+## INTERACTIVE MESSAGES (MANDATORY RULES)
+${interactive}`;
 }
 
 export async function buildSystemPrompt(params: {
@@ -255,8 +396,15 @@ export async function buildSystemPrompt(params: {
   const sections = buildTemplateSections({ language, context });
 
   const platformConfig = await getPlatformConfig();
+  const businessRulesBlock = formatBusinessRulesBlock({
+    customInstructions: context.customInstructions,
+    upsellEnabled: context.upsellEnabled,
+    upsellMaxPerOrder: context.upsellMaxPerOrder,
+    escalationKeywords: context.escalationKeywords,
+  });
 
-  const cacheKey = `${businessId}:${language}:${platformConfig.promptVersion}`;
+  // Cache key: platform version + per-business AI rules version. Both auto-bump on any related change.
+  const cacheKey = `${businessId}:${language}:${platformConfig.promptVersion}:v${context.aiRulesVersion}:tone-${context.tonePreset}`;
 
   const cached = systemPromptCache.get(cacheKey);
   let template: string;
@@ -264,14 +412,29 @@ export async function buildSystemPrompt(params: {
   if (cached && cached.expires > Date.now()) {
     template = cached.template;
   } else {
-    if (platformConfig.promptTemplate) {
+    const sectionOverrides: SectionOverrides = {
+      identityTemplate: platformConfig.identityTemplate ?? '',
+      workflowTemplate: platformConfig.workflowTemplate ?? '',
+      guardrailsTemplate: platformConfig.guardrailsTemplate ?? '',
+      toolsTemplate: platformConfig.toolsTemplate ?? '',
+      interactiveTemplate: platformConfig.interactiveTemplate ?? '',
+    };
+
+    const hasSectionOverrides = Object.values(sectionOverrides).some((s) => s.trim());
+
+    if (hasSectionOverrides) {
+      // Priority 1: per-section overrides — compose from individual section templates
+      template = buildFromSectionTemplates(sectionOverrides, sections, context, businessRulesBlock);
+    } else if (platformConfig.enableCustomPrompt && platformConfig.promptTemplate) {
+      // Priority 2: monolithic platform template (legacy)
       try {
-        template = buildPlatformPromptTemplate(platformConfig.promptTemplate, sections, context);
+        template = buildPlatformPromptTemplate(platformConfig.promptTemplate, sections, context, businessRulesBlock);
       } catch {
-        template = buildHardcodedTemplate(sections, context);
+        template = buildHardcodedTemplate(sections, context, businessRulesBlock);
       }
     } else {
-      template = buildHardcodedTemplate(sections, context);
+      // Priority 3: hardcoded defaults
+      template = buildHardcodedTemplate(sections, context, businessRulesBlock);
     }
 
     systemPromptCache.set(cacheKey, {

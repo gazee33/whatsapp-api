@@ -5,6 +5,7 @@ import { processMessage } from '../services/ai-agent.js';
 import { sendWhatsAppText, sendTypingIndicator } from '../services/whatsapp-sender.js';
 import { getIO } from '../socket.js';
 import { logError } from '../services/error-log.js';
+import { checkBusinessRateLimit } from '../middleware/business-rate-limit.js';
 
 const router = Router();
 
@@ -258,6 +259,13 @@ router.post('/', async (req: Request, res: Response) => {
       console.log(`[Webhook] Signature verified OK for business ${business.id}`);
     } else if (isDualhook) {
       console.log(`[Webhook] Signature verification skipped (DualHook connection)`);
+    }
+
+    // Per-business rate limiting
+    const messagesPerMinute = business.messagesPerMinute ?? 30;
+    if (!checkBusinessRateLimit(business.id, messagesPerMinute)) {
+      console.warn(`[Webhook] Business ${business.id} rate limited (${messagesPerMinute} msg/min)`);
+      return res.status(429).json({ error: 'Rate limit exceeded for this business' });
     }
 
     // Find or create customer

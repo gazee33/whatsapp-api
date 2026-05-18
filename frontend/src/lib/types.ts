@@ -31,6 +31,10 @@ export interface Business {
   };
   dualhookConnections?: DualhookConnection[];
   createdAt: string;
+  onboardingPresetId?: string | null;
+  messagesPerMinute?: number;
+  tokensPerDay?: number;
+  maxToolCallsPerSession?: number;
 }
 
 export interface PlatformBusiness extends Business {
@@ -259,6 +263,46 @@ export interface RestaurantSettings {
   paymentMethods: string;
   isTemporarilyClosed: boolean;
   defaultLanguage: string;
+  // Phase 3: structured AI behavior
+  tonePreset: TonePreset;
+  upsellEnabled: boolean;
+  upsellMaxPerOrder: number;
+  customInstructions: string;
+  escalationKeywords: string;
+  aiRulesVersion: number;
+  // Phase 5: operational must-haves
+  weeklySchedule: string;
+  closureExceptions: string;
+  afterHoursPolicy: AfterHoursPolicy;
+  minOrderValue: number;
+  maxOrderItemCount: number | null;
+  featuredItems: string;
+  hiddenItems: string;
+  // Phase 6: UX polish
+  logoUrl: string | null;
+  coverUrl: string | null;
+  mapsUrl: string | null;
+  showAddressByName: boolean;
+  confirmationStyle: ConfirmationStyle;
+  cancellationPolicy: string;
+}
+
+export type TonePreset = 'formal' | 'casual' | 'playful' | 'professional';
+export type AfterHoursPolicy = 'collect_order' | 'inform_only' | 'silence';
+export type ConfirmationStyle = 'summary' | 'itemized' | 'minimal';
+export type DaySchedule = { day: string; open: boolean; from: string; to: string };
+
+// ── OnboardingPreset ──
+export interface OnboardingPreset {
+  id: string;
+  name: string;
+  description: string;
+  tonePreset: TonePreset;
+  defaultCustomInstructions: string;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+  _count?: { businesses: number };
 }
 
 export interface RestaurantSettingsPayload {
@@ -281,6 +325,27 @@ export interface RestaurantSettingsPayload {
   paymentMethods?: string;
   isTemporarilyClosed?: boolean;
   defaultLanguage?: string;
+  // Phase 3: structured AI behavior
+  tonePreset?: TonePreset;
+  upsellEnabled?: boolean;
+  upsellMaxPerOrder?: number;
+  customInstructions?: string;
+  escalationKeywords?: string | string[];
+  // Phase 5: operational must-haves
+  weeklySchedule?: string;
+  closureExceptions?: string;
+  afterHoursPolicy?: AfterHoursPolicy;
+  minOrderValue?: number;
+  maxOrderItemCount?: number | null;
+  featuredItems?: string;
+  hiddenItems?: string;
+  // Phase 6: UX polish
+  logoUrl?: string | null;
+  coverUrl?: string | null;
+  mapsUrl?: string | null;
+  showAddressByName?: boolean;
+  confirmationStyle?: ConfirmationStyle;
+  cancellationPolicy?: string;
 }
 
 // ── IAM: Roles & Permissions ──
@@ -375,6 +440,13 @@ export interface PlatformConfig {
   promptTemplate: string;
   promptVersion: string;
   enableCustomPrompt: boolean;
+  identityTemplate: string;
+  workflowTemplate: string;
+  guardrailsTemplate: string;
+  toolsTemplate: string;
+  interactiveTemplate: string;
+  forbiddenPatterns: string;
+  maxCustomRuleLength: number;
   defaultLLMProvider: string | null;
   defaultLLMModel: string | null;
   maxTokens: number | null;
@@ -386,6 +458,8 @@ export interface PlatformConfig {
   orderStatusToolEnabled: boolean;
   flagCustomerToolEnabled: boolean;
   autoUpsellEnabled: boolean;
+  providerFailoverOrder: string;
+  globalForbiddenWords: string;
   isActive: boolean;
   createdAt: string;
   updatedAt: string;

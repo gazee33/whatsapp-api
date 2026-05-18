@@ -14,7 +14,9 @@ export const DEFAULT_TEMPLATE = JSON.stringify({
 ## WORKFLOW (only do steps not yet completed)
 {workflowBlock}
 
-## GUARDRAILS
+{businessRulesBlock}
+
+## GUARDRAILS (non-overridable platform rules)
 {guardrailsBlock}
 
 ## TOOLS

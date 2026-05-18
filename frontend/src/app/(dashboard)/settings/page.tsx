@@ -1,9 +1,14 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { useBusinessStore } from "@/stores/business-store";
-import { tenantClient } from "@/lib/api-client";
 import { useLanguage } from "@/i18n/language-context";
+import { AIBehaviorCard, type AIBehaviorValue } from "./AIBehaviorCard";
+import { OperatingHoursCard, type OperatingHoursValue } from "./OperatingHoursCard";
+import { OrderRulesCard, type OrderRulesValue } from "./OrderRulesCard";
+import { BrandPresenceCard, type BrandPresenceValue } from "./BrandPresenceCard";
+import { OrderPoliciesCard, type OrderPoliciesValue } from "./OrderPoliciesCard";
 import { Button } from "@/components/ui/button";
 import { Input, Label } from "@/components/ui/input";
 import {
@@ -30,7 +35,6 @@ import {
   MapPin,
   Phone,
   MessageSquare,
-  Sparkles,
   DollarSign,
   Save,
   Truck,
@@ -55,8 +59,42 @@ const LANGUAGES = [
   { value: "ar", labelKey: "settings.arabic" },
 ];
 
+const DEFAULT_AI_BEHAVIOR: AIBehaviorValue = {
+  tonePreset: "casual",
+  upsellEnabled: false,
+  upsellMaxPerOrder: 1,
+  customInstructions: "",
+  escalationKeywords: [],
+};
+
+const DEFAULT_OPERATING_HOURS: OperatingHoursValue = {
+  weeklySchedule: [],
+  closureExceptions: [],
+  afterHoursPolicy: "inform_only",
+};
+
+const DEFAULT_ORDER_RULES: OrderRulesValue = {
+  minOrderValue: 0,
+  maxOrderItemCount: null,
+  featuredItems: [],
+  hiddenItems: [],
+};
+
+const DEFAULT_BRAND_PRESENCE: BrandPresenceValue = {
+  logoUrl: "",
+  coverUrl: "",
+  mapsUrl: "",
+  showAddressByName: false,
+};
+
+const DEFAULT_ORDER_POLICIES: OrderPoliciesValue = {
+  confirmationStyle: "summary",
+  cancellationPolicy: "",
+};
+
 export default function SettingsPage() {
-  const { t, lang } = useLanguage();
+  const { t } = useLanguage();
+  const router = useRouter();
   const { settings, fetchSettings, updateSettings, isLoading } =
     useBusinessStore();
 
@@ -64,8 +102,11 @@ export default function SettingsPage() {
   const [openingTime, setOpeningTime] = useState("");
   const [closingTime, setClosingTime] = useState("");
   const [welcomeMsg, setWelcomeMsg] = useState("");
-  const [aiRules, setAiRules] = useState("");
   const [currency, setCurrency] = useState("SAR");
+
+  // Phase 3 AI Behavior
+  const [aiBehavior, setAiBehavior] = useState<AIBehaviorValue>(DEFAULT_AI_BEHAVIOR);
+  const [fieldError, setFieldError] = useState<{ field: string; message: string } | null>(null);
 
   const [address, setAddress] = useState("");
   const [latitude, setLatitude] = useState("");
@@ -84,6 +125,14 @@ export default function SettingsPage() {
   const [isTemporarilyClosed, setIsTemporarilyClosed] = useState(false);
   const [defaultLanguage, setDefaultLanguage] = useState("en");
 
+  // Phase 5 — Operational must-haves
+  const [operatingHours, setOperatingHours] = useState<OperatingHoursValue>(DEFAULT_OPERATING_HOURS);
+  const [orderRules, setOrderRules] = useState<OrderRulesValue>(DEFAULT_ORDER_RULES);
+
+  // Phase 6 — UX polish
+  const [brandPresence, setBrandPresence] = useState<BrandPresenceValue>(DEFAULT_BRAND_PRESENCE);
+  const [orderPolicies, setOrderPolicies] = useState<OrderPoliciesValue>(DEFAULT_ORDER_POLICIES);
+
   const [saving, setSaving] = useState(false);
   const [loaded, setLoaded] = useState(false);
 
@@ -97,8 +146,23 @@ export default function SettingsPage() {
       setOpeningTime(settings.openingTime || "");
       setClosingTime(settings.closingTime || "");
       setWelcomeMsg(settings.welcomeMsg || "");
-      setAiRules(settings.aiRules || "");
       setCurrency(settings.currency || "SAR");
+
+      // AI Behavior — fall back to legacy `aiRules` when `customInstructions` is empty
+      let parsedEscalation: string[] = [];
+      try {
+        const ek = JSON.parse(settings.escalationKeywords || "[]");
+        if (Array.isArray(ek)) parsedEscalation = ek.filter((k): k is string => typeof k === "string");
+      } catch { /* fall through to empty */ }
+
+      setAiBehavior({
+        tonePreset: (settings.tonePreset as AIBehaviorValue["tonePreset"]) || "casual",
+        upsellEnabled: settings.upsellEnabled ?? false,
+        upsellMaxPerOrder: settings.upsellMaxPerOrder ?? 1,
+        customInstructions: settings.customInstructions || settings.aiRules || "",
+        escalationKeywords: parsedEscalation,
+      });
+
       setAddress(settings.address || "");
       setLatitude(settings.latitude != null ? String(settings.latitude) : "");
       setLongitude(settings.longitude != null ? String(settings.longitude) : "");
@@ -106,12 +170,14 @@ export default function SettingsPage() {
       setDeliveryEnabled(settings.deliveryEnabled ?? false);
       setDineInEnabled(settings.dineInEnabled ?? true);
       setPickupEnabled(settings.pickupEnabled ?? true);
+
       try {
         const tiers = JSON.parse(settings.deliveryTiers || "[]");
         setDeliveryTiers(Array.isArray(tiers) ? tiers : []);
       } catch {
         setDeliveryTiers([]);
       }
+
       setMaxDeliveryDistanceKm(
         settings.maxDeliveryDistanceKm != null
           ? String(settings.maxDeliveryDistanceKm)
@@ -122,30 +188,84 @@ export default function SettingsPage() {
           ? String(settings.estimatedPrepTimeMinutes)
           : ""
       );
+
       try {
         const methods = JSON.parse(settings.paymentMethods || '["cash","card"]');
         setPaymentMethodsStr(Array.isArray(methods) ? methods.join(", ") : "cash, card");
       } catch {
         setPaymentMethodsStr("cash, card");
       }
+
       setIsTemporarilyClosed(settings.isTemporarilyClosed ?? false);
       setDefaultLanguage(settings.defaultLanguage || "en");
+
+      // Phase 5 — Operational must-haves
+      let parsedWeeklySchedule: OperatingHoursValue["weeklySchedule"] = [];
+      try {
+        const ws = JSON.parse(settings.weeklySchedule || "[]");
+        if (Array.isArray(ws)) parsedWeeklySchedule = ws;
+      } catch { /* keep default */ }
+
+      let parsedClosureExceptions: string[] = [];
+      try {
+        const ce = JSON.parse(settings.closureExceptions || "[]");
+        if (Array.isArray(ce)) parsedClosureExceptions = ce.filter((x): x is string => typeof x === "string");
+      } catch { /* keep default */ }
+
+      let parsedFeaturedItems: string[] = [];
+      try {
+        const fi = JSON.parse(settings.featuredItems || "[]");
+        if (Array.isArray(fi)) parsedFeaturedItems = fi.filter((x): x is string => typeof x === "string");
+      } catch { /* keep default */ }
+
+      let parsedHiddenItems: string[] = [];
+      try {
+        const hi = JSON.parse(settings.hiddenItems || "[]");
+        if (Array.isArray(hi)) parsedHiddenItems = hi.filter((x): x is string => typeof x === "string");
+      } catch { /* keep default */ }
+
+      setOperatingHours({
+        weeklySchedule: parsedWeeklySchedule,
+        closureExceptions: parsedClosureExceptions,
+        afterHoursPolicy: settings.afterHoursPolicy || "inform_only",
+      });
+
+      setOrderRules({
+        minOrderValue: settings.minOrderValue ?? 0,
+        maxOrderItemCount: settings.maxOrderItemCount ?? null,
+        featuredItems: parsedFeaturedItems,
+        hiddenItems: parsedHiddenItems,
+      });
+
+      // Phase 6 — UX polish
+      setBrandPresence({
+        logoUrl: settings.logoUrl || "",
+        coverUrl: settings.coverUrl || "",
+        mapsUrl: settings.mapsUrl || "",
+        showAddressByName: settings.showAddressByName ?? false,
+      });
+
+      setOrderPolicies({
+        confirmationStyle: settings.confirmationStyle || "summary",
+        cancellationPolicy: settings.cancellationPolicy || "",
+      });
     }
   }, [settings]);
 
   const handleSave = async () => {
     setSaving(true);
+    setFieldError(null);
     try {
       const paymentMethodsArr = paymentMethodsStr
         .split(",")
         .map((s) => s.trim())
         .filter(Boolean);
+
       await updateSettings({
         name,
         openingTime,
         closingTime,
         welcomeMsg,
-        aiRules,
         currency,
         address: address || null,
         latitude: latitude ? parseFloat(latitude) : null,
@@ -164,10 +284,43 @@ export default function SettingsPage() {
         paymentMethods: JSON.stringify(paymentMethodsArr),
         isTemporarilyClosed,
         defaultLanguage,
+        // Phase 3 — AI Behavior
+        tonePreset: aiBehavior.tonePreset,
+        upsellEnabled: aiBehavior.upsellEnabled,
+        upsellMaxPerOrder: aiBehavior.upsellMaxPerOrder,
+        customInstructions: aiBehavior.customInstructions,
+        escalationKeywords: JSON.stringify(aiBehavior.escalationKeywords),
+        // Phase 5 — Operational must-haves
+        weeklySchedule: JSON.stringify(operatingHours.weeklySchedule),
+        closureExceptions: JSON.stringify(operatingHours.closureExceptions),
+        afterHoursPolicy: operatingHours.afterHoursPolicy,
+        minOrderValue: orderRules.minOrderValue,
+        maxOrderItemCount: orderRules.maxOrderItemCount,
+        featuredItems: JSON.stringify(orderRules.featuredItems),
+        hiddenItems: JSON.stringify(orderRules.hiddenItems),
+        // Phase 6 — UX polish
+        logoUrl: brandPresence.logoUrl || null,
+        coverUrl: brandPresence.coverUrl || null,
+        mapsUrl: brandPresence.mapsUrl || null,
+        showAddressByName: brandPresence.showAddressByName,
+        confirmationStyle: orderPolicies.confirmationStyle,
+        cancellationPolicy: orderPolicies.cancellationPolicy,
       });
-      toast.success(t("settings.saved"));
-    } catch {
-      toast.error(t("settings.save_failed"));
+
+      toast.success(t("settings.saved"), {
+        action: {
+          label: t("settings.view_in_simulator"),
+          onClick: () => router.push("/simulator"),
+        },
+      });
+    } catch (err) {
+      const e = err as Error & { field?: string };
+      if (e.field) {
+        setFieldError({ field: e.field, message: e.message });
+        toast.error(e.message);
+      } else {
+        toast.error(e.message || t("settings.save_failed"));
+      }
     } finally {
       setSaving(false);
     }
@@ -222,6 +375,7 @@ export default function SettingsPage() {
       <Separator />
 
       <div className="space-y-6">
+        {/* Basic Info */}
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-base">
@@ -344,6 +498,10 @@ export default function SettingsPage() {
           </CardContent>
         </Card>
 
+        {/* Phase 6 — Brand Presence (after basic info) */}
+        <BrandPresenceCard value={brandPresence} onChange={setBrandPresence} />
+
+        {/* Order Types */}
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-base">
@@ -393,6 +551,13 @@ export default function SettingsPage() {
             </div>
           </CardContent>
         </Card>
+
+        {/* Phase 5 — Order Rules (after order types) */}
+        <OrderRulesCard
+          value={orderRules}
+          onChange={setOrderRules}
+          currency={currency}
+        />
 
         {deliveryEnabled && (
           <Card>
@@ -470,6 +635,7 @@ export default function SettingsPage() {
           </Card>
         )}
 
+        {/* Operations */}
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-base">
@@ -535,6 +701,10 @@ export default function SettingsPage() {
           </CardContent>
         </Card>
 
+        {/* Phase 5 — Operating Hours */}
+        <OperatingHoursCard value={operatingHours} onChange={setOperatingHours} />
+
+        {/* Customer Communication */}
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-base">
@@ -557,26 +727,19 @@ export default function SettingsPage() {
                 className="flex w-full rounded-lg border border-input bg-background px-3 py-2 text-sm shadow-sm transition-colors duration-200 placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring resize-none"
               />
             </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="aiRules" className="flex items-center gap-1.5">
-                <Sparkles className="h-3.5 w-3.5 text-muted-foreground" />
-                {t("settings.ai_rules")}
-              </Label>
-              <textarea
-                id="aiRules"
-                rows={5}
-                placeholder={t("settings.ai_rules_placeholder")}
-                value={aiRules}
-                onChange={(e) => setAiRules(e.target.value)}
-                className="flex w-full rounded-lg border border-input bg-background px-3 py-2 text-sm shadow-sm transition-colors duration-200 placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring resize-none font-mono"
-              />
-              <p className="text-xs text-muted-foreground">
-                {t("settings.ai_rules_help")}
-              </p>
-            </div>
           </CardContent>
         </Card>
+
+        {/* Phase 6 — Order Policies */}
+        <OrderPoliciesCard value={orderPolicies} onChange={setOrderPolicies} />
+
+        {/* Phase 3 — AI Behavior */}
+        <AIBehaviorCard
+          value={aiBehavior}
+          onChange={setAiBehavior}
+          fieldError={fieldError}
+          onClearFieldError={() => setFieldError(null)}
+        />
       </div>
     </div>
   );

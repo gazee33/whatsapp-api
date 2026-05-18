@@ -7,6 +7,10 @@ import {
   Puzzle,
   FileText,
   Activity,
+  ArrowUp,
+  ArrowDown,
+  Shield,
+  X,
 } from "lucide-react";
 import { usePlatformStore } from "@/stores/platform-store";
 import { useLanguage } from "@/i18n/language-context";
@@ -120,10 +124,24 @@ export default function PlatformSettingsPage() {
   // Feature flags (single object)
   const [featureFlags, setFeatureFlags] = useState<Record<FeatureFlag, boolean>>(DEFAULT_FEATURE_FLAGS);
 
-  // Prompt template
+  // Prompt sections
   const [enableCustomPrompt, setEnableCustomPrompt] = useState(false);
   const [promptVersion, setPromptVersion] = useState("1.0");
   const [promptTemplate, setPromptTemplate] = useState("");
+  const [identityTemplate, setIdentityTemplate] = useState("");
+  const [workflowTemplate, setWorkflowTemplate] = useState("");
+  const [guardrailsTemplate, setGuardrailsTemplate] = useState("");
+  const [toolsTemplate, setToolsTemplate] = useState("");
+  const [interactiveTemplate, setInteractiveTemplate] = useState("");
+
+  // Tenant rule validation (Phase 3)
+  const [forbiddenPatterns, setForbiddenPatterns] = useState<string>("[]");
+  const [maxCustomRuleLength, setMaxCustomRuleLength] = useState<string>("500");
+
+  // Phase 7: provider failover order + global forbidden words
+  const [providerFailoverOrder, setProviderFailoverOrder] = useState<string[]>([]);
+  const [globalForbiddenWords, setGlobalForbiddenWords] = useState<string[]>([]);
+  const [forbiddenWordInput, setForbiddenWordInput] = useState("");
 
   // Status
   const [isActive, setIsActive] = useState(true);
@@ -154,6 +172,25 @@ export default function PlatformSettingsPage() {
       setEnableCustomPrompt(config.enableCustomPrompt ?? false);
       setPromptVersion(config.promptVersion || "1.0");
       setPromptTemplate(formatJson(config.promptTemplate));
+      setIdentityTemplate(config.identityTemplate ?? "");
+      setWorkflowTemplate(config.workflowTemplate ?? "");
+      setGuardrailsTemplate(config.guardrailsTemplate ?? "");
+      setToolsTemplate(config.toolsTemplate ?? "");
+      setInteractiveTemplate(config.interactiveTemplate ?? "");
+      setForbiddenPatterns(config.forbiddenPatterns ?? "[]");
+      setMaxCustomRuleLength(String(config.maxCustomRuleLength ?? 500));
+      try {
+        const fo = JSON.parse(config.providerFailoverOrder ?? "[]");
+        setProviderFailoverOrder(Array.isArray(fo) ? fo : []);
+      } catch {
+        setProviderFailoverOrder([]);
+      }
+      try {
+        const gfw = JSON.parse(config.globalForbiddenWords ?? "[]");
+        setGlobalForbiddenWords(Array.isArray(gfw) ? gfw : []);
+      } catch {
+        setGlobalForbiddenWords([]);
+      }
       setIsActive(config.isActive ?? true);
       setCreatedAt(config.createdAt || "");
       setUpdatedAt(config.updatedAt || "");
@@ -170,6 +207,14 @@ export default function PlatformSettingsPage() {
     }
     return null;
   }, [enableCustomPrompt, promptTemplate, t]);
+
+  const SECTION_DEFAULTS = {
+    identityTemplate: "",
+    workflowTemplate: "",
+    guardrailsTemplate: "",
+    toolsTemplate: "",
+    interactiveTemplate: "",
+  } as const;
 
   const handleSave = useCallback(async () => {
     const validationError = validate();
@@ -190,8 +235,16 @@ export default function PlatformSettingsPage() {
         maxToolIterations: parseInt(maxToolIterations, 10) || 6,
         ...featureFlags,
         enableCustomPrompt,
-        promptVersion,
         promptTemplate: parsed ? JSON.stringify(parsed) : promptTemplate,
+        identityTemplate,
+        workflowTemplate,
+        guardrailsTemplate,
+        toolsTemplate,
+        interactiveTemplate,
+        forbiddenPatterns,
+        maxCustomRuleLength: parseInt(maxCustomRuleLength, 10) || 500,
+        providerFailoverOrder: JSON.stringify(providerFailoverOrder),
+        globalForbiddenWords: JSON.stringify(globalForbiddenWords),
         isActive,
       });
       toast.success(t("platform_settings.saved"));
@@ -203,8 +256,11 @@ export default function PlatformSettingsPage() {
     }
   }, [
     validate, defaultLLMProvider, defaultLLMModel, maxTokens, temperature,
-    maxToolIterations, featureFlags, enableCustomPrompt, promptVersion,
-    promptTemplate, isActive, updateConfig, t,
+    maxToolIterations, featureFlags, enableCustomPrompt, promptTemplate,
+    identityTemplate, workflowTemplate, guardrailsTemplate, toolsTemplate,
+    interactiveTemplate, forbiddenPatterns, maxCustomRuleLength,
+    providerFailoverOrder, globalForbiddenWords,
+    isActive, updateConfig, t,
   ]);
 
   if (!loaded || configLoading) {
@@ -356,7 +412,7 @@ export default function PlatformSettingsPage() {
           </CardContent>
         </Card>
 
-        {/* Prompt Template */}
+        {/* Prompt Sections */}
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-base">
@@ -367,46 +423,267 @@ export default function PlatformSettingsPage() {
               {t("platform_settings.prompt_template_desc")}
             </CardDescription>
           </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="flex items-center justify-between rounded-lg border p-3">
-              <div className="space-y-0.5">
-                <Label>{t("platform_settings.enable_custom")}</Label>
-                <p className="text-xs text-muted-foreground">
-                  {t("platform_settings.enable_custom_desc")}
-                </p>
-              </div>
-              <Switch
-                checked={enableCustomPrompt}
-                onCheckedChange={setEnableCustomPrompt}
-              />
+          <CardContent className="space-y-6">
+            <div className="flex items-center justify-between text-xs text-muted-foreground rounded-lg border border-dashed px-3 py-2">
+              <span>{t("platform_settings.current_version")}: <span className="font-mono font-medium">{promptVersion}</span></span>
+              <span className="text-xs opacity-60">auto-bumped on save</span>
             </div>
 
+            {([
+              { key: "identityTemplate", value: identityTemplate, set: setIdentityTemplate, rows: 6, titleKey: "section_identity", descKey: "section_identity_desc", phKey: "section_identity_placeholders" },
+              { key: "workflowTemplate", value: workflowTemplate, set: setWorkflowTemplate, rows: 8, titleKey: "section_workflow", descKey: "section_workflow_desc", phKey: "section_workflow_placeholders" },
+              { key: "guardrailsTemplate", value: guardrailsTemplate, set: setGuardrailsTemplate, rows: 8, titleKey: "section_guardrails", descKey: "section_guardrails_desc", phKey: "section_guardrails_placeholders" },
+              { key: "toolsTemplate", value: toolsTemplate, set: setToolsTemplate, rows: 8, titleKey: "section_tools", descKey: "section_tools_desc", phKey: "section_tools_placeholders" },
+              { key: "interactiveTemplate", value: interactiveTemplate, set: setInteractiveTemplate, rows: 8, titleKey: "section_interactive", descKey: "section_interactive_desc", phKey: "section_interactive_placeholders" },
+            ] as const).map(({ key, value, set, rows, titleKey, descKey, phKey }) => (
+              <div key={key} className="space-y-2 rounded-lg border p-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <Label className="text-sm font-medium">{t(`platform_settings.${titleKey}`)}</Label>
+                    <p className="text-xs text-muted-foreground mt-0.5">{t(`platform_settings.${descKey}`)}</p>
+                  </div>
+                  {value.trim() && (
+                    <button
+                      type="button"
+                      onClick={() => set(SECTION_DEFAULTS[key as keyof typeof SECTION_DEFAULTS])}
+                      className="text-xs text-muted-foreground hover:text-foreground underline underline-offset-2 transition-colors"
+                    >
+                      {t("platform_settings.reset_section")}
+                    </button>
+                  )}
+                </div>
+                <textarea
+                  rows={rows}
+                  value={value}
+                  onChange={(e) => set(e.target.value)}
+                  placeholder={`Leave empty to use system default…`}
+                  className="flex w-full rounded-lg border border-input bg-background px-3 py-2 text-sm shadow-sm transition-colors duration-200 placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring resize-y font-mono"
+                />
+                <p className="text-xs text-muted-foreground font-mono">{t(`platform_settings.${phKey}`)}</p>
+                {value.trim() && (
+                  <div className="inline-flex items-center gap-1 text-xs text-amber-600 dark:text-amber-400">
+                    <span className="h-1.5 w-1.5 rounded-full bg-amber-500" />
+                    Custom override active
+                  </div>
+                )}
+              </div>
+            ))}
+
+            {/* Legacy monolithic template — collapsed by default */}
+            <details className="group">
+              <summary className="cursor-pointer text-xs text-muted-foreground hover:text-foreground list-none flex items-center gap-1.5 transition-colors">
+                <span className="group-open:rotate-90 transition-transform inline-block">▶</span>
+                {t("platform_settings.template")} (legacy fallback)
+              </summary>
+              <div className="mt-3 space-y-3">
+                <div className="flex items-center justify-between rounded-lg border p-3">
+                  <div className="space-y-0.5">
+                    <Label className="text-sm">{t("platform_settings.enable_custom")}</Label>
+                    <p className="text-xs text-muted-foreground">{t("platform_settings.enable_custom_desc")}</p>
+                  </div>
+                  <Switch checked={enableCustomPrompt} onCheckedChange={setEnableCustomPrompt} />
+                </div>
+                <textarea
+                  rows={12}
+                  value={promptTemplate}
+                  onChange={(e) => setPromptTemplate(e.target.value)}
+                  disabled={!enableCustomPrompt}
+                  placeholder="JSON template…"
+                  className="flex w-full rounded-lg border border-input bg-background px-3 py-2 text-sm shadow-sm transition-colors duration-200 placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring resize-none font-mono disabled:opacity-40"
+                />
+                <p className="text-xs text-muted-foreground">{t("platform_settings.available_placeholders")}</p>
+              </div>
+            </details>
+          </CardContent>
+        </Card>
+
+        {/* Tenant Rule Validation */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-base">
+              <FileText className="h-4 w-4" />
+              {t("platform_settings.tenant_validation")}
+            </CardTitle>
+            <CardDescription>
+              {t("platform_settings.tenant_validation_desc")}
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="promptVersion">{t("platform_settings.prompt_version")}</Label>
+              <Label htmlFor="maxCustomRuleLength">{t("platform_settings.max_custom_rule_length")}</Label>
               <Input
-                id="promptVersion"
-                placeholder="1.0"
-                value={promptVersion}
-                onChange={(e) => setPromptVersion(e.target.value)}
-                disabled={!enableCustomPrompt}
+                id="maxCustomRuleLength"
+                type="number"
+                min="50"
+                max="5000"
+                value={maxCustomRuleLength}
+                onChange={(e) => setMaxCustomRuleLength(e.target.value)}
                 className="max-w-[200px]"
               />
+              <p className="text-xs text-muted-foreground">{t("platform_settings.max_custom_rule_length_desc")}</p>
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="promptTemplate">{t("platform_settings.template")}</Label>
+              <Label htmlFor="forbiddenPatterns">{t("platform_settings.forbidden_patterns")}</Label>
               <textarea
-                id="promptTemplate"
-                rows={16}
-                value={promptTemplate}
-                onChange={(e) => setPromptTemplate(e.target.value)}
-                disabled={!enableCustomPrompt}
-                className="flex w-full rounded-lg border border-input bg-background px-3 py-2 text-sm shadow-sm transition-colors duration-200 placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring resize-none font-mono"
+                id="forbiddenPatterns"
+                rows={6}
+                value={forbiddenPatterns}
+                onChange={(e) => setForbiddenPatterns(e.target.value)}
+                placeholder='["ignore previous", "skip confirmation", "submit without"]'
+                className="flex w-full rounded-lg border border-input bg-background px-3 py-2 text-sm shadow-sm transition-colors duration-200 placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring resize-y font-mono"
               />
-              <p className="text-xs text-muted-foreground">
-                {t("platform_settings.available_placeholders")}
-              </p>
+              <p className="text-xs text-muted-foreground">{t("platform_settings.forbidden_patterns_desc")}</p>
             </div>
+          </CardContent>
+        </Card>
+
+        {/* Provider Failover Order */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-base">
+              <Brain className="h-4 w-4" />
+              {t("platform.failover_order.title")}
+            </CardTitle>
+            <CardDescription>
+              {t("platform.failover_order.description")}
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            {/* Available providers to add */}
+            <div className="flex flex-wrap gap-2">
+              {["opencode", "gemini", "groq", "openai", "ollama"].map((p) => (
+                <button
+                  key={p}
+                  type="button"
+                  disabled={providerFailoverOrder.includes(p)}
+                  onClick={() => setProviderFailoverOrder((prev) => [...prev, p])}
+                  className="rounded-full border px-3 py-1 text-xs font-medium transition-colors hover:bg-primary hover:text-primary-foreground disabled:opacity-40 disabled:cursor-not-allowed"
+                >
+                  + {p}
+                </button>
+              ))}
+            </div>
+            {/* Ordered list with move up/down and remove */}
+            {providerFailoverOrder.length === 0 ? (
+              <p className="text-xs text-muted-foreground italic">
+                {t("platform.failover_order.no_providers_selected")}
+              </p>
+            ) : (
+              <ol className="space-y-1.5">
+                {providerFailoverOrder.map((p, idx) => (
+                  <li
+                    key={p}
+                    className="flex items-center gap-2 rounded-lg border bg-muted/40 px-3 py-2"
+                  >
+                    <span className="text-xs font-mono text-muted-foreground w-5 text-center">
+                      {idx + 1}
+                    </span>
+                    <span className="flex-1 text-sm font-medium">{p}</span>
+                    <button
+                      type="button"
+                      disabled={idx === 0}
+                      onClick={() =>
+                        setProviderFailoverOrder((prev) => {
+                          const next = [...prev];
+                          [next[idx - 1], next[idx]] = [next[idx], next[idx - 1]];
+                          return next;
+                        })
+                      }
+                      className="p-1 rounded hover:bg-accent disabled:opacity-30"
+                      aria-label="Move up"
+                    >
+                      <ArrowUp className="h-3 w-3" />
+                    </button>
+                    <button
+                      type="button"
+                      disabled={idx === providerFailoverOrder.length - 1}
+                      onClick={() =>
+                        setProviderFailoverOrder((prev) => {
+                          const next = [...prev];
+                          [next[idx], next[idx + 1]] = [next[idx + 1], next[idx]];
+                          return next;
+                        })
+                      }
+                      className="p-1 rounded hover:bg-accent disabled:opacity-30"
+                      aria-label="Move down"
+                    >
+                      <ArrowDown className="h-3 w-3" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setProviderFailoverOrder((prev) => prev.filter((_, i) => i !== idx))
+                      }
+                      className="p-1 rounded hover:bg-destructive/10 text-destructive"
+                      aria-label="Remove"
+                    >
+                      <X className="h-3 w-3" />
+                    </button>
+                  </li>
+                ))}
+              </ol>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Global Forbidden Words */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-base">
+              <Shield className="h-4 w-4" />
+              {t("platform.forbidden_words.title")}
+            </CardTitle>
+            <CardDescription>
+              {t("platform.forbidden_words.description")}
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            {/* Chip input */}
+            <div className="flex gap-2">
+              <Input
+                placeholder={t("platform.forbidden_words.add_word")}
+                value={forbiddenWordInput}
+                onChange={(e) => setForbiddenWordInput(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === ",") {
+                    e.preventDefault();
+                    const word = forbiddenWordInput.trim().replace(/,$/, "");
+                    if (word && !globalForbiddenWords.includes(word)) {
+                      setGlobalForbiddenWords((prev) => [...prev, word]);
+                    }
+                    setForbiddenWordInput("");
+                  }
+                }}
+                className="max-w-[260px]"
+              />
+            </div>
+            {globalForbiddenWords.length === 0 ? (
+              <p className="text-xs text-muted-foreground italic">
+                {t("platform.forbidden_words.no_words")}
+              </p>
+            ) : (
+              <div className="flex flex-wrap gap-2">
+                {globalForbiddenWords.map((word) => (
+                  <span
+                    key={word}
+                    className="inline-flex items-center gap-1 rounded-full bg-destructive/10 px-2.5 py-0.5 text-xs font-medium text-destructive"
+                  >
+                    {word}
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setGlobalForbiddenWords((prev) => prev.filter((w) => w !== word))
+                      }
+                      className="ml-0.5 hover:opacity-70"
+                      aria-label={`Remove ${word}`}
+                    >
+                      <X className="h-3 w-3" />
+                    </button>
+                  </span>
+                ))}
+              </div>
+            )}
           </CardContent>
         </Card>
 

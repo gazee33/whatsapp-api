@@ -54,8 +54,19 @@ export const useBusinessStore = create<BusinessState>((set) => ({
   },
 
   updateSettings: async (data: Partial<RestaurantSettings>) => {
-    const res = await tenantClient.put("/settings", data);
-    set({ settings: res.data });
+    try {
+      const res = await tenantClient.put("/settings", data);
+      set({ settings: res.data });
+    } catch (err) {
+      // Surface the backend's structured `{ error, field }` payload so callers can highlight the offending field inline.
+      const axiosErr = err as { response?: { data?: { error?: string; field?: string } }; message?: string };
+      const payload = axiosErr?.response?.data;
+      const e = new Error(payload?.error || axiosErr?.message || "Failed to update settings") as Error & {
+        field?: string;
+      };
+      if (payload?.field) e.field = payload.field;
+      throw e;
+    }
   },
 
   updateWhatsApp: async (data: WhatsAppCredentialsPayload) => {
