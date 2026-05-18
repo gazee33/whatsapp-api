@@ -118,6 +118,9 @@ export async function handleQueryMenu(
       if (item.description) {
         line += ` - ${item.description}`;
       }
+      if (item.allergens) {
+        line += ` | Allergens: ${item.allergens}`;
+      }
       lines.push(line);
 
       // Add options if present

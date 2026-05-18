@@ -69,7 +69,9 @@ describe('handleAddToCart', () => {
     });
 
     expect(result.success).toBe(false);
-    expect(result.cartState).toBeNull();
+    // Errors now return the real DB cart so the system prompt stays accurate
+    expect(result.cartState).not.toBeNull();
+    expect(result.cartState!.items).toHaveLength(0);
   });
 
   it('rejects item from different business', async () => {
@@ -82,7 +84,8 @@ describe('handleAddToCart', () => {
     });
 
     expect(result.success).toBe(false);
-    expect(result.cartState).toBeNull();
+    expect(result.cartState).not.toBeNull();
+    expect(result.cartState!.items).toHaveLength(0);
   });
 
   it('rejects invalid optionId', async () => {
@@ -95,7 +98,8 @@ describe('handleAddToCart', () => {
     });
 
     expect(result.success).toBe(false);
-    expect(result.cartState).toBeNull();
+    expect(result.cartState).not.toBeNull();
+    expect(result.cartState!.items).toHaveLength(0);
   });
 
   it('rejects item with no option when options are required', async () => {

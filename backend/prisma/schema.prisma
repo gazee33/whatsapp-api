@@ -368,6 +368,7 @@ model MenuItem {
   name        String
   nameAr      String?
   description   String?
+  allergens     String?      // JSON array e.g. ["peanut","dairy","gluten","egg"]
   basePrice     Float?       @map("base_price")
   hasOptions    Boolean      @default(false) @map("has_options")
   image         String?

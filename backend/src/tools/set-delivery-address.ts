@@ -50,7 +50,14 @@ export async function handleSetDeliveryAddress(
       googleAddress = geo.formattedAddress;
       userAddress = address || googleAddress;
     } else if (address) {
-      const geo = await forwardGeocode(address);
+      // Pass restaurant coordinates so Google biases results to the same city,
+      // preventing a neighbourhood name from resolving to a distant city.
+      const geo = await forwardGeocode(address, {
+        biasLat: settings.latitude,
+        biasLng: settings.longitude,
+        biasRadiusKm: 50,
+        countryCode: 'sa',
+      });
       resolvedLat = geo.lat;
       resolvedLng = geo.lng;
       googleAddress = geo.formattedAddress;

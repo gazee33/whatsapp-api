@@ -248,8 +248,8 @@ router.put('/categories/:id', async (req: Request, res: Response) => {
 router.post('/items', upload.single('image'), async (req: Request, res: Response) => {
   try {
     const businessId = (req as any).business.id;
-    const { name, nameAr, description, price, categoryId, available } = req.body;
-    
+    const { name, nameAr, description, allergens, price, categoryId, available } = req.body;
+
     if (!name || !name.trim()) {
       return res.status(400).json({ error: 'Name is required' });
     }
@@ -262,21 +262,22 @@ router.post('/items', upload.single('image'), async (req: Request, res: Response
     if (basePrice !== null && (isNaN(basePrice) || basePrice < 0)) {
       return res.status(400).json({ error: 'Invalid price: must be a non-negative number' });
     }
-    
+
     // Verify category belongs to this business
     const category = await prisma.menuCategory.findFirst({
       where: { id: categoryId as string, businessId }
     });
-    
+
     if (!category) {
       return res.status(400).json({ error: 'Category not found' });
     }
-    
+
     const item = await prisma.menuItem.create({
       data: {
         name,
         nameAr,
         description,
+        allergens: allergens || null,
         basePrice,
         hasOptions: false,
         categoryId: categoryId as string,
@@ -297,8 +298,8 @@ router.put('/items/:id', upload.single('image'), async (req: Request, res: Respo
   try {
     const businessId = (req as any).business.id;
     const id = req.params.id as string;
-    const { name, nameAr, description, price, categoryId, available, clearImage } = req.body;
-    
+    const { name, nameAr, description, allergens, price, categoryId, available, clearImage } = req.body;
+
     if (name !== undefined && !name.trim()) {
       return res.status(400).json({ error: 'Name cannot be empty' });
     }
@@ -340,6 +341,7 @@ router.put('/items/:id', upload.single('image'), async (req: Request, res: Respo
         name,
         nameAr,
         description,
+        allergens: allergens !== undefined ? (allergens || null) : undefined,
         basePrice: price !== undefined ? basePrice : undefined,
         categoryId: categoryId as string | undefined,
         available: available !== undefined ? available === 'true' || available === true : undefined,

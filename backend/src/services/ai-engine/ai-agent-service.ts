@@ -96,7 +96,7 @@ export class AIAgentService {
       };
     }
 
-    const sessionId = await getOrCreateSession(customerId);
+    const { sessionId, isNew: isNewSession } = await getOrCreateSession(customerId);
 
     let [cartState, history, context, platformConfig] = await Promise.all([
       getCartState(customerId),
@@ -107,6 +107,18 @@ export class AIAgentService {
 
     const tools = filterToolsByFeatureFlags(allTools, platformConfig);
     const maxToolIterations = platformConfig.maxToolIterations || DEFAULT_MAX_TOOL_ITERATIONS;
+
+    // On a fresh session (>30 min gap) reset conversational state so stale orderType/
+    // deliveryLocation from a previous session don't bleed into the new conversation.
+    if (isNewSession) {
+      cartState = {
+        ...cartState,
+        mode: 'browsing',
+        orderType: undefined,
+        deliveryLocation: undefined,
+      };
+      await saveCartState(customerId, cartState);
+    }
 
     if (!cartState.language) {
       const seedLanguage = (context.defaultLanguage === 'ar' ? 'ar' : 'en') as SupportedLanguage;
@@ -170,7 +182,9 @@ export class AIAgentService {
       Date.now() - promptStartTime,
     );
 
-    let finalResponse = 'I apologize, but I could not process your request at this time.';
+    let finalResponse = language === 'ar'
+      ? 'عذراً، حصل خلل بسيط. جرّب مرة ثانية 🙏'
+      : 'Sorry, I hit a snag. Please try again in a moment.';
 
     const toolCallFingerprints = new Set<string>();
 
@@ -331,12 +345,15 @@ export class AIAgentService {
         if (execution.cartState) {
           cartState = execution.cartState;
           await saveCartState(customerId, cartState);
+        }
 
-          const newCartSection = `\n## CURRENT CART\n${formatCartForPrompt(cartState, context.currency)}`;
-          const systemMsg = messages[0];
-          if (systemMsg && typeof systemMsg.content === 'string') {
-            systemMsg.content = systemMsg.content.replace(/## CURRENT CART[\s\S]*$/, newCartSection);
-          }
+        // Always refresh CURRENT CART in the system prompt after any tool call.
+        // This prevents the LLM from displaying hallucinated cart contents when
+        // a previous add_to_cart failed silently (e.g. missing optionId).
+        const newCartSection = `\n## CURRENT CART\n${formatCartForPrompt(cartState, context.currency)}`;
+        const systemMsg = messages[0];
+        if (systemMsg && typeof systemMsg.content === 'string') {
+          systemMsg.content = systemMsg.content.replace(/## CURRENT CART[\s\S]*$/, newCartSection);
         }
 
         if (execution.createdOrderId) {

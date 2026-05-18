@@ -11,6 +11,7 @@ export interface MenuItemInfo {
   name: string;
   nameAr: string | null;
   description: string | null;
+  allergens: string | null;
   basePrice: number | null;
   categoryName: string;
   categoryNameAr: string | null;
@@ -151,6 +152,7 @@ export async function getRestaurantContext(businessId: string): Promise<Restaura
     name: item.name,
     nameAr: item.nameAr,
     description: item.description,
+    allergens: item.allergens ?? null,
     basePrice: item.basePrice,
     categoryName: item.category.name,
     categoryNameAr: item.category.nameAr,

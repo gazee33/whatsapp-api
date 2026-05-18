@@ -1,6 +1,6 @@
 import { prisma } from '../lib/prisma.js';
 import type { CartState, CartItem } from '../services/ai-engine/cart-state.js';
-import { generateCartItemId, calculateCartTotal } from '../services/ai-engine/cart-state.js';
+import { generateCartItemId, calculateCartTotal, emptyCartState } from '../services/ai-engine/cart-state.js';
 
 export interface AddToCartItemInput {
   itemId: string;
@@ -15,7 +15,7 @@ export interface AddToCartParams {
 
 type AddToCartResult =
   | { success: true; result: string; cartState: CartState }
-  | { success: false; result: string; cartState: null };
+  | { success: false; result: string; cartState: CartState | null };
 
 export async function handleAddToCart(
   businessId: string,
@@ -30,6 +30,20 @@ export async function handleAddToCart(
 
   const settings = await prisma.restaurantSettings.findUnique({ where: { businessId } });
   const currency = settings?.currency || 'SAR';
+
+  // Load current cart first so errors can return the real cart state,
+  // preventing the LLM from displaying a hallucinated cart after a failed add.
+  const customer = await prisma.customer.findUnique({ where: { id: customerId } });
+  let cartState: CartState;
+  if (customer?.cartState) {
+    try {
+      cartState = JSON.parse(customer.cartState) as CartState;
+    } catch {
+      cartState = emptyCartState();
+    }
+  } else {
+    cartState = emptyCartState();
+  }
 
   const menuItems = await prisma.menuItem.findMany({
     where: {
@@ -46,15 +60,15 @@ export async function handleAddToCart(
   for (const input of items) {
     const menuItem = menuItemMap.get(input.itemId);
     if (!menuItem) {
-      return { success: false, result: `Menu item not found or unavailable.`, cartState: null };
+      return { success: false, result: `Menu item not found or unavailable.`, cartState };
     }
 
     if (!menuItem.available) {
-      return { success: false, result: `'${menuItem.name}' is currently unavailable.`, cartState: null };
+      return { success: false, result: `'${menuItem.name}' is currently unavailable.`, cartState };
     }
 
     if (input.quantity < 1) {
-      return { success: false, result: `Invalid quantity for '${menuItem.name}'. Quantity must be at least 1.`, cartState: null };
+      return { success: false, result: `Invalid quantity for '${menuItem.name}'. Quantity must be at least 1.`, cartState };
     }
 
     let optionName: string | undefined;
@@ -64,13 +78,20 @@ export async function handleAddToCart(
     if (input.optionId) {
       const option = menuItem.options.find(o => o.id === input.optionId);
       if (!option) {
-        return { success: false, result: `Option not found for '${menuItem.name}'.`, cartState: null };
+        return { success: false, result: `Option not found for '${menuItem.name}'.`, cartState };
       }
       resolvedOptionId = option.id;
       optionName = option.name;
       optionPrice = option.price;
     } else if (menuItem.options && menuItem.options.length > 0) {
-      return { success: false, result: `'${menuItem.name}' requires an option.`, cartState: null };
+      const optionsList = menuItem.options
+        .map(o => `"${o.name}" (id: ${o.id}, price: +${o.price} ${currency})`)
+        .join(', ');
+      return {
+        success: false,
+        result: `ERROR: '${menuItem.name}' was NOT added — it requires an option. Available options: [${optionsList}]. Ask the customer which option they want, then retry add_to_cart with the correct optionId. Current cart has ${cartState.items.length} item(s).`,
+        cartState,
+      };
     }
 
     cartItems.push({
@@ -85,18 +106,6 @@ export async function handleAddToCart(
       optionId: resolvedOptionId,
       notes: input.notes,
     });
-  }
-
-  const customer = await prisma.customer.findUnique({ where: { id: customerId } });
-  let cartState: CartState;
-  if (customer?.cartState) {
-    try {
-      cartState = JSON.parse(customer.cartState) as CartState;
-    } catch {
-      cartState = { mode: 'browsing', items: [], updatedAt: new Date().toISOString() };
-    }
-  } else {
-    cartState = { mode: 'browsing', items: [], updatedAt: new Date().toISOString() };
   }
 
   cartState.items.push(...cartItems);

@@ -366,10 +366,22 @@ router.post('/', async (req: Request, res: Response) => {
         },
       });
 
+      let lang = 'en';
+      try {
+        if (customer.cartState) {
+          const cart = JSON.parse(customer.cartState);
+          if (cart.language === 'ar') lang = 'ar';
+        }
+      } catch {}
+
       if (isRateLimit) {
-        reply = "I'm currently experiencing high demand. Please try again in a moment, or call us directly to place your order.";
+        reply = lang === 'ar'
+          ? 'الطلبات كثيرة هالحين، جرّب بعد شوي أو تواصل معنا مباشرة 🙏'
+          : "I'm currently experiencing high demand. Please try again in a moment, or call us directly.";
       } else {
-        reply = "I apologize, but I could not process your request at this time. Please try again.";
+        reply = lang === 'ar'
+          ? 'عذراً، حصل خلل بسيط. جرّب مرة ثانية 🙏'
+          : 'Sorry, I hit a snag. Please try again in a moment.';
       }
     }
 

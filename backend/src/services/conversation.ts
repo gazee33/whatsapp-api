@@ -30,22 +30,21 @@ export async function saveMessage(
   });
 }
 
-export async function getOrCreateSession(customerId: string): Promise<string> {
-  // Find most recent message for this customer
+export async function getOrCreateSession(
+  customerId: string,
+): Promise<{ sessionId: string; isNew: boolean }> {
   const last = await prisma.message.findFirst({
     where: { customerId },
     orderBy: { createdAt: 'desc' },
   });
 
-  // If last message > 30 min old, create new session
-  if (
+  const expired =
     !last ||
-    new Date().getTime() - new Date(last.createdAt).getTime() >
-      30 * 60 * 1000
-  ) {
-    return `session_${Date.now()}`;
+    new Date().getTime() - new Date(last.createdAt).getTime() > 30 * 60 * 1000;
+
+  if (expired) {
+    return { sessionId: `session_${Date.now()}`, isNew: true };
   }
-  
-  // Reuse existing session ID from last message
-  return last.sessionId;
+
+  return { sessionId: last.sessionId, isNew: false };
 }

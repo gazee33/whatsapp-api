@@ -57,7 +57,8 @@ function formatMenuForPrompt(items: MenuItemInfo[], currency: string): string {
     for (const item of group.items) {
       const price = (item.basePrice ?? 0).toFixed(2);
       const nameDisplay = item.nameAr ? `${item.name} (${item.nameAr})` : item.name;
-      lines.push(`- [${item.id}] ${nameDisplay} | ${price} ${currency}${item.description ? ` | ${item.description}` : ''}`);
+      const allergenSuffix = item.allergens ? ` | Allergens: ${item.allergens}` : '';
+      lines.push(`- [${item.id}] ${nameDisplay} | ${price} ${currency}${item.description ? ` | ${item.description}` : ''}${allergenSuffix}`);
       if (item.options.length > 0) {
         const opts = item.options.map(opt => {
           const priceStr = opt.price > 0 ? `+${opt.price.toFixed(2)}` : '0.00';
@@ -113,6 +114,14 @@ function getGuardrailsBlock(context?: RestaurantContext): string {
     '- After submit: done with this order. If customer wants more, they start fresh.',
     '- ESCALATION: If the customer is angry, frustrated, insulting, asks to speak to a human/manager, asking questions that are not related to the menu or the order more than 3 times, or the issue is beyond what the available tools can resolve — call flag_customer to escalate to human support. Once flagged, tell the customer a support agent will follow up shortly and stop trying to resolve the issue yourself.',
   ];
+
+  // Emoji cap — in guardrails so it can't be overridden by tone or business rules.
+  const tonePreset = context?.tonePreset ?? 'casual';
+  if (tonePreset === 'formal' || tonePreset === 'professional') {
+    lines.push('- Emojis: use NONE. This is a professional tone — emojis undermine credibility.');
+  } else {
+    lines.push('- Emojis: maximum 1 per reply. Never place multiple emojis in the same sentence or consecutively. Never use 😅 in customer-facing messages.');
+  }
 
   if (context) {
     if (context.minOrderValue > 0) {
@@ -185,7 +194,7 @@ const TONE_DESCRIPTIONS: Record<string, string> = {
 
 function getRoleDescription(restaurantName: string, tonePreset: string = 'casual'): string {
   const toneText = TONE_DESCRIPTIONS[tonePreset] ?? TONE_DESCRIPTIONS.casual;
-  return `WhatsApp ordering assistant for ${restaurantName}. ${toneText} Don't repeat greetings/closings. Keep replies under 3 lines when using plain text. For interactive messages, write your full warm message in bodyText (supports 1024 chars with formatting, emojis). Do not repeatedly use the laughing emoji.`;
+  return `WhatsApp ordering assistant for ${restaurantName}. ${toneText} Don't repeat greetings/closings. Keep replies under 3 lines when using plain text. For interactive messages, write your full warm message in bodyText (supports 1024 chars with formatting, emojis).`;
 }
 
 function replacePlaceholders(

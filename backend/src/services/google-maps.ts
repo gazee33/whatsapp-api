@@ -47,10 +47,41 @@ export async function reverseGeocode(
   };
 }
 
-export async function forwardGeocode(address: string): Promise<GeocodeResult> {
-  const key = getApiKey();
-  const url = `${GOOGLE_MAPS_BASE}/geocode/json?address=${encodeURIComponent(address)}&key=${key}`;
+export interface ForwardGeocodeOptions {
+  /** Bias results toward this location (restaurant coordinates) */
+  biasLat?: number;
+  biasLng?: number;
+  /** Bounding-box half-size in km around the bias point (default 50) */
+  biasRadiusKm?: number;
+  /** ISO 3166-1 alpha-2 country code for region biasing, e.g. "sa" */
+  countryCode?: string;
+}
 
+export async function forwardGeocode(
+  address: string,
+  options?: ForwardGeocodeOptions,
+): Promise<GeocodeResult> {
+  const key = getApiKey();
+  const params = new URLSearchParams({
+    address,
+    key,
+  });
+
+  // Bias toward the restaurant's city so neighbourhood names don't resolve to
+  // a distant city with the same name.
+  if (options?.biasLat != null && options?.biasLng != null) {
+    const halfDeg = (options.biasRadiusKm ?? 50) / 111;
+    const sw = `${options.biasLat - halfDeg},${options.biasLng - halfDeg}`;
+    const ne = `${options.biasLat + halfDeg},${options.biasLng + halfDeg}`;
+    params.set('bounds', `${sw}|${ne}`);
+  }
+
+  if (options?.countryCode) {
+    params.set('region', options.countryCode.toLowerCase());
+    params.set('components', `country:${options.countryCode.toUpperCase()}`);
+  }
+
+  const url = `${GOOGLE_MAPS_BASE}/geocode/json?${params.toString()}`;
   const res = await fetch(url);
   const data = await res.json() as any;
 
@@ -59,7 +90,6 @@ export async function forwardGeocode(address: string): Promise<GeocodeResult> {
   }
 
   const result = data.results?.[0];
-
   if (!result) {
     throw new Error(`Forward geocode returned no results for address`);
   }
