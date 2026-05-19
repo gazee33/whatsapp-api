@@ -10,6 +10,7 @@ import {
   ArrowUp,
   ArrowDown,
   Shield,
+  Headset,
   X,
 } from "lucide-react";
 import { usePlatformStore } from "@/stores/platform-store";
@@ -134,6 +135,13 @@ export default function PlatformSettingsPage() {
   const [toolsTemplate, setToolsTemplate] = useState("");
   const [interactiveTemplate, setInteractiveTemplate] = useState("");
 
+  // Manager Assistant prompt sections (platform-level)
+  const [managerEnabled, setManagerEnabled] = useState(false);
+  const [managerIdentityTemplate, setManagerIdentityTemplate] = useState("");
+  const [managerWorkflowTemplate, setManagerWorkflowTemplate] = useState("");
+  const [managerGuardrailsTemplate, setManagerGuardrailsTemplate] = useState("");
+  const [managerToolsTemplate, setManagerToolsTemplate] = useState("");
+
   // Tenant rule validation (Phase 3)
   const [forbiddenPatterns, setForbiddenPatterns] = useState<string>("[]");
   const [maxCustomRuleLength, setMaxCustomRuleLength] = useState<string>("500");
@@ -177,6 +185,11 @@ export default function PlatformSettingsPage() {
       setGuardrailsTemplate(config.guardrailsTemplate ?? "");
       setToolsTemplate(config.toolsTemplate ?? "");
       setInteractiveTemplate(config.interactiveTemplate ?? "");
+      setManagerEnabled(config.managerEnabled ?? false);
+      setManagerIdentityTemplate(config.managerIdentityTemplate ?? "");
+      setManagerWorkflowTemplate(config.managerWorkflowTemplate ?? "");
+      setManagerGuardrailsTemplate(config.managerGuardrailsTemplate ?? "");
+      setManagerToolsTemplate(config.managerToolsTemplate ?? "");
       setForbiddenPatterns(config.forbiddenPatterns ?? "[]");
       setMaxCustomRuleLength(String(config.maxCustomRuleLength ?? 500));
       try {
@@ -241,6 +254,11 @@ export default function PlatformSettingsPage() {
         guardrailsTemplate,
         toolsTemplate,
         interactiveTemplate,
+        managerEnabled,
+        managerIdentityTemplate,
+        managerWorkflowTemplate,
+        managerGuardrailsTemplate,
+        managerToolsTemplate,
         forbiddenPatterns,
         maxCustomRuleLength: parseInt(maxCustomRuleLength, 10) || 500,
         providerFailoverOrder: JSON.stringify(providerFailoverOrder),
@@ -258,7 +276,9 @@ export default function PlatformSettingsPage() {
     validate, defaultLLMProvider, defaultLLMModel, maxTokens, temperature,
     maxToolIterations, featureFlags, enableCustomPrompt, promptTemplate,
     identityTemplate, workflowTemplate, guardrailsTemplate, toolsTemplate,
-    interactiveTemplate, forbiddenPatterns, maxCustomRuleLength,
+    interactiveTemplate, managerEnabled, managerIdentityTemplate,
+    managerWorkflowTemplate, managerGuardrailsTemplate, managerToolsTemplate,
+    forbiddenPatterns, maxCustomRuleLength,
     providerFailoverOrder, globalForbiddenWords,
     isActive, updateConfig, t,
   ]);
@@ -494,6 +514,102 @@ export default function PlatformSettingsPage() {
                 <p className="text-xs text-muted-foreground">{t("platform_settings.available_placeholders")}</p>
               </div>
             </details>
+          </CardContent>
+        </Card>
+
+        {/* Manager Assistant Prompt */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-base">
+              <Headset className="h-4 w-4" />
+              Manager Assistant
+            </CardTitle>
+            <CardDescription>
+              System prompt for the manager-side AI agent (talks to restaurant
+              owners on WhatsApp, not customers). Placeholders:{" "}
+              <code className="text-xs">{"{restaurantName}"}</code>,{" "}
+              <code className="text-xs">{"{managerName}"}</code>,{" "}
+              <code className="text-xs">{"{businessId}"}</code>,{" "}
+              <code className="text-xs">{"{currency}"}</code>,{" "}
+              <code className="text-xs">{"{currentDateTime}"}</code>.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            <div className="flex items-center justify-between rounded-lg border p-3">
+              <div className="space-y-0.5">
+                <Label className="text-sm">Enable Manager Assistant</Label>
+                <p className="text-xs text-muted-foreground">
+                  When disabled, messages from manager phones are not routed differently.
+                </p>
+              </div>
+              <Switch checked={managerEnabled} onCheckedChange={setManagerEnabled} />
+            </div>
+
+            {([
+              {
+                key: "managerIdentityTemplate",
+                value: managerIdentityTemplate,
+                set: setManagerIdentityTemplate,
+                rows: 6,
+                title: "Identity",
+                desc: "Who the agent is and the context it operates in.",
+              },
+              {
+                key: "managerWorkflowTemplate",
+                value: managerWorkflowTemplate,
+                set: setManagerWorkflowTemplate,
+                rows: 8,
+                title: "Workflow",
+                desc: "How the agent handles read vs. write vs. destructive requests.",
+              },
+              {
+                key: "managerGuardrailsTemplate",
+                value: managerGuardrailsTemplate,
+                set: setManagerGuardrailsTemplate,
+                rows: 8,
+                title: "Guardrails",
+                desc: "Non-overridable rules — confirmation gates, scoping, secrets.",
+              },
+              {
+                key: "managerToolsTemplate",
+                value: managerToolsTemplate,
+                set: setManagerToolsTemplate,
+                rows: 8,
+                title: "Tools",
+                desc: "Inventory of available manager_* tool families.",
+              },
+            ] as const).map(({ key, value, set, rows, title, desc }) => (
+              <div key={key} className="space-y-2 rounded-lg border p-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <Label className="text-sm font-medium">{title}</Label>
+                    <p className="text-xs text-muted-foreground mt-0.5">{desc}</p>
+                  </div>
+                  {value.trim() && (
+                    <button
+                      type="button"
+                      onClick={() => set("")}
+                      className="text-xs text-muted-foreground hover:text-foreground underline underline-offset-2 transition-colors"
+                    >
+                      Reset
+                    </button>
+                  )}
+                </div>
+                <textarea
+                  rows={rows}
+                  value={value}
+                  onChange={(e) => set(e.target.value)}
+                  placeholder="Leave empty to use system default…"
+                  className="flex w-full rounded-lg border border-input bg-background px-3 py-2 text-sm shadow-sm transition-colors duration-200 placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring resize-y font-mono"
+                />
+                {value.trim() && (
+                  <div className="inline-flex items-center gap-1 text-xs text-amber-600 dark:text-amber-400">
+                    <span className="h-1.5 w-1.5 rounded-full bg-amber-500" />
+                    Custom override active
+                  </div>
+                )}
+              </div>
+            ))}
           </CardContent>
         </Card>
 

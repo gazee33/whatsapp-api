@@ -11,6 +11,7 @@ export async function createAuditLog(input: AuditLogInput): Promise<void> {
       data: {
         businessId: input.businessId,
         userId: input.userId || null,
+        actorRef: input.actorRef || null,
         action: input.action,
         resource: input.resource || null,
         resourceId: input.resourceId || null,

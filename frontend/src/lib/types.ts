@@ -445,6 +445,11 @@ export interface PlatformConfig {
   guardrailsTemplate: string;
   toolsTemplate: string;
   interactiveTemplate: string;
+  managerEnabled: boolean;
+  managerIdentityTemplate: string;
+  managerWorkflowTemplate: string;
+  managerGuardrailsTemplate: string;
+  managerToolsTemplate: string;
   forbiddenPatterns: string;
   maxCustomRuleLength: number;
   defaultLLMProvider: string | null;

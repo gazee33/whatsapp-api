@@ -30,6 +30,12 @@ export interface UpdatePlatformConfigData {
   providerFailoverOrder?: string;
   globalForbiddenWords?: string;
   isActive?: boolean;
+  // Manager Assistant prompt fields (platform-level)
+  managerEnabled?: boolean;
+  managerIdentityTemplate?: string;
+  managerWorkflowTemplate?: string;
+  managerGuardrailsTemplate?: string;
+  managerToolsTemplate?: string;
 }
 
 async function ensurePlatformConfig(): Promise<PlatformConfig> {

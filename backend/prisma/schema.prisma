@@ -51,8 +51,41 @@ model Business {
   auditLogs   AuditLog[]
   dualhookConnections DualhookConnection[]
   whatsappTemplates   WhatsAppTemplate[]
+  managers    Manager[]
 
   @@map("Business")
+}
+
+// ─── MANAGER ASSISTANT ──────────────────────────────────────────────────────
+
+model Manager {
+  id         String   @id @default(cuid())
+  businessId String
+  business   Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  phone      String
+  name       String?
+  isOwner    Boolean  @default(false)
+  createdAt  DateTime @default(now())
+
+  messages   ManagerMessage[]
+
+  @@unique([businessId, phone])
+  @@index([businessId])
+  @@map("Manager")
+}
+
+model ManagerMessage {
+  id        String   @id @default(cuid())
+  managerId String
+  manager   Manager  @relation(fields: [managerId], references: [id], onDelete: Cascade)
+  role      String
+  content   String
+  sessionId String
+  createdAt DateTime @default(now())
+
+  @@index([managerId])
+  @@index([sessionId])
+  @@map("ManagerMessage")
 }
 
 // ─── IAM: USERS ─────────────────────────────────────────────────────────────
@@ -129,6 +162,13 @@ model PlatformConfig {
   // LLM Failover and Global Safety
   providerFailoverOrder String @default("[]")   // JSON: ["opencode","gemini","groq"]
   globalForbiddenWords  String @default("[]")   // JSON: ["word1","word2"]
+
+  // Manager Assistant Prompt Templates (platform-level, applies to all tenants)
+  managerEnabled            Boolean @default(false)
+  managerIdentityTemplate   String  @default("")
+  managerWorkflowTemplate   String  @default("")
+  managerGuardrailsTemplate String  @default("")
+  managerToolsTemplate      String  @default("")
 
   // Feature Flags
   interactiveListMessagesEnabled    Boolean @default(true)
@@ -249,6 +289,7 @@ model AuditLog {
   resource    String?
   resourceId  String?
   details     String?
+  actorRef    String?   // e.g. "manager:+966501234567" for manager-agent actions
 
   ipAddress   String?
   userAgent   String?

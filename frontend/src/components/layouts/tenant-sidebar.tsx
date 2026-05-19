@@ -17,6 +17,7 @@ import {
   X,
   Terminal,
   Radio,
+  Headset,
 } from "lucide-react";
 import { useState } from "react";
 import { useBusinessStore } from "@/stores/business-store";
@@ -47,6 +48,7 @@ function getNavItems(t: (key: string) => string) {
         { href: "/templates", label: t("sidebar.templates"), icon: MessageSquare },
         { href: "/settings", label: t("sidebar.settings"), icon: Settings },
         { href: "/users", label: t("sidebar.users"), icon: Users },
+        { href: "/managers", label: t("sidebar.managers") || "Managers", icon: Headset },
         { href: "/roles", label: t("sidebar.roles"), icon: Shield },
       ],
     },

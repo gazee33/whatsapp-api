@@ -61,6 +61,8 @@ export interface UpdateRoleInput {
 export interface AuditLogInput {
   businessId: string;
   userId?: string;
+  /** Free-text actor reference for non-user actors, e.g. "manager:+966501234567" */
+  actorRef?: string;
   action: string;
   resource?: string;
   resourceId?: string;

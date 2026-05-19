@@ -2,6 +2,8 @@ import { Router, Request, Response } from 'express';
 import crypto from 'crypto';
 import { prisma } from '../lib/prisma.js';
 import { processMessage } from '../services/ai-agent.js';
+import { processManagerMessage } from '../services/manager-agent.js';
+import { getManagerByPhone } from '../services/manager-resolver.js';
 import { sendWhatsAppText, sendTypingIndicator } from '../services/whatsapp-sender.js';
 import { getIO } from '../socket.js';
 import { logError } from '../services/error-log.js';
@@ -16,6 +18,9 @@ const DEDUP_TTL_MS = 10 * 60 * 1000; // 10 minutes
 
 // Per-customer processing lock to prevent concurrent sessions
 const customerLocks = new Set<string>();
+
+// Per-manager processing lock (separate from customer locks)
+const managerLocks = new Set<string>();
 
 function cleanupProcessedMessages() {
   const cutoff = Date.now() - DEDUP_TTL_MS;
@@ -260,6 +265,69 @@ router.post('/', async (req: Request, res: Response) => {
     } else if (isDualhook) {
       console.log(`[Webhook] Signature verification skipped (DualHook connection)`);
     }
+
+    // ── Manager Assistant routing ────────────────────────────────────────────
+    // Check before the customer rate-limit so managers have a separate quota.
+    const manager = await getManagerByPhone(business.id, from);
+    if (manager) {
+      console.log(`[Webhook] Manager detected: ${manager.id} (${manager.name ?? 'unnamed'}) for business ${business.id}`);
+
+      if (!checkBusinessRateLimit(`manager:${business.id}`, 60)) {
+        console.warn(`[Webhook] Manager ${manager.id} rate limited`);
+        return res.status(429).json({ error: 'Rate limit exceeded' });
+      }
+
+      if (managerLocks.has(manager.id)) {
+        console.log(`[Webhook] Manager ${manager.id} already being processed — returning 200`);
+        return res.sendStatus(200);
+      }
+      managerLocks.add(manager.id);
+
+      try {
+        let managerDedupKey: string | undefined;
+        if (message.id) {
+          managerDedupKey = `manager:${manager.id}:${message.id}`;
+          if (processedMessages.has(managerDedupKey)) {
+            console.log(`[Webhook] Duplicate manager message ${message.id} — skipping`);
+            return res.sendStatus(200);
+          }
+        }
+
+        const onboardingOK = isOnboardingComplete(business);
+        if (onboardingOK) {
+          await sendTypingIndicator(business, phoneNumberId, from, message.id);
+        }
+
+        let managerReply: string;
+        let managerDidSend = false;
+        try {
+          console.log(`[Webhook] Calling Manager Assistant for manager ${manager.id}...`);
+          const result = await processManagerMessage(business, manager, effectiveText, locationData);
+          managerReply = result.reply;
+          managerDidSend = result.didSendMessage ?? false;
+          console.log(`[Webhook] Manager reply: ${managerReply.substring(0, 100)}`);
+        } catch (error: any) {
+          console.error(`[Webhook] Manager agent error: ${error?.message}`);
+          managerReply = 'Sorry, I encountered an error. Please try again in a moment.';
+        }
+
+        if (onboardingOK) {
+          if (!managerDidSend) {
+            await sendWhatsAppText({ business, phoneNumberId, to: from, body: managerReply });
+          }
+          if (managerDedupKey) {
+            processedMessages.set(managerDedupKey, Date.now());
+          }
+        } else {
+          console.warn(`[Webhook] Manager reply NOT sent — onboarding incomplete`);
+        }
+
+        return res.json({ reply: managerReply, onboardingComplete: onboardingOK, isManager: true });
+      } finally {
+        managerLocks.delete(manager.id);
+      }
+    }
+    // ── end Manager Assistant routing ────────────────────────────────────────
 
     // Per-business rate limiting
     const messagesPerMinute = business.messagesPerMinute ?? 30;
