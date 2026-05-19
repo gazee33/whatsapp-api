@@ -115,6 +115,7 @@ export class ManagerAIAgentService {
         role: 'assistant',
         content: llmResponse.content || '',
         toolCalls: llmResponse.toolCalls,
+        reasoningContent: llmResponse.reasoningContent,
       } as any);
 
       for (const toolCall of llmResponse.toolCalls) {
