@@ -35,7 +35,6 @@ const cairo = Cairo({
 export const metadata: Metadata = {
   title: "Nadil AI | The Waiter That Never Sleeps",
   description: "AI Waiter SaaS for restaurants. WhatsApp-based ordering, reservations, customer support.",
-  icons: [{ rel: "icon", url: "/favicon.ico" }],
 };
 
 export default function RootLayout({

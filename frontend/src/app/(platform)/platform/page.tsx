@@ -64,7 +64,7 @@ export default function PlatformDashboardPage() {
                         <div key={j} className="flex items-center gap-2">
                           <SkeletonBlock className="h-3 w-3 rounded-full" />
                           <SkeletonBlock className="h-3 w-12" />
-                          <SkeletonBlock className="ml-auto h-3 w-4" />
+                          <SkeletonBlock className="ms-auto h-3 w-4" />
                         </div>
                       ))}
                     </div>
@@ -190,7 +190,7 @@ export default function PlatformDashboardPage() {
                         <span className="text-muted-foreground">
                           {config.label}
                         </span>
-                        <span className="ml-auto font-medium">{count}</span>
+                        <span className="ms-auto font-medium">{count}</span>
                       </div>
                     );
                   })}

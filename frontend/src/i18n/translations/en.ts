@@ -23,6 +23,7 @@ export const en: Record<string, string> = {
   // ---- Sidebar ----
   "sidebar.main": "Main",
   "sidebar.dashboard": "Dashboard",
+  "sidebar.close_menu": "Close menu",
   "sidebar.menu": "Menu",
   "sidebar.orders": "Orders",
   "sidebar.conversations": "Conversations",
@@ -46,6 +47,10 @@ export const en: Record<string, string> = {
   "platform_sidebar.platform_users": "Platform Users",
   "platform_sidebar.platform_admin": "Platform Admin",
   "platform_sidebar.management_console": "Management Console",
+  "platform_sidebar.admin_chip": "Admin",
+
+  // ---- Auth ----
+  "auth.tagline": "WhatsApp AI Agent — Powered Ordering",
 
   // ---- Header ----
   "header.dashboard_fallback": "Dashboard",

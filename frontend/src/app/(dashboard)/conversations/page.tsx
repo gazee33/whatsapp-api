@@ -109,7 +109,7 @@ export default function ConversationsPage() {
                         )}
                       </div>
                       {lastMessage && (
-                        <p className="text-sm text-muted-foreground truncate max-w-[300px]">
+                        <p className="text-sm text-muted-foreground truncate max-w-[180px] sm:max-w-[300px]">
                           {lastMessage.role === "user" ? t("conversations.customer_prefix") : t("conversations.bot_prefix")}
                           {truncate(lastMessage.content, 80)}
                         </p>

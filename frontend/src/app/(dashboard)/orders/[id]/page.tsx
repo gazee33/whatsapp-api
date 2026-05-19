@@ -73,7 +73,7 @@ export default function OrderDetailPage() {
         variant="ghost"
         size="sm"
         onClick={() => router.back()}
-        className="-ml-2"
+        className="-ms-2"
       >
         <ArrowLeft className="h-4 w-4" />
         {t("common.back")}
@@ -126,7 +126,7 @@ export default function OrderDetailPage() {
                           </p>
                         )}
                       </div>
-                      <div className="text-right">
+                      <div className="text-end">
                         <p className="text-sm">
                           {item.quantity} x{" "}
                           {formatCurrency(

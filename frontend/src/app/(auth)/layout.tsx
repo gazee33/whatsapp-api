@@ -1,8 +1,9 @@
 "use client";
 
 import { usePathname } from "next/navigation";
-import { Sparkles, Languages } from "lucide-react";
+import { Languages } from "lucide-react";
 import { LanguageProvider, useLanguage } from "@/i18n/language-context";
+import { Logo } from "@/components/shared/logo";
 
 function AuthLayoutInner({ children }: { children: React.ReactNode }) {
   const { lang, setLang, t } = useLanguage();
@@ -38,17 +39,10 @@ function AuthLayoutInner({ children }: { children: React.ReactNode }) {
           </button>
         </div>
 
-        <div className="text-center">
-          <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-indigo-50 ring-1 ring-indigo-200">
-            <Sparkles className="h-7 w-7 text-indigo-500" />
-          </div>
-          <h1 className="mt-4 text-3xl font-bold tracking-tight font-[family-name:var(--font-playfair)]">
-            <span className="bg-gradient-to-r from-[#6366F1] to-[#06B6D4] bg-clip-text text-transparent">
-              Nadil AI
-            </span>
-          </h1>
-          <p className="mt-1 text-sm text-slate-500">
-            WhatsApp AI Agent — Powered Ordering
+        <div className="flex flex-col items-center text-center">
+          <Logo variant="full" height={48} priority />
+          <p className="mt-3 text-sm text-slate-500">
+            {t("auth.tagline")}
           </p>
         </div>
 

@@ -266,7 +266,7 @@ export function MenuScanPreview({
                     </div>
 
                     {item.options.length > 0 && (
-                      <div className="ml-2 pl-3 border-l-2 border-indigo-100 space-y-2">
+                      <div className="ms-2 ps-3 border-s-2 border-indigo-100 space-y-2">
                         <span className="text-xs font-medium text-slate-500">
                           {t("menu.options")}
                         </span>

@@ -58,7 +58,7 @@ export function DataTable<T extends Record<string, unknown>>({
                   <th
                     key={col.key}
                     className={cn(
-                      "px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider",
+                      "px-4 py-3 text-start text-xs font-semibold text-muted-foreground uppercase tracking-wider",
                       col.className
                     )}
                   >
@@ -66,7 +66,7 @@ export function DataTable<T extends Record<string, unknown>>({
                   </th>
                 ))}
                 {renderActions && (
-                  <th className="px-4 py-3 text-right text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                  <th className="px-4 py-3 text-end text-xs font-semibold text-muted-foreground uppercase tracking-wider">
                     {t("common.actions")}
                   </th>
                 )}
@@ -108,7 +108,7 @@ export function DataTable<T extends Record<string, unknown>>({
                       </td>
                     ))}
                     {renderActions && (
-                      <td className="px-4 py-3 text-right text-sm">
+                      <td className="px-4 py-3 text-end text-sm">
                         {renderActions(row)}
                       </td>
                     )}
@@ -153,7 +153,7 @@ export function DataTable<T extends Record<string, unknown>>({
                   <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider shrink-0">
                     {col.header}
                   </span>
-                  <span className={cn("text-sm text-right", col.className)}>
+                  <span className={cn("text-sm text-end", col.className)}>
                     {col.render
                       ? col.render(row[col.key], row)
                       : (row[col.key] as ReactNode) ?? t("common.dash")}

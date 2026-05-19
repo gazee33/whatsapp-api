@@ -10,12 +10,12 @@ import {
   FileText,
   Settings,
   Users,
-  Shield,
   Activity,
   X,
   Layers,
 } from "lucide-react";
 import { useLanguage } from "@/i18n/language-context";
+import { Logo } from "@/components/shared/logo";
 
 function getNavItems(t: (key: string) => string) {
   return [
@@ -72,23 +72,27 @@ export function PlatformSidebar({ open, onClose }: PlatformSidebarProps) {
 
       <aside
         className={cn(
-          "fixed start-0 top-0 z-50 flex h-full w-[260px] flex-col border-e border-sidebar-border bg-sidebar transition-transform duration-300",
+          "fixed start-0 top-0 z-50 flex h-full w-[88vw] max-w-[280px] flex-col border-e border-sidebar-border bg-sidebar transition-transform duration-300 sm:w-[260px]",
           open ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
         )}
       >
-        {/* Mobile close button */}
+        {/* Brand (mobile) */}
         <div className="flex h-16 items-center gap-3 border-b border-sidebar-border px-4 lg:hidden">
-          <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary">
-            <Shield className="h-5 w-5 text-primary-foreground" />
-          </div>
-          <div className="min-w-0 flex-1">
-            <p className="truncate text-sm font-semibold text-sidebar-foreground">
-              {t("platform_sidebar.platform_admin")}
-            </p>
-          </div>
-          <button
+          <Link
+            href="/platform"
             onClick={onClose}
-            className="rounded-lg p-1.5 text-muted-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+            className="flex min-w-0 flex-1 items-center gap-2.5"
+          >
+            <Logo variant="icon" height={32} priority />
+            <span className="inline-flex items-center rounded-md bg-amber-100 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-amber-700 dark:bg-amber-900/30 dark:text-amber-300">
+              {t("platform_sidebar.admin_chip")}
+            </span>
+          </Link>
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label={t("sidebar.close_menu")}
+            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
           >
             <X className="h-5 w-5" />
           </button>
@@ -96,17 +100,15 @@ export function PlatformSidebar({ open, onClose }: PlatformSidebarProps) {
 
         {/* Brand (desktop) */}
         <div className="hidden h-16 items-center gap-3 border-b border-sidebar-border px-4 lg:flex">
-          <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary">
-            <Shield className="h-5 w-5 text-primary-foreground" />
-          </div>
-          <div className="min-w-0 flex-1">
-            <p className="truncate text-sm font-semibold text-sidebar-foreground">
-              {t("platform_sidebar.platform_admin")}
-            </p>
-            <p className="truncate text-xs text-muted-foreground">
-              {t("platform_sidebar.management_console")}
-            </p>
-          </div>
+          <Link
+            href="/platform"
+            className="flex min-w-0 flex-1 items-center gap-2.5"
+          >
+            <Logo variant="full" height={28} priority />
+            <span className="inline-flex items-center rounded-md bg-amber-100 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-amber-700 dark:bg-amber-900/30 dark:text-amber-300">
+              {t("platform_sidebar.admin_chip")}
+            </span>
+          </Link>
         </div>
 
         {/* Navigation */}
@@ -125,10 +127,10 @@ export function PlatformSidebar({ open, onClose }: PlatformSidebarProps) {
                         href={item.href}
                         onClick={onClose}
                         className={cn(
-                          "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-200",
+                          "relative flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-200",
                           active
-                            ? "bg-sidebar-accent text-sidebar-accent-foreground shadow-sm"
-                            : "text-sidebar-foreground hover:bg-sidebar-accent/50 hover:text-sidebar-accent-foreground"
+                            ? "bg-sidebar-accent text-sidebar-accent-foreground shadow-sm before:absolute before:start-0 before:top-1.5 before:bottom-1.5 before:w-0.5 before:rounded-full before:bg-primary"
+                            : "text-sidebar-foreground hover:bg-sidebar-accent/70 hover:text-sidebar-accent-foreground"
                         )}
                       >
                         <item.icon

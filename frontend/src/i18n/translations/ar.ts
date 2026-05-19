@@ -23,6 +23,7 @@ export const ar: Record<string, string> = {
   // ---- Sidebar ----
   "sidebar.main": "الرئيسية",
   "sidebar.dashboard": "لوحة التحكم",
+  "sidebar.close_menu": "إغلاق القائمة",
   "sidebar.menu": "القائمة",
   "sidebar.orders": "الطلبات",
   "sidebar.conversations": "المحادثات",
@@ -46,6 +47,10 @@ export const ar: Record<string, string> = {
   "platform_sidebar.platform_users": "مستخدمو المنصة",
   "platform_sidebar.platform_admin": "مشرف المنصة",
   "platform_sidebar.management_console": "لوحة الإدارة",
+  "platform_sidebar.admin_chip": "مشرف",
+
+  // ---- Auth ----
+  "auth.tagline": "وكيل ذكاء اصطناعي على واتساب — لإدارة الطلبات",
 
   // ---- Header ----
   "header.dashboard_fallback": "لوحة التحكم",

@@ -216,7 +216,7 @@ export default function DashboardPage() {
           <Button variant="ghost" size="sm" asChild>
             <Link href="/orders">
               {t("orders.title")}
-              <ArrowUpRight className="ml-1 h-4 w-4" />
+              <ArrowUpRight className="ms-1 h-4 w-4" />
             </Link>
           </Button>
         </CardHeader>
@@ -265,7 +265,7 @@ export default function DashboardPage() {
           <Button variant="ghost" size="sm" asChild>
             <Link href="/conversations">
               {t("conversations.title")}
-              <ArrowUpRight className="ml-1 h-4 w-4" />
+              <ArrowUpRight className="ms-1 h-4 w-4" />
             </Link>
           </Button>
         </CardHeader>
@@ -296,7 +296,7 @@ export default function DashboardPage() {
                         </p>
                       )}
                     </div>
-                    <div className="ml-3 shrink-0">
+                    <div className="ms-3 shrink-0">
                       {lastMsg && (
                         <span className="text-xs text-muted-foreground">
                           {formatTimeAgo(lastMsg.createdAt)}

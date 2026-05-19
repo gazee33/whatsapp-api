@@ -2,8 +2,8 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Sparkles } from "lucide-react";
 import { LanguageProvider, useLanguage } from "@/i18n/language-context";
+import { Logo } from "@/components/shared/logo";
 
 function OnboardingLayoutInner({ children }: { children: React.ReactNode }) {
   const router = useRouter();
@@ -22,14 +22,9 @@ function OnboardingLayoutInner({ children }: { children: React.ReactNode }) {
       <div className="relative z-10 flex items-center justify-between h-16 px-4 sm:px-6 lg:px-8 border-b border-indigo-100/40 bg-white/40 backdrop-blur-sm">
         <Link
           href="/dashboard"
-          className="flex items-center gap-2.5 cursor-pointer"
+          className="flex items-center cursor-pointer"
         >
-          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#6366F1]">
-            <Sparkles className="h-4 w-4 text-white" />
-          </div>
-          <span className="text-xl font-bold tracking-tight font-[family-name:var(--font-playfair)] bg-gradient-to-r from-[#6366F1] to-[#06B6D4] bg-clip-text text-transparent">
-            Nadil AI
-          </span>
+          <Logo variant="full" height={28} priority />
         </Link>
 
         <button
