@@ -152,8 +152,9 @@ function getToolsBlock(): string {
   return `- add_to_cart: add selected items to cart (bulk — pass all items at once). Use optionId from query_menu.
 - update_cart: modify a cart item at a specific [index]. Pass FULL updated values.
 - check_restaurant_info: "where are you?", "are you open?", "what payments?", "how much is delivery?"
-- set_delivery_address: save delivery location + calculate fee
-- submit_order: create order — items auto-filled from cart. Only call after customer says yes.
+- set_delivery_address: save delivery location + calculate fee (also persists orderType=delivery)
+- set_order_type: persist pickup/dine_in to cart the moment the customer chooses. Call IMMEDIATELY after the customer says pickup or dine-in — do not wait until submit_order.
+- submit_order: create order — items + orderType + deliveryAddress are auto-filled from cart. Do NOT pass items. Only call after customer says yes.
 - check_order_status: "where is my order?"
 - file_complaint: customer reports a problem
 - flag_customer: escalate to human support — use when customer is angry/frustrated, asks for a human, or the issue is too complex. Provide a clear reason.
@@ -253,7 +254,7 @@ function buildTemplateSections(params: {
 
   const workflowSteps: string[] = [];
   let step = 1;
-  workflowSteps.push(`${step++}. IF order type not set yet: ask customer (${orderTypeStr}).`);
+  workflowSteps.push(`${step++}. IF order type not set yet: ask customer (${orderTypeStr}). When they answer pickup or dine-in, call set_order_type IMMEDIATELY so the choice is persisted. For delivery, set_delivery_address persists the type automatically.`);
   workflowSteps.push(context.deliveryEnabled
     ? `${step++}. IF delivery AND no address set yet: ask customer to share location or type address. When location is shared, you'll receive [Location shared: lat,lng]. Call set_delivery_address with coordinates. When address is typed, call set_delivery_address with the address text.`
     : `${step++}. IF delivery: unavailable for this restaurant. Say so.`);

@@ -33,6 +33,21 @@ export const tools: ToolDefinition[] = [
     }
   },
   {
+    name: 'set_order_type',
+    description: 'Persist the customer\'s order type to the cart. Use this the moment the customer chooses pickup or dine-in (for delivery, use set_delivery_address instead — it handles location and persists orderType=delivery automatically). Call this BEFORE submit_order so the choice survives across turns.',
+    parameters: {
+      type: 'object',
+      properties: {
+        orderType: {
+          type: 'string',
+          enum: ['pickup', 'dine_in'],
+          description: 'The customer\'s chosen order type. Use pickup for self-collection, dine_in for eating at the restaurant.'
+        }
+      },
+      required: ['orderType']
+    }
+  },
+  {
     name: 'add_to_cart',
     description: 'Add items to the cart. Use when customer selects items from the menu. Can add multiple items at once. Shows the current cart total after adding.',
     parameters: {
@@ -83,28 +98,13 @@ export const tools: ToolDefinition[] = [
   },
   {
     name: 'submit_order',
-    description: 'Create a new order with items from the cart. Call this only when the customer explicitly says yes to "shall I place the order?". REQUIRED: customer must confirm verbally first. The order type, delivery address, and contact phone will be auto-filled from cart state — you can override them if needed.',
+    description: 'Create a new order from the persisted cart. Items, orderType, and deliveryAddress are taken from the cart — DO NOT pass them. Use add_to_cart / update_cart / remove_from_cart / set_order_type / set_delivery_address BEFORE this call to set up the cart. Call this only after the customer explicitly says yes to "shall I place the order?".',
     parameters: {
       type: 'object',
       properties: {
-        items: {
-          type: 'array',
-          description: 'OPTIONAL — items will be auto-filled from the cart if omitted. Override only if you need to adjust before submitting.',
-          items: {
-            type: 'object',
-            properties: {
-              itemId: { type: 'string', description: 'ID of the menu item' },
-              quantity: { type: 'number', description: 'How many of this item' },
-              optionName: { type: 'string', description: 'Option name' },
-              notes: { type: 'string', description: 'Special instructions' },
-            },
-            required: ['itemId', 'quantity']
-          }
-        },
-        orderType: { type: 'string', enum: ['delivery', 'dine_in', 'pickup'], description: 'OPTIONAL — auto-filled from cart if omitted. Override only if customer changes their mind.' },
-        deliveryAddress: { type: 'string', description: 'OPTIONAL — auto-filled from cart if omitted.' },
-        deliveryNotes: { type: 'string', description: 'Delivery instructions like gate code (optional)' },
-        contactPhone: { type: 'string', description: 'OPTIONAL — auto-filled from customer phone if omitted.' }
+        orderNotes: { type: 'string', description: 'Optional overall notes for the kitchen.' },
+        deliveryNotes: { type: 'string', description: 'Optional delivery instructions like gate code, landmark.' },
+        contactPhone: { type: 'string', description: 'Optional phone number override. Defaults to customer WhatsApp number.' }
       },
       required: []
     }

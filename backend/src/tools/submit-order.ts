@@ -49,11 +49,26 @@ export async function handleSubmitOrder(
   customerId: string,
   params: SubmitOrderParams
 ): Promise<string> {
-  const { items, orderNotes, deliveryNotes, contactPhone } = params;
+  const { orderNotes, deliveryNotes, contactPhone } = params;
+  let { items } = params;
   let { deliveryAddress } = params;
   let { orderType } = params;
 
   try {
+    // Defence-in-depth: the cart is the source of truth. If the caller didn't
+    // pass items (or passed an empty list), read them from the persisted cart.
+    if (!items || items.length === 0) {
+      const cart = await getCartState(customerId);
+      if (cart.items.length > 0) {
+        items = cart.items.map((item) => ({
+          itemId: item.menuItemId,
+          quantity: item.quantity,
+          optionName: item.optionName,
+          notes: item.notes,
+        }));
+      }
+    }
+
     if (!items || items.length === 0) {
       console.error('[SubmitOrder] Validation: no items provided', { businessId, customerId, params });
       return 'No items provided for the order.';

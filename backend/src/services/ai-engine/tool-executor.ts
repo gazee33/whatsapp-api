@@ -5,6 +5,7 @@ import { handleCheckStatus } from '../../tools/check-status.js';
 import { handleFileComplaint } from '../../tools/file-complaint.js';
 import { handleCheckRestaurantInfo } from '../../tools/check-restaurant-info.js';
 import { handleSetDeliveryAddress } from '../../tools/set-delivery-address.js';
+import { handleSetOrderType } from '../../tools/set-order-type.js';
 import { handleAddToCart } from '../../tools/add-to-cart.js';
 import { handleUpdateCart } from '../../tools/update-cart.js';
 import { handleRemoveFromCart } from '../../tools/remove-from-cart.js';
@@ -19,6 +20,7 @@ import type { CheckStatusParams } from '../../tools/check-status.js';
 import type { FileComplaintParams } from '../../tools/file-complaint.js';
 import type { CheckRestaurantInfoParams } from '../../tools/check-restaurant-info.js';
 import type { SetDeliveryAddressParams } from '../../tools/set-delivery-address.js';
+import type { SetOrderTypeParams } from '../../tools/set-order-type.js';
 import type { AddToCartParams } from '../../tools/add-to-cart.js';
 import type { UpdateCartParams } from '../../tools/update-cart.js';
 import type { FlagCustomerParams } from '../../tools/flag-customer.js';
@@ -119,13 +121,19 @@ export async function executeTool(params: {
         }
       }
 
-      if ((!toolParams.items || toolParams.items.length === 0) && cartState.items.length > 0) {
+      const llmProvidedItemCount = Array.isArray(toolParams.items) ? toolParams.items.length : 0;
+      if (cartState.items.length > 0) {
         toolParams.items = cartState.items.map((item) => ({
           itemId: item.menuItemId,
           quantity: item.quantity,
           optionName: item.optionName,
           notes: item.notes,
         }));
+        if (llmProvidedItemCount > 0 && llmProvidedItemCount !== cartState.items.length) {
+          console.warn(
+            `[ToolExecutor] submit_order: LLM provided ${llmProvidedItemCount} items but cart has ${cartState.items.length}; overriding with cart.`,
+          );
+        }
       }
 
       if (!toolParams.orderType && cartState.orderType) {
@@ -182,6 +190,17 @@ export async function executeTool(params: {
         success: execResult.success,
         result: execResult.result,
         errorCode: execResult.success ? undefined : 'INVALID_DELIVERY_ADDRESS',
+        cartState: execResult.success ? execResult.cartState : cartState,
+      };
+    }
+
+    case 'set_order_type': {
+      const toolParams = normalizeToolArgs<SetOrderTypeParams>(toolCall.arguments);
+      const execResult = await handleSetOrderType(businessId, customerId, toolParams);
+      return {
+        success: execResult.success,
+        result: execResult.result,
+        errorCode: execResult.success ? undefined : 'INVALID_ORDER_TYPE',
         cartState: execResult.success ? execResult.cartState : cartState,
       };
     }

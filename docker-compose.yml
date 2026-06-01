@@ -30,6 +30,7 @@ services:
       - DUALHOOK_SIGNING_SECRET=${DUALHOOK_SIGNING_SECRET}
       - DUALHOOK_REDIRECT_BASE=https://nadil.cloud
       - GOOGLE_MAPS_API_KEY=${GOOGLE_MAPS_API_KEY}
+      - TZ=Asia/Riyadh
     volumes:
       - backend-data:/app/data
     ports:
