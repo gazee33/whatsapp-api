@@ -97,7 +97,9 @@ export class OpencodeProvider implements LLMProvider {
         if (!response.ok) {
           const errorText = await response.text();
           console.error(`[Opencode] API error (model=${this.model}, status=${response.status}): ${errorText}`);
-          throw new Error(`OpenCode API error ${response.status} (model=${this.model}): ${errorText.substring(0, 300)}`);
+          const err = new Error(`OpenCode API error ${response.status} (model=${this.model}): ${errorText.substring(0, 300)}`);
+          (err as any).statusCode = response.status;
+          throw err;
         }
 
         const data = await response.json() as {
@@ -143,10 +145,16 @@ export class OpencodeProvider implements LLMProvider {
         return { content, toolCalls, reasoningContent };
       } catch (error: any) {
         const isTimeout = error?.name === 'TimeoutError' || error?.name === 'AbortError';
-        if (!isTimeout || attempt === MAX_ATTEMPTS) {
+        const isServerError = typeof error?.statusCode === 'number' && error.statusCode >= 500;
+        const isRetryable = isTimeout || isServerError;
+        if (!isRetryable || attempt === MAX_ATTEMPTS) {
           throw error;
         }
-        console.warn(`[Opencode] Timeout on attempt ${attempt}/${MAX_ATTEMPTS}, retrying... (messages=${messages.length}, tools=${tools.length})`);
+        if (isServerError) {
+          console.warn(`[Opencode] Server error ${error.statusCode} on attempt ${attempt}/${MAX_ATTEMPTS}, retrying...`);
+        } else {
+          console.warn(`[Opencode] Timeout on attempt ${attempt}/${MAX_ATTEMPTS}, retrying... (messages=${messages.length}, tools=${tools.length})`);
+        }
       }
     }
 

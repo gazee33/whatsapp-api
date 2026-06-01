@@ -141,7 +141,7 @@ export async function sendWhatsAppInteractiveList(params: SendInteractiveListPar
     body: { text: bodyText },
     footer: footerText ? { text: footerText } : undefined,
     action: {
-      button: buttonText,
+      button: buttonText || 'اختر',
       sections,
     },
   };
