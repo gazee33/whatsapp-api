@@ -76,8 +76,8 @@ export interface RestaurantContext {
  * Handles cross-midnight hours (e.g., 20:00-02:00).
  */
 export function computeIsCurrentlyOpen(openingTime: string, closingTime: string): boolean {
-  const now = new Date();
-  const cur = now.getHours() * 60 + now.getMinutes();
+  const riyadhTime = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Riyadh' }));
+  const cur = riyadhTime.getHours() * 60 + riyadhTime.getMinutes();
 
   const [oh, om] = openingTime.split(':').map(Number);
   const [ch, cm] = closingTime.split(':').map(Number);
@@ -91,8 +91,7 @@ export function computeIsCurrentlyOpen(openingTime: string, closingTime: string)
 }
 
 export function getCurrentTimeString(): string {
-  const now = new Date();
-  return now.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', hour12: false });
+  return new Date().toLocaleTimeString('en-GB', { timeZone: 'Asia/Riyadh', hour: '2-digit', minute: '2-digit', hour12: false });
 }
 
 export async function getRestaurantContext(businessId: string): Promise<RestaurantContext> {

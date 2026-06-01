@@ -402,13 +402,13 @@ export async function buildManagerSystemPrompt(params: {
   const platformConfig = await getPlatformConfig();
 
   const currentDateTime = new Date().toLocaleString('en-US', {
-    timeZone: 'UTC',
+    timeZone: 'Asia/Riyadh',
     year: 'numeric',
     month: 'short',
     day: 'numeric',
     hour: '2-digit',
     minute: '2-digit',
-  }) + ' UTC';
+  }) + ' AST';
 
   const placeholders: Record<string, string> = {
     restaurantName,
